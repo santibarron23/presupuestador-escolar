@@ -500,13 +500,14 @@
   <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
     <div class="upload-icon">📄</div>
     <h2>Subí la lista de útiles</h2>
-    <p>Arrastrá el archivo acá o hacé clic para seleccionarlo</p>
+    <p>PDF, Word, foto de la lista escrita a mano, o texto</p>
     <div class="upload-types">
       <span class="type-tag">PDF</span>
       <span class="type-tag">Word (.docx)</span>
+      <span class="type-tag">Foto (.jpg / .png)</span>
       <span class="type-tag">Texto (.txt)</span>
     </div>
-    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" />
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp" />
   </div>
 
   <!-- FILE SELECTED -->
@@ -550,7 +551,7 @@
 <script>
   // ─── CONFIG ───────────────────────────────────────────────────
   // Cambiá esta URL por la de tu servidor deployado
-  const API_URL = "https://TU-SERVIDOR.onrender.com/api/presupuestar";
+  const API_URL = "https://presupuestador-escolar.onrender.com/api/presupuestar";
 
   let selectedFile = null;
 
