@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presupuestador de Lista Escolar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #1a1a2e;
+      --paper: #faf7f2;
+      --cream: #f0ebe0;
+      --accent: #e85d26;
+      --accent-light: #fde8dc;
+      --green: #2d6a4f;
+      --green-light: #d8f3dc;
+      --yellow: #f4a261;
+      --border: #d4c9b8;
+      --text-muted: #7a7060;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .widget {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.9rem;
+      border-radius: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .header h1 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+      color: var(--ink);
+    }
+
+    .header h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 300;
+    }
+
+    /* ── UPLOAD ZONE ── */
+    .upload-card {
+      background: white;
+      border: 2px dashed var(--border);
+      border-radius: 1.5rem;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .upload-card:hover, .upload-card.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      transform: translateY(-2px);
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--cream);
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 1.8rem;
+      transition: transform 0.3s ease;
+    }
+
+    .upload-card:hover .upload-icon {
+      transform: scale(1.1) rotate(-5deg);
+    }
+
+    .upload-card h2 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.4rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .upload-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-types {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .type-tag {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.25rem 0.7rem;
+      border-radius: 2rem;
+    }
+
+    #fileInput { display: none; }
+
+    /* ── FILE SELECTED ── */
+    .file-selected {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      background: var(--green-light);
+      border: 2px solid var(--green);
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      margin-top: 1rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .file-selected.show { display: flex; }
+
+    .file-icon { font-size: 1.5rem; }
+
+    .file-info { flex: 1; text-align: left; }
+    .file-name { font-weight: 600; font-size: 0.95rem; color: var(--green); }
+    .file-size { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ── BUTTON ── */
+    .btn-presupuestar {
+      display: block;
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: var(--ink);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .btn-presupuestar:hover:not(:disabled) {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(232, 93, 38, 0.35);
+    }
+
+    .btn-presupuestar:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .loading.show { display: block; }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid var(--cream);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+
+    .loading h3 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.3rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .loading-steps {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      opacity: 0.3;
+      transition: opacity 0.5s ease;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .step.active { opacity: 1; }
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    /* ── RESULTS ── */
+    .results { display: none; animation: fadeUp 0.4s ease both; }
+    .results.show { display: block; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .summary-card.highlight {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: white;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.6;
+      margin-bottom: 0.4rem;
+    }
+
+    .summary-value {
+      font-family: 'Fraunces', serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .summary-sub {
+      font-size: 0.78rem;
+      opacity: 0.6;
+      margin-top: 0.2rem;
+    }
+
+    /* ── ITEMS LIST ── */
+    .items-section {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .items-header {
+      padding: 1rem 1.5rem;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--cream);
+      transition: background 0.15s ease;
+    }
+
+    .item-row:last-child { border-bottom: none; }
+    .item-row:hover { background: var(--paper); }
+
+    .item-left { min-width: 0; }
+    .item-requested {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.15rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-matched {
+      font-weight: 500;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-qty {
+      font-size: 0.8rem;
+      background: var(--cream);
+      padding: 0.2rem 0.6rem;
+      border-radius: 2rem;
+      white-space: nowrap;
+    }
+
+    .item-price {
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .item-price small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .not-found-row {
+      background: #fff8f6;
+    }
+
+    .not-found-badge {
+      font-size: 0.7rem;
+      background: #fee;
+      color: #c44;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.3rem;
+      margin-left: 0.5rem;
+    }
+
+    /* ── TOTAL BAR ── */
+    .total-bar {
+      background: var(--ink);
+      color: white;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .total-label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    .total-amount {
+      font-family: 'Fraunces', serif;
+      font-size: 2rem;
+    }
+
+    /* ── ACTIONS ── */
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 0.85rem;
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--ink);
+      background: var(--cream);
+    }
+
+    .btn-primary {
+      flex: 2;
+      padding: 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: #c94a1a;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(232, 93, 38, 0.3);
+    }
+
+    /* ── COVERAGE BAR ── */
+    .coverage-bar {
+      height: 6px;
+      background: var(--cream);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0.4rem 0 0.2rem;
+    }
+
+    .coverage-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--yellow));
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+
+    /* ── ERROR ── */
+    .error-box {
+      display: none;
+      background: #fff0ed;
+      border: 1.5px solid #f4a49a;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      color: #c0392b;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .error-box.show { display: block; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 500px) {
+      .actions { flex-direction: column; }
+      .item-row { grid-template-columns: 1fr auto; }
+      .item-qty { display: none; }
+      .loading-steps { gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="widget">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">✨ Nuevo</div>
+    <h1>Presupuestá tu<br><em>lista escolar</em></h1>
+    <p>Subí la lista de útiles y calculamos el precio al instante</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📄</div>
+    <h2>Subí la lista de útiles</h2>
+    <p>Arrastrá el archivo acá o hacé clic para seleccionarlo</p>
+    <div class="upload-types">
+      <span class="type-tag">PDF</span>
+      <span class="type-tag">Word (.docx)</span>
+      <span class="type-tag">Texto (.txt)</span>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" />
+  </div>
+
+  <!-- FILE SELECTED -->
+  <div class="file-selected" id="fileSelected">
+    <span class="file-icon">📎</span>
+    <div class="file-info">
+      <div class="file-name" id="fileName">—</div>
+      <div class="file-size" id="fileSize">—</div>
+    </div>
+    <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;opacity:0.5">✕</button>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox">
+    <strong>¡Ups!</strong> <span id="errorMsg"></span>
+  </div>
+
+  <!-- BUTTON -->
+  <button class="btn-presupuestar" id="btnPresupuestar" disabled onclick="presupuestar()">
+    Calcular presupuesto →
+  </button>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <h3>Analizando la lista…</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem">La IA está leyendo y comparando con nuestros precios</p>
+    <div class="loading-steps">
+      <div class="step" id="step1"><div class="step-dot"></div>Leyendo</div>
+      <div class="step" id="step2"><div class="step-dot"></div>Interpretando</div>
+      <div class="step" id="step3"><div class="step-dot"></div>Comparando</div>
+      <div class="step" id="step4"><div class="step-dot"></div>Listo</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results"></div>
+
+</div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────────
+  // Cambiá esta URL por la de tu servidor deployado
+  const API_URL = "https://TU-SERVIDOR.onrender.com/api/presupuestar";
+
+  let selectedFile = null;
+
+  // ─── DRAG & DROP ──────────────────────────────────────────────
+  const dropZone = document.getElementById("dropZone");
+  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  document.getElementById("fileInput").addEventListener("change", (e) => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    document.getElementById("fileName").textContent = file.name;
+    document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " KB";
+    document.getElementById("fileSelected").classList.add("show");
+    document.getElementById("btnPresupuestar").disabled = false;
+    document.getElementById("errorBox").classList.remove("show");
+    document.getElementById("results").classList.remove("show");
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("fileSelected").classList.remove("show");
+    document.getElementById("btnPresupuestar").disabled = true;
+  }
+
+  // ─── LOADING STEPS ────────────────────────────────────────────
+  let stepInterval = null;
+  function startSteps() {
+    let current = 1;
+    stepInterval = setInterval(() => {
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      if (current <= 4) {
+        document.getElementById("step" + current).classList.add("active");
+        current++;
+      }
+    }, 1200);
+  }
+
+  function stopSteps() {
+    clearInterval(stepInterval);
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  }
+
+  // ─── PRESUPUESTAR ─────────────────────────────────────────────
+  async function presupuestar() {
+    if (!selectedFile) return;
+
+    document.getElementById("btnPresupuestar").disabled = true;
+    document.getElementById("loading").classList.add("show");
+    document.getElementById("results").classList.remove("show");
+    document.getElementById("errorBox").classList.remove("show");
+    startSteps();
+
+    const formData = new FormData();
+    formData.append("lista", selectedFile);
+
+    try {
+      const res = await fetch(API_URL, { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) throw new Error(data.error || "Error desconocido");
+
+      renderResults(data);
+    } catch (err) {
+      document.getElementById("errorMsg").textContent = err.message;
+      document.getElementById("errorBox").classList.add("show");
+      document.getElementById("btnPresupuestar").disabled = false;
+    } finally {
+      stopSteps();
+      document.getElementById("loading").classList.remove("show");
+    }
+  }
+
+  // ─── RENDER RESULTS ───────────────────────────────────────────
+  function renderResults(data) {
+    const { summary, items } = data;
+    const found = items.filter(i => i.matched);
+    const notFound = items.filter(i => !i.matched);
+
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+    let html = `
+      <div class="summary-grid">
+        <div class="summary-card highlight">
+          <div class="summary-label">Total estimado</div>
+          <div class="summary-value">${fmt(summary.estimatedTotal)}</div>
+          <div class="summary-sub">productos encontrados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Ítems en lista</div>
+          <div class="summary-value">${summary.totalItems}</div>
+          <div class="summary-sub">productos solicitados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Cobertura</div>
+          <div class="summary-value">${summary.coveragePercent}%</div>
+          <div class="coverage-bar"><div class="coverage-fill" style="width:${summary.coveragePercent}%"></div></div>
+          <div class="summary-sub">${summary.foundItems} de ${summary.totalItems} encontrados</div>
+        </div>
+      </div>
+    `;
+
+    if (found.length > 0) {
+      html += `
+        <div class="items-section">
+          <div class="items-header">✅ Productos disponibles en nuestra tienda</div>
+          ${found.map(item => `
+            <div class="item-row">
+              <div class="item-left">
+                <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
+                <div class="item-matched">${item.catalogName}</div>
+              </div>
+              <span class="item-qty">x${item.quantity}</span>
+              <div class="item-price">
+                ${fmt(item.subtotal)}
+                <small>${fmt(item.unitPrice)} c/u</small>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    if (notFound.length > 0) {
+      html += `
+        <div class="items-section">
+          <div class="items-header" style="background:#fff8f6;color:#c44">⚠️ Productos no encontrados en catálogo</div>
+          ${notFound.map(item => `
+            <div class="item-row not-found-row">
+              <div class="item-left">
+                <div class="item-matched">${item.requestedItem} <span class="not-found-badge">Sin stock</span></div>
+                <div class="item-requested">Consultá disponibilidad con un asesor</div>
+              </div>
+              <span class="item-qty">x${item.quantity}</span>
+              <div class="item-price" style="color:var(--text-muted)">—</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="total-bar">
+        <div>
+          <div class="total-label">Total estimado de tu lista</div>
+          <div style="font-size:0.75rem;opacity:0.5;margin-top:0.2rem">*Precios pueden variar según stock</div>
+        </div>
+        <div class="total-amount">${fmt(summary.estimatedTotal)}</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-secondary" onclick="location.reload()">↺ Nueva lista</button>
+        <button class="btn-primary" onclick="comprar()">Agregar todo al carrito →</button>
+      </div>
+    `;
+
+    const container = document.getElementById("results");
+    container.innerHTML = html;
+    container.classList.add("show");
+    container.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function comprar() {
+    // Integrar con tu carrito de Tienda Nube / WooCommerce aquí
+    alert("¡Función de carrito! Integrá aquí con tu sistema de e-commerce.");
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+const express = require("express");
+const multer = require("multer");
+const axios = require("axios");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+const pdfParse = require("pdf-parse");
+const mammoth = require("mammoth");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const upload = multer({ dest: "uploads/", limits: { fileSize: 10 * 1024 * 1024 } });
+
+// ─── CONFIGURACIÓN ────────────────────────────────────────────────
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+// ─── CATÁLOGO DESDE ARCHIVO ───────────────────────────────────────
+// Generado automáticamente desde el CSV de Tienda Nube (1877 productos)
+// Para actualizar: exportá de nuevo desde Tienda Nube y reemplazá catalog.json
+const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, "catalog.json"), "utf8"));
+
+// ─── EXTRAER TEXTO DEL ARCHIVO ────────────────────────────────────
+async function extractText(filePath, mimeType) {
+  if (mimeType === "application/pdf") {
+    const buffer = fs.readFileSync(filePath);
+    const data = await pdfParse(buffer);
+    return data.text;
+  } else if (
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimeType === "application/msword"
+  ) {
+    const result = await mammoth.extractRawText({ path: filePath });
+    return result.value;
+  } else if (mimeType === "text/plain") {
+    return fs.readFileSync(filePath, "utf8");
+  }
+  throw new Error("Formato no soportado");
+}
+
+// ─── PARSEAR LISTA CON CLAUDE ─────────────────────────────────────
+async function parseListWithAI(rawText) {
+  const response = await axios.post(
+    "https://api.anthropic.com/v1/messages",
+    {
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: `Analizá el siguiente texto que es una lista de útiles escolares.
+Extraé cada ítem con su cantidad. Devolvé SOLO un JSON válido con este formato:
+[{"item": "nombre del producto", "quantity": número, "notes": "detalles extra si hay"}]
+
+Si no hay cantidad especificada, usá 1.
+Ignorá encabezados, nombres de colegios, grados, fechas y texto irrelevante.
+
+TEXTO DE LA LISTA:
+${rawText}
+
+Respondé SOLO con el JSON, sin texto adicional.`,
+        },
+      ],
+    },
+    {
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const content = response.data.content[0].text.trim();
+  const jsonStr = content.replace(/```json|```/g, "").trim();
+  return JSON.parse(jsonStr);
+}
+
+// ─── MATCHEAR CON CATÁLOGO ────────────────────────────────────────
+async function matchWithCatalog(parsedItems) {
+  const catalogText = CATALOG.map(
+    (p) => `ID:${p.id} | "${p.name}" | $${p.price} | keywords: ${p.keywords.join(", ")}`
+  ).join("\n");
+
+  const itemsText = parsedItems
+    .map((i, idx) => `${idx}. "${i.item}" x${i.quantity}`)
+    .join("\n");
+
+  const response = await axios.post(
+    "https://api.anthropic.com/v1/messages",
+    {
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 3000,
+      messages: [
+        {
+          role: "user",
+          content: `Tenés este catálogo de productos:
+${catalogText}
+
+Y esta lista de útiles solicitados:
+${itemsText}
+
+Para cada ítem de la lista, encontrá el producto más parecido del catálogo.
+Devolvé SOLO un JSON con este formato:
+[{
+  "requestedItem": "nombre solicitado",
+  "quantity": número,
+  "matched": true/false,
+  "catalogId": ID del producto (null si no hay match),
+  "catalogName": "nombre del producto en catálogo" (null si no hay match),
+  "unitPrice": precio unitario (0 si no hay match),
+  "subtotal": precio x cantidad (0 si no hay match),
+  "confidence": "high"/"medium"/"low"
+}]
+
+Respondé SOLO con el JSON.`,
+        },
+      ],
+    },
+    {
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const content = response.data.content[0].text.trim();
+  const jsonStr = content.replace(/```json|```/g, "").trim();
+  return JSON.parse(jsonStr);
+}
+
+// ─── ENDPOINT PRINCIPAL ────────────────────────────────────────────
+app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: "No se recibió ningún archivo" });
+
+  try {
+    // 1. Extraer texto
+    const rawText = await extractText(file.path, file.mimetype);
+    if (!rawText || rawText.trim().length < 10) {
+      return res.status(400).json({ error: "No se pudo leer texto del archivo. ¿Es un PDF escaneado?" });
+    }
+
+    // 2. Parsear con IA
+    const parsedItems = await parseListWithAI(rawText);
+
+    // 3. Matchear con catálogo
+    const matchedItems = await matchWithCatalog(parsedItems);
+
+    // 4. Calcular totales
+    const found = matchedItems.filter((i) => i.matched);
+    const notFound = matchedItems.filter((i) => !i.matched);
+    const total = found.reduce((sum, i) => sum + i.subtotal, 0);
+    const coverage = Math.round((found.length / matchedItems.length) * 100);
+
+    res.json({
+      success: true,
+      summary: {
+        totalItems: matchedItems.length,
+        foundItems: found.length,
+        notFoundItems: notFound.length,
+        coveragePercent: coverage,
+        estimatedTotal: total,
+      },
+      items: matchedItems,
+      rawText: rawText.substring(0, 500), // primeros 500 chars para debug
+    });
+  } catch (err) {
+    console.error("Error:", err.message);
+    res.status(500).json({ error: "Error procesando la lista: " + err.message });
+  } finally {
+    // Limpiar archivo temporal
+    if (file) fs.unlink(file.path, () => {});
+  }
+});
+
+// ─── CATÁLOGO PÚBLICO ──────────────────────────────────────────────
+app.get("/api/catalogo", (req, res) => res.json(CATALOG));
+
+app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
