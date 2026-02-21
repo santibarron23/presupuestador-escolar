@@ -237,6 +237,11 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
 // ─── CATÁLOGO PÚBLICO ──────────────────────────────────────────────
 app.get("/api/catalogo", (req, res) => res.json(CATALOG));
 
+// ─── SERVIR WIDGET COMO PÁGINA ────────────────────────────────────
+app.get("/widget", (req, res) => {
+  res.sendFile(path.join(__dirname, "widget.html"));
+});
+
 app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
 
 const PORT = process.env.PORT || 3001;
