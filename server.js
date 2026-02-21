@@ -262,7 +262,9 @@ app.get("/api/catalogo", (req, res) => res.json(CATALOG));
 
 // ─── SERVIR WIDGET COMO PÁGINA ────────────────────────────────────
 app.get("/widget", (req, res) => {
-  res.sendFile(path.join(__dirname, "widget.html"));
+  const widgetPath = path.resolve(__dirname, "widget.html");
+  console.log("Buscando widget en:", widgetPath);
+  res.sendFile(widgetPath);
 });
 
 app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
