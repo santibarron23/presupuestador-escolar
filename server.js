@@ -223,7 +223,7 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
         estimatedTotal: total,
       },
       items: matchedItems,
-      rawText: rawText.substring(0, 500), // primeros 500 chars para debug
+      rawText: "", // debug desactivado
     });
   } catch (err) {
     console.error("Error:", err.message);
