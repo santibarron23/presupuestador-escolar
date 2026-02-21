@@ -555,6 +555,14 @@
 
   let selectedFile = null;
 
+  // Reportar altura al padre (para iframe en Tienda Nube)
+  function reportHeight() {
+    const height = document.body.scrollHeight;
+    window.parent.postMessage({ height }, "*");
+  }
+  const ro = new ResizeObserver(reportHeight);
+  ro.observe(document.body);
+
   // ─── DRAG & DROP ──────────────────────────────────────────────
   const dropZone = document.getElementById("dropZone");
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
