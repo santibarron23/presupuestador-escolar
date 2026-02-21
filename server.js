@@ -21,6 +21,9 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 // Para actualizar: exportá de nuevo desde Tienda Nube y reemplazá catalog.json
 const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, "catalog.json"), "utf8"));
 
+// ─── TIPOS DE IMAGEN ──────────────────────────────────────────────
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
 // ─── EXTRAER TEXTO DEL ARCHIVO ────────────────────────────────────
 async function extractText(filePath, mimeType) {
   if (mimeType === "application/pdf") {
@@ -35,11 +38,60 @@ async function extractText(filePath, mimeType) {
     return result.value;
   } else if (mimeType === "text/plain") {
     return fs.readFileSync(filePath, "utf8");
+  } else if (IMAGE_TYPES.includes(mimeType)) {
+    return null; // Las imágenes se procesan directo con visión
   }
   throw new Error("Formato no soportado");
 }
 
-// ─── PARSEAR LISTA CON CLAUDE ─────────────────────────────────────
+// ─── PARSEAR LISTA DESDE IMAGEN (visión de Claude) ────────────────
+async function parseListFromImage(filePath, mimeType) {
+  const imageBuffer = fs.readFileSync(filePath);
+  const base64 = imageBuffer.toString("base64");
+
+  const response = await axios.post(
+    "https://api.anthropic.com/v1/messages",
+    {
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: mimeType, data: base64 },
+            },
+            {
+              type: "text",
+              text: `Esta es una foto de una lista de útiles escolares.
+Leé todos los productos que aparecen, incluyendo texto manuscrito o impreso.
+Extraé cada ítem con su cantidad. Devolvé SOLO un JSON válido con este formato:
+[{"item": "nombre del producto", "quantity": número, "notes": "detalles extra si hay"}]
+
+Si no hay cantidad especificada, usá 1.
+Ignorá encabezados, nombres de colegios, grados, fechas y texto irrelevante.
+Respondé SOLO con el JSON, sin texto adicional.`,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const content = response.data.content[0].text.trim();
+  const jsonStr = content.replace(/```json|```/g, "").trim();
+  return JSON.parse(jsonStr);
+}
+
+// ─── PARSEAR LISTA CON CLAUDE (texto) ────────────────────────────
 async function parseListWithAI(rawText) {
   const response = await axios.post(
     "https://api.anthropic.com/v1/messages",
@@ -138,14 +190,19 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
   if (!file) return res.status(400).json({ error: "No se recibió ningún archivo" });
 
   try {
-    // 1. Extraer texto
-    const rawText = await extractText(file.path, file.mimetype);
-    if (!rawText || rawText.trim().length < 10) {
-      return res.status(400).json({ error: "No se pudo leer texto del archivo. ¿Es un PDF escaneado?" });
+    // 1. Extraer items según tipo de archivo
+    let parsedItems;
+    if (IMAGE_TYPES.includes(file.mimetype)) {
+      // Imagen → visión directa de Claude
+      parsedItems = await parseListFromImage(file.path, file.mimetype);
+    } else {
+      // PDF / Word / TXT → extraer texto primero
+      const rawText = await extractText(file.path, file.mimetype);
+      if (!rawText || rawText.trim().length < 10) {
+        return res.status(400).json({ error: "No se pudo leer texto del archivo." });
+      }
+      parsedItems = await parseListWithAI(rawText);
     }
-
-    // 2. Parsear con IA
-    const parsedItems = await parseListWithAI(rawText);
 
     // 3. Matchear con catálogo
     const matchedItems = await matchWithCatalog(parsedItems);
