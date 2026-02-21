@@ -125,14 +125,46 @@ Respondé SOLO con el JSON, sin texto adicional.`,
   );
 
   const content = response.data.content[0].text.trim();
-  const jsonStr = content.replace(/```json|```/g, "").trim();
-  return JSON.parse(jsonStr);
+  return safeJsonParse(content);
 }
 
 // ─── MATCHEAR CON CATÁLOGO ────────────────────────────────────────
+function safeJsonParse(text) {
+  try {
+    // Intentar extraer JSON aunque haya texto extra alrededor
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]);
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("No se pudo parsear la respuesta de la IA");
+  }
+}
+
+function preFilterCatalog(items) {
+  // Extraer palabras clave de los ítems solicitados
+  const keywords = items.flatMap(i =>
+    i.item.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+  );
+
+  // Filtrar catálogo a productos relevantes (máx 300)
+  const scored = CATALOG.map(p => {
+    const nameWords = p.name.toLowerCase().split(/\s+/);
+    const score = keywords.filter(k => 
+      nameWords.some(w => w.includes(k) || k.includes(w))
+    ).length;
+    return { ...p, score };
+  });
+
+  return scored
+    .filter(p => p.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 300);
+}
+
 async function matchWithCatalog(parsedItems) {
-  const catalogText = CATALOG.map(
-    (p) => `ID:${p.id} | "${p.name}" | $${p.price} | keywords: ${p.keywords.join(", ")}`
+  const relevantCatalog = preFilterCatalog(parsedItems);
+  const catalogText = relevantCatalog.map(
+    (p) => `ID:${p.id} | "${p.name}" | $${p.price}`
   ).join("\n");
 
   const itemsText = parsedItems
@@ -143,30 +175,22 @@ async function matchWithCatalog(parsedItems) {
     "https://api.anthropic.com/v1/messages",
     {
       model: "claude-sonnet-4-20250514",
-      max_tokens: 3000,
+      max_tokens: 4000,
       messages: [
         {
           role: "user",
-          content: `Tenés este catálogo de productos:
+          content: `Tenés este catálogo de productos de una librería:
 ${catalogText}
 
-Y esta lista de útiles solicitados:
+Y esta lista de útiles escolares solicitados:
 ${itemsText}
 
 Para cada ítem de la lista, encontrá el producto más parecido del catálogo.
-Devolvé SOLO un JSON con este formato:
-[{
-  "requestedItem": "nombre solicitado",
-  "quantity": número,
-  "matched": true/false,
-  "catalogId": ID del producto (null si no hay match),
-  "catalogName": "nombre del producto en catálogo" (null si no hay match),
-  "unitPrice": precio unitario (0 si no hay match),
-  "subtotal": precio x cantidad (0 si no hay match),
-  "confidence": "high"/"medium"/"low"
-}]
+Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
+[{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
 
-Respondé SOLO con el JSON.`,
+Si no encontrás un producto similar, usá matched:false, catalogId:null, catalogName:null, unitPrice:0, subtotal:0.
+Respondé ÚNICAMENTE con el JSON, empezando con [ y terminando con ].`,
         },
       ],
     },
@@ -180,8 +204,7 @@ Respondé SOLO con el JSON.`,
   );
 
   const content = response.data.content[0].text.trim();
-  const jsonStr = content.replace(/```json|```/g, "").trim();
-  return JSON.parse(jsonStr);
+  return safeJsonParse(content);
 }
 
 // ─── ENDPOINT PRINCIPAL ────────────────────────────────────────────
