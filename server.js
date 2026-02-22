@@ -168,7 +168,8 @@ const SYNONYMS = {
   "afiche": ["afiche"],
   "afiches": ["afiche"],
   "papel madera": ["papel madera"],
-  "papel cometa": ["papel cometa", "cometa"],
+  "papel cometa": ["seda", "cometa", "seda / cometa"],
+  "cometa": ["seda", "cometa", "seda / cometa"],
   "papel crepe": ["crepe"],
   "papel tissue": ["tissue"],
   "cartulina": ["cartulina"],
@@ -191,10 +192,11 @@ const SYNONYMS = {
   "eva lisa": ["goma eva lisa"],
   "eva común": ["goma eva lisa"],
   "eva comun": ["goma eva lisa"],
-  "goma eva con brillo": ["goma eva glitter", "goma eva brillo"],
-  "eva brillo": ["goma eva glitter", "goma eva brillo"],
-  "eva con brillo": ["goma eva glitter", "goma eva brillo"],
-  "eva glitter": ["goma eva glitter", "goma eva brillo"],
+  "goma eva con brillo": ["goma eva glitter", "goma eva c/glitter"],
+  "eva brillo": ["goma eva glitter", "goma eva c/glitter"],
+  "eva con brillo": ["goma eva glitter", "goma eva c/glitter"],
+  "eva glitter": ["goma eva glitter", "goma eva c/glitter"],
+  "con brillo": ["glitter", "c/glitter"],
 
   // ── Plastificar ──────────────────────────────────────────────────
   "plastificar": ["plastif", "laminad"],
@@ -344,8 +346,9 @@ const SYNONYMS = {
   "tempera": ["tempera"],
   "acuarela": ["acuarela"],
   "lentejuelas": ["lentejuelas"],
-  "globos": ["globo"],
-  "palitos helado": ["palitos de madera", "palitos tipo paleta"],
+  "globos": ["globos tuky", "globo"],
+  "globos de colores": ["globos tuky"],
+  "globo": ["globos tuky"],
   "palitos de madera": ["palitos de madera"],
   "lienzo": ["lienzo"],
   "nepaco": ["clip"],
@@ -372,17 +375,24 @@ function normalize(str) {
 function expandKeywords(items) {
   const expandedSet = new Set();
   
+  // Prefijos a ignorar que Claude suele agregar
+  const STRIP_PREFIXES = /^(paq\.?\s+|paquete\s+|caja\s+de\s+|set\s+de\s+|kit\s+de\s+|sobre\s+de\s+|pack\s+de\s+|\d+\s+)/i;
+
   for (const item of items) {
-    const itemNorm = normalize(item.item);
+    // Limpiar prefijos del nombre antes de normalizar
+    const cleaned = item.item.replace(STRIP_PREFIXES, '').trim();
+    const itemNorm = normalize(cleaned);
+    const itemNormFull = normalize(item.item); // también el original completo
     
-    // Palabras sueltas (sin tildes)
+    // Palabras sueltas (sin tildes), del texto limpio
     for (const word of itemNorm.split(/\s+/)) {
       if (word.length > 2) expandedSet.add(word);
     }
     
-    // Frases sinónimas (comparar normalizadas)
+    // Frases sinónimas contra el texto limpio Y el original
     for (const [phrase, replacements] of Object.entries(SYNONYMS)) {
-      if (itemNorm.includes(normalize(phrase))) {
+      const phraseNorm = normalize(phrase);
+      if (itemNorm.includes(phraseNorm) || itemNormFull.includes(phraseNorm)) {
         for (const r of replacements) expandedSet.add(normalize(r));
       }
     }
@@ -393,14 +403,24 @@ function expandKeywords(items) {
 
 function preFilterCatalog(items) {
   const keywords = expandKeywords(items);
+  
+  // Separar keywords de una palabra vs multi-palabra
+  const singleKw = keywords.filter(k => !k.includes(' '));
+  const multiKw  = keywords.filter(k =>  k.includes(' '));
 
   const scored = CATALOG.map(p => {
     const nameNorm = normalize(p.name);
     const nameWords = nameNorm.split(/\s+/);
-    const score = keywords.filter(k =>
+    
+    // Keywords de una palabra: comparar contra cada palabra del nombre
+    const singleScore = singleKw.filter(k =>
       nameWords.some(w => w.includes(k) || k.includes(w))
     ).length;
-    return { ...p, score };
+    
+    // Keywords multi-palabra: comparar contra el nombre completo (x3 peso)
+    const multiScore = multiKw.filter(k => nameNorm.includes(k)).length * 3;
+    
+    return { ...p, score: singleScore + multiScore };
   });
 
   const filtered = scored
@@ -483,6 +503,15 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
     }
 
     const matchedItems = await matchWithCatalog(parsedItems);
+
+    // Enriquecer con slug de URL para link directo a la tienda
+    const catalogById = Object.fromEntries(CATALOG.map(p => [p.id, p]));
+    matchedItems.forEach(item => {
+      if (item.matched && item.catalogId) {
+        const prod = catalogById[item.catalogId];
+        if (prod) item.catalogSlug = prod.slug || null;
+      }
+    });
 
     const found = matchedItems.filter((i) => i.matched);
     const notFound = matchedItems.filter((i) => !i.matched);
