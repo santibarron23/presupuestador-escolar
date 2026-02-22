@@ -952,8 +952,75 @@
     if (e.key === "Escape") closeModalDirect();
   });
 
-  function comprar() {
-    alert("¡Función de carrito! Integrá aquí con tu sistema de e-commerce.");
+  async function comprar() {
+    const btn = document.querySelector('.btn-primary');
+    if (!btn || _foundItems.length === 0) return;
+
+    btn.disabled = true;
+    btn.textContent = "Agregando al carrito…";
+
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+    // Build cart items list with slugs
+    const cartItems = _foundItems.map(item => ({
+      name: item.catalogName,
+      slug: item.catalogSlug,
+      sku: item.catalogSku,
+      qty: item.quantity,
+      price: item.unitPrice,
+      url: item.catalogSlug
+        ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+        : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`
+    }));
+
+    // Show cart summary modal
+    const total = _foundItems.reduce((s, i) => s + i.subtotal, 0);
+    const cartHtml = `
+      <div class="modal-requested" style="margin-bottom:1rem">
+        Abrí cada producto para agregarlo al carrito de la tienda:
+      </div>
+      <div style="max-height:280px;overflow-y:auto;margin-bottom:1.25rem">
+        ${cartItems.map((item, i) => `
+          <a href="${item.url}" target="_blank" rel="noopener"
+             style="display:flex;align-items:center;justify-content:space-between;
+                    padding:0.6rem 0.75rem;border-radius:0.6rem;margin-bottom:0.4rem;
+                    background:var(--paper);text-decoration:none;color:var(--ink);
+                    border:1px solid var(--border);transition:background 0.15s"
+             onmouseover="this.style.background='var(--accent-light)'"
+             onmouseout="this.style.background='var(--paper)'">
+            <span style="font-size:0.85rem;flex:1">${item.name}</span>
+            <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;
+                         border-radius:2rem;margin:0 0.5rem">x${item.qty}</span>
+            <span style="font-size:0.8rem;font-weight:600;color:var(--accent)">${fmt(item.price * item.qty)}</span>
+            <span style="margin-left:0.5rem;font-size:0.8rem">→</span>
+          </a>
+        `).join("")}
+      </div>
+      <div style="background:var(--ink);color:white;border-radius:0.75rem;
+                  padding:0.85rem 1.25rem;display:flex;justify-content:space-between;
+                  align-items:center;margin-bottom:1rem">
+        <span style="font-size:0.85rem;opacity:0.7">Total estimado</span>
+        <span style="font-family:'Fraunces',serif;font-size:1.4rem">${fmt(total)}</span>
+      </div>
+      <a href="https://www.librerialerma.com.ar" target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:center;gap:0.4rem;
+                width:100%;padding:0.85rem;background:var(--accent);color:white;
+                border:none;border-radius:0.7rem;font-family:'DM Sans',sans-serif;
+                font-size:0.95rem;font-weight:600;text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='#c94a1a'"
+         onmouseout="this.style.background='var(--accent)'">
+        🛒 Ir a la tienda →
+      </a>
+    `;
+
+    document.getElementById("modalBody").innerHTML = cartHtml;
+    document.getElementById("productModal").classList.add("show");
+    document.body.style.overflow = "hidden";
+    document.getElementById("modalBox").querySelector(".modal-title").textContent = 
+      `${cartItems.length} productos para agregar`;
+
+    btn.disabled = false;
+    btn.textContent = "Agregar todo al carrito →";
   }
 </script>
 </body>
