@@ -486,6 +486,143 @@
     }
     .error-box.show { display: block; }
 
+
+    /* ── PRODUCT MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 26, 46, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease both; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 440px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+      animation: slideUp 0.25s ease both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+      background: var(--cream);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0.45;
+      padding: 0.1rem 0.3rem;
+      border-radius: 0.4rem;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .modal-close:hover { opacity: 1; background: var(--border); }
+    .modal-body { padding: 1.5rem; }
+    .modal-requested {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    .modal-product-name {
+      font-family: 'Fraunces', serif;
+      font-size: 1.3rem;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+    .modal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-tag {
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 2rem;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--paper);
+    }
+    .modal-tag.sku { font-family: monospace; background: var(--cream); }
+    .modal-price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--cream);
+      border-radius: 0.85rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-price-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .modal-price-val {
+      font-family: 'Fraunces', serif;
+      font-size: 1.6rem;
+      color: var(--ink);
+    }
+    .modal-qty-info { text-align: right; }
+    .modal-qty-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .modal-subtotal { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
+    .modal-btn-ver {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.7rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .modal-btn-ver:hover {
+      background: #c94a1a;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(232,93,38,0.3);
+    }
+    /* Clickeable rows */
+    .item-row.clickable { cursor: pointer; }
+    .item-row.clickable:hover { background: var(--accent-light); }
+    .item-row.clickable:hover .item-matched { color: var(--accent); }
+    .item-view-hint {
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-top: 0.15rem;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .item-row.clickable:hover .item-view-hint { opacity: 1; }
+
     /* ── ANIMATIONS ── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
@@ -563,6 +700,18 @@
 
   <!-- RESULTS -->
   <div class="results" id="results"></div>
+
+
+  <!-- PRODUCT MODAL -->
+  <div class="modal-overlay" id="productModal" onclick="closeModal(event)">
+    <div class="modal" id="modalBox">
+      <div class="modal-header">
+        <span class="modal-title">Detalle del producto</span>
+        <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
 
 </div>
 
@@ -659,8 +808,11 @@
   }
 
   // ─── RENDER RESULTS ───────────────────────────────────────────
+  let _foundItems = [];
+
   function renderResults(data) {
     const { summary, items } = data;
+    _foundItems = items.filter(i => i.matched);
     const found = items.filter(i => i.matched);
     const notFound = items.filter(i => !i.matched);
 
@@ -691,12 +843,13 @@
       html += `
         <div class="items-section">
           <div class="items-header">✅ Productos disponibles en nuestra tienda</div>
-          ${found.map(item => `
-            <div class="item-row">
+          ${found.map((item, foundIdx) => `
+            <div class="item-row clickable" onclick="openModal(${foundIdx})">
               <div class="item-left">
                 <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
                 <div class="item-matched">${item.catalogName}</div>
                 ${item.catalogSku ? `<span class="item-sku">SKU: ${item.catalogSku}</span>` : ""}
+                <div class="item-view-hint">👁 Ver producto →</div>
               </div>
               <span class="item-qty">x${item.quantity}</span>
               <div class="item-price">
@@ -747,6 +900,57 @@
     container.classList.add("show");
     container.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+
+  // ─── PRODUCT MODAL ────────────────────────────────────────────
+  function openModal(idx) {
+    const item = _foundItems[idx];
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+    // URL directa al producto si tenemos el slug, o búsqueda si no
+    const productUrl = item.catalogSlug
+      ? `https://librerialerma.com.ar/${item.catalogSlug}`
+      : `https://librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
+
+    document.getElementById("modalBody").innerHTML = `
+      <div class="modal-requested">Solicitado en la lista:</div>
+      <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
+      <div class="modal-product-name">${item.catalogName}</div>
+      <div class="modal-meta">
+        ${item.catalogSku ? `<span class="modal-tag sku">SKU ${item.catalogSku}</span>` : ""}
+        <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
+      </div>
+      <div class="modal-price-row">
+        <div>
+          <div class="modal-price-label">Precio unitario</div>
+          <div class="modal-price-val">${fmt(item.unitPrice)}</div>
+        </div>
+        <div class="modal-qty-info">
+          <div class="modal-qty-label">Subtotal (x${item.quantity})</div>
+          <div class="modal-subtotal">${fmt(item.subtotal)}</div>
+        </div>
+      </div>
+      <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener">
+        🔍 Ver en la tienda →
+      </a>
+    `;
+
+    document.getElementById("productModal").classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById("productModal")) closeModalDirect();
+  }
+
+  function closeModalDirect() {
+    document.getElementById("productModal").classList.remove("show");
+    document.body.style.overflow = "";
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModalDirect();
+  });
 
   function comprar() {
     alert("¡Función de carrito! Integrá aquí con tu sistema de e-commerce.");
