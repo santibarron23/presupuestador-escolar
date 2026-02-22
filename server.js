@@ -186,6 +186,8 @@ const SYNONYMS = {
   "fluor": ["fluo", "fluor"],
   "fluorescente": ["fluo", "fluor"],
   "papel glase opaco": ["glace lustre"],
+  "glase opaco": ["glace lustre"],
+  "opaco": ["glace lustre", "lustre"],
 
   // ── Goma eva ─────────────────────────────────────────────────────
   "goma eva": ["goma eva"],
@@ -460,9 +462,26 @@ ${catalogText}
 Y esta lista de útiles escolares solicitados:
 ${itemsText}
 
-Para cada ítem de la lista, encontrá el producto más parecido del catálogo.
-La cantidad (quantity) ya viene definida en la lista — NO la cambies ni la uses para multiplicar por contenido del paquete.
-El subtotal = unitPrice × quantity.
+Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
+
+1. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
+   - "tijerita" = "tijera" (cualquier tijera del catálogo)
+   - "fibron" / "felpon" = "fibra" / "marcador"  
+   - "birome" = "boligrafo"
+   - "plasticola" = cualquier adhesivo similar
+   - "PAQ papel glase opaco" = "Papel Glace Lustre" (el más parecido disponible)
+   - "voligoma" / "boligoma" = adhesivo cola vinílica
+   - "lapiz negro" = cualquier lapiz negro del catálogo
+   - "crayones" = cualquier caja de crayones
+   - "tempera" = cualquier tempera disponible
+
+2. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
+
+3. La cantidad (quantity) ya viene definida — NO la cambies.
+
+4. El subtotal = unitPrice × quantity.
+
+5. Solo usá matched:false si genuinamente no existe ningún producto similar en el catálogo (ej: "colorante vegetal", "cortante de masa").
 
 Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
 [{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","catalogSku":"SKU del producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
