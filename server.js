@@ -525,13 +525,31 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
 
     const matchedItems = await matchWithCatalog(parsedItems);
 
-    // Enriquecer con slug de URL para link directo a la tienda
-    const catalogById = Object.fromEntries(CATALOG.map(p => [p.id, p]));
+    // Enriquecer con slug de URL — buscar por SKU (más confiable que por ID)
+    const catalogBySku = Object.fromEntries(
+      CATALOG.filter(p => p.sku).map(p => [String(p.sku).trim(), p])
+    );
+    const catalogByName = {};
+    CATALOG.forEach(p => { catalogByName[p.name.toLowerCase().trim()] = p; });
+
     matchedItems.forEach(item => {
-      if (item.matched && item.catalogId) {
-        const prod = catalogById[item.catalogId];
-        if (prod) item.catalogSlug = prod.slug || null;
+      if (!item.matched) return;
+      let prod = null;
+
+      // 1. Buscar por SKU
+      if (item.catalogSku) {
+        prod = catalogBySku[String(item.catalogSku).trim()];
       }
+      // 2. Buscar por nombre exacto
+      if (!prod && item.catalogName) {
+        prod = catalogByName[item.catalogName.toLowerCase().trim()];
+      }
+      // 3. Buscar por ID como fallback
+      if (!prod && item.catalogId) {
+        prod = CATALOG.find(p => p.id === item.catalogId);
+      }
+
+      if (prod) item.catalogSlug = prod.slug || null;
     });
 
     const found = matchedItems.filter((i) => i.matched);
