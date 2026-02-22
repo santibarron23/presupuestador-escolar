@@ -907,10 +907,10 @@
     const item = _foundItems[idx];
     const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 
-    // Búsqueda por SKU (siempre funciona) o por nombre si no hay SKU
-    const productUrl = item.catalogSku
-      ? `https://librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogSku)}`
-      : `https://librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
+    // Búsqueda por nombre del producto en la tienda
+    const productUrl = item.catalogSlug
+      ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+      : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
 
     document.getElementById("modalBody").innerHTML = `
       <div class="modal-requested">Solicitado en la lista:</div>
