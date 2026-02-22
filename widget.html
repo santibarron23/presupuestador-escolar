@@ -311,7 +311,7 @@
     .item-row {
       display: grid;
       grid-template-columns: 1fr auto auto;
-      align-items: center;
+      align-items: start;
       gap: 1rem;
       padding: 0.9rem 1.5rem;
       border-bottom: 1px solid var(--cream);
@@ -322,20 +322,35 @@
     .item-row:hover { background: var(--paper); }
 
     .item-left { min-width: 0; }
+
     .item-requested {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      margin-bottom: 0.15rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin-bottom: 0.2rem;
+      /* CORREGIDO: sin truncado, se muestra completo */
+      white-space: normal;
+      word-break: break-word;
     }
+
     .item-matched {
       font-weight: 500;
       font-size: 0.95rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      /* CORREGIDO: sin truncado, se muestra completo */
+      white-space: normal;
+      word-break: break-word;
+      margin-bottom: 0.2rem;
+    }
+
+    /* SKU visible */
+    .item-sku {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      background: var(--cream);
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      display: inline-block;
+      margin-top: 0.15rem;
     }
 
     .item-qty {
@@ -344,12 +359,16 @@
       padding: 0.2rem 0.6rem;
       border-radius: 2rem;
       white-space: nowrap;
+      align-self: start;
+      margin-top: 0.15rem;
     }
 
     .item-price {
       font-weight: 600;
       text-align: right;
       white-space: nowrap;
+      align-self: start;
+      margin-top: 0.1rem;
     }
 
     .item-price small {
@@ -480,7 +499,6 @@
     @media (max-width: 500px) {
       .actions { flex-direction: column; }
       .item-row { grid-template-columns: 1fr auto; }
-      .item-qty { display: none; }
       .loading-steps { gap: 1rem; }
     }
   </style>
@@ -549,13 +567,10 @@
 </div>
 
 <script>
-  // ─── CONFIG ───────────────────────────────────────────────────
-  // Cambiá esta URL por la de tu servidor deployado
   const API_URL = "https://presupuestador-escolar.onrender.com/api/presupuestar";
 
   let selectedFile = null;
 
-  // Reportar altura al padre (para iframe en Tienda Nube)
   function reportHeight() {
     const height = document.body.scrollHeight;
     window.parent.postMessage({ height }, "*");
@@ -681,6 +696,7 @@
               <div class="item-left">
                 <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
                 <div class="item-matched">${item.catalogName}</div>
+                ${item.catalogSku ? `<span class="item-sku">SKU: ${item.catalogSku}</span>` : ""}
               </div>
               <span class="item-qty">x${item.quantity}</span>
               <div class="item-price">
@@ -733,7 +749,6 @@
   }
 
   function comprar() {
-    // Integrar con tu carrito de Tienda Nube / WooCommerce aquí
     alert("¡Función de carrito! Integrá aquí con tu sistema de e-commerce.");
   }
 </script>
