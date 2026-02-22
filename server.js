@@ -17,8 +17,6 @@ const upload = multer({ dest: "uploads/", limits: { fileSize: 10 * 1024 * 1024 }
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ─── CATÁLOGO DESDE ARCHIVO ───────────────────────────────────────
-// Generado automáticamente desde el CSV de Tienda Nube (1877 productos)
-// Para actualizar: exportá de nuevo desde Tienda Nube y reemplazá catalog.json
 const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, "catalog.json"), "utf8"));
 
 // ─── TIPOS DE IMAGEN ──────────────────────────────────────────────
@@ -39,7 +37,7 @@ async function extractText(filePath, mimeType) {
   } else if (mimeType === "text/plain") {
     return fs.readFileSync(filePath, "utf8");
   } else if (IMAGE_TYPES.includes(mimeType)) {
-    return null; // Las imágenes se procesan directo con visión
+    return null;
   }
   throw new Error("Formato no soportado");
 }
@@ -66,11 +64,17 @@ async function parseListFromImage(filePath, mimeType) {
               type: "text",
               text: `Esta es una foto de una lista de útiles escolares.
 Leé todos los productos que aparecen, incluyendo texto manuscrito o impreso.
-Extraé cada ítem con su cantidad. Devolvé SOLO un JSON válido con este formato:
+
+REGLAS IMPORTANTES:
+1. La cantidad de cada ítem es el número que aparece ANTES del nombre del producto (ej: "2 blocks" → quantity: 2, item: "blocks de hojas blancas A4 24 hojas").
+2. Si el número es parte del producto y no una cantidad (ej: "50 hojas A4 blanco" significa un paquete de 50 hojas, NO comprar 50 unidades), entonces quantity: 1 y el nombre incluye el número (item: "hojas A4 blanco paquete 50").
+3. Si una línea tiene múltiples productos separados por guión o coma con sus propias cantidades (ej: "1 FLÚOR, 1 METALIZADO, 1 LUSTRE"), creá un ítem separado para cada uno.
+4. Si no hay cantidad especificada, usá 1.
+5. Ignorá encabezados, nombres de colegios, grados, fechas y texto irrelevante.
+
+Devolvé SOLO un JSON válido con este formato:
 [{"item": "nombre del producto", "quantity": número, "notes": "detalles extra si hay"}]
 
-Si no hay cantidad especificada, usá 1.
-Ignorá encabezados, nombres de colegios, grados, fechas y texto irrelevante.
 Respondé SOLO con el JSON, sin texto adicional.`,
             },
           ],
@@ -102,14 +106,19 @@ async function parseListWithAI(rawText) {
         {
           role: "user",
           content: `Analizá el siguiente texto que es una lista de útiles escolares.
-Extraé cada ítem con su cantidad. Devolvé SOLO un JSON válido con este formato:
-[{"item": "nombre del producto", "quantity": número, "notes": "detalles extra si hay"}]
 
-Si no hay cantidad especificada, usá 1.
-Ignorá encabezados, nombres de colegios, grados, fechas y texto irrelevante.
+REGLAS IMPORTANTES:
+1. La cantidad de cada ítem es el número que aparece ANTES del nombre del producto (ej: "2 blocks" → quantity: 2, item: "blocks de hojas blancas A4 24 hojas").
+2. Si el número es parte del producto y no una cantidad (ej: "50 hojas A4 blanco" significa un paquete de 50 hojas, NO comprar 50 unidades), entonces quantity: 1 y el nombre incluye el número (item: "hojas A4 blanco paquete 50"). Esto aplica a ítems como "50 hojas A4", "80 gr", "24 hojas", etc. donde el número describe el contenido del paquete.
+3. Si una línea tiene múltiples productos separados por guión, coma o "–" con sus propias cantidades (ej: "PAPEL GLASÉ: 1 FLÚOR, 1 METALIZADO, 1 LUSTRE"), creá un ítem separado para cada uno.
+4. Si no hay cantidad especificada, usá 1.
+5. Ignorá encabezados, nombres de colegios, grados, fechas y texto irrelevante.
 
 TEXTO DE LA LISTA:
 ${rawText}
+
+Devolvé SOLO un JSON válido con este formato:
+[{"item": "nombre del producto", "quantity": número, "notes": "detalles extra si hay"}]
 
 Respondé SOLO con el JSON, sin texto adicional.`,
         },
@@ -131,7 +140,6 @@ Respondé SOLO con el JSON, sin texto adicional.`,
 // ─── MATCHEAR CON CATÁLOGO ────────────────────────────────────────
 function safeJsonParse(text) {
   try {
-    // Intentar extraer JSON aunque haya texto extra alrededor
     const match = text.match(/\[[\s\S]*\]/);
     if (match) return JSON.parse(match[0]);
     return JSON.parse(text);
@@ -140,35 +148,282 @@ function safeJsonParse(text) {
   }
 }
 
-function preFilterCatalog(items) {
-  // Extraer palabras clave de los ítems solicitados
-  const keywords = items.flatMap(i =>
-    i.item.toLowerCase().split(/\s+/).filter(w => w.length > 2)
-  );
+// Mapa de sinónimos: términos que usa el usuario → términos que aparecen en catálogo
+const SYNONYMS = {
+  // ── Papel / hojas ────────────────────────────────────────────────
+  "hojas a4": ["resma", "block", "hojas"],
+  "hojas blancas": ["resma", "block", "hojas"],
+  "hojas de color": ["block", "repuesto", "hojas color"],
+  "hojas oficio": ["resma", "oficio", "hojas"],
+  "hojas maquina": ["resma", "hojas"],
+  "papel a4": ["resma", "block"],
+  "resma": ["resma"],
+  "folio": ["folio"],
+  "folios": ["folio"],
+  "folios plasticos": ["folio", "sobre plastico"],
+  "papel satinado": ["papel glace", "glasado"],
+  "papel carbonico": ["carbonico", "carbon"],
+  "papel carbon": ["carbonico", "carbon"],
+  "papel afiche": ["afiche"],
+  "afiche": ["afiche"],
+  "afiches": ["afiche"],
+  "papel madera": ["papel madera"],
+  "papel cometa": ["papel cometa", "cometa"],
+  "papel crepe": ["crepe"],
+  "papel tissue": ["tissue"],
+  "cartulina": ["cartulina"],
+  "cartulinas": ["cartulina"],
 
-  // Filtrar catálogo a productos relevantes (máx 300)
+  // ── Papel glasé / lustre / metalizado ────────────────────────────
+  "glasé": ["glace"],
+  "glase": ["glace"],
+  "papel glasé": ["glace"],
+  "papel glase": ["glace"],
+  "lustre": ["lustre"],
+  "metalizado": ["metalizado"],
+  "flúor": ["fluo", "fluor"],
+  "fluor": ["fluo", "fluor"],
+  "fluorescente": ["fluo", "fluor"],
+  "papel glase opaco": ["glace lustre"],
+
+  // ── Goma eva ─────────────────────────────────────────────────────
+  "goma eva": ["goma eva"],
+  "eva lisa": ["goma eva lisa"],
+  "eva común": ["goma eva lisa"],
+  "eva comun": ["goma eva lisa"],
+  "goma eva con brillo": ["goma eva glitter", "goma eva brillo"],
+  "eva brillo": ["goma eva glitter", "goma eva brillo"],
+  "eva con brillo": ["goma eva glitter", "goma eva brillo"],
+  "eva glitter": ["goma eva glitter", "goma eva brillo"],
+
+  // ── Plastificar ──────────────────────────────────────────────────
+  "plastificar": ["plastif", "laminad"],
+  "plastificado": ["plastif", "laminad"],
+  "plancha plastificar": ["plastif"],
+  "planchuela plastificar": ["plastif"],
+  "maquina plastificar": ["laminador"],
+
+  // ── Lápices ──────────────────────────────────────────────────────
+  "lapiz negro": ["lapiz negro"],
+  "lápiz negro": ["lapiz negro"],
+  "lapiz triangular": ["lapiz", "triangular"],
+  "lápiz triangular": ["lapiz", "triangular"],
+  "lapiz hb": ["lapiz negro"],
+  "lapiz n2": ["lapiz negro"],
+  "lapiz n°2": ["lapiz negro"],
+  "lapices negros": ["lapiz negro"],
+  "lápices negros": ["lapiz negro"],
+  "lapices de color": ["lapices de colores", "lapiz color"],
+  "lápices de color": ["lapices de colores", "lapiz color"],
+  "lapices de colores": ["lapices de colores"],
+
+  // ── Fibrones / marcadores ────────────────────────────────────────
+  "fibron": ["fibra", "marcador"],
+  "fibrón": ["fibra", "marcador"],
+  "fibrones": ["fibra", "marcador"],
+  "fibrón negro": ["fibra", "marcador"],
+  "fibron negro": ["fibra", "marcador"],
+  "fibrón trazo": ["fibra", "marcador"],
+  "fibron trazo": ["fibra", "marcador"],
+  "felpon": ["fibra", "marcador"],
+  "felpón": ["fibra", "marcador"],
+  "felpones": ["fibra", "marcador"],
+  "marcador negro": ["marcador", "fibra"],
+  "marcador permanente": ["marcador", "sharpie", "permanente"],
+  "marcador indeleble": ["marcador", "sharpie", "permanente"],
+  "fibra indeleble": ["fibra", "marcador", "permanente"],
+  "microfibra": ["microfibra", "fibra"],
+  "fibra pizarra": ["marcador pizarra"],
+  "fibron pizarra": ["marcador pizarra"],
+  "marcador pizarra": ["marcador pizarra"],
+
+  // ── Biromes / lapiceras ──────────────────────────────────────────
+  "birome": ["boligrafo"],
+  "biromes": ["boligrafo"],
+  "lapicera": ["lapicera", "boligrafo"],
+  "lapicera azul": ["lapicera", "boligrafo"],
+  "lapicera tinta": ["lapicera", "boligrafo"],
+  "borra tinta": ["borra tinta", "corrector"],
+
+  // ── Cinta adhesiva / transparente ───────────────────────────────
+  "cinta transparente": ["cinta adhesiva", "cinta"],
+  "cinta adhesiva": ["cinta adhesiva"],
+  "cinta de embalar": ["cinta", "embalar"],
+  "cinta embalar": ["cinta", "embalar"],
+  "scotch": ["cinta adhesiva"],
+  "cinta scotch": ["cinta adhesiva"],
+  "cinta papel": ["cinta de papel"],
+  "cinta bebe": ["cinta"],
+  "cinta ancha": ["cinta"],
+
+  // ── Crayones / plastilina ────────────────────────────────────────
+  "crayones plasticos": ["crayones", "crayola"],
+  "crayones de cera": ["crayones"],
+  "crayolas": ["crayones", "crayola"],
+  "plastilina": ["plastilina"],
+  "plasticina": ["plastilina"],
+
+  // ── Adhesivos / pegamentos ───────────────────────────────────────
+  "silicona liquida": ["silicona liquida"],
+  "silicona líquida": ["silicona liquida"],
+  "silicona en barra": ["silicona"],
+  "silicona barra": ["silicona"],
+  "barritas de silicona": ["silicona"],
+  "voligoma": ["voligoma"],
+  "boligoma": ["voligoma", "adhesivo", "cola vinilica"],
+  "cola vinilica": ["cola vinilica", "adhesivo"],
+  "cola vinílica": ["cola vinilica", "adhesivo"],
+  "plasticola": ["plasticola", "adhesivo"],
+  "plasticola color": ["plasticola color", "adhesivo color"],
+  "plasticola con brillo": ["plasticola", "adhesivo"],
+
+  // ── Pinceles ─────────────────────────────────────────────────────
+  "pincel": ["pincel"],
+  "pinceles": ["pincel", "pinceles"],
+  "set pinceles": ["set de pinceles", "pinceles"],
+  "pincel escolar": ["pincel escolar", "set de pinceles"],
+  "pincel angular": ["pincel"],
+
+  // ── Carpetas ─────────────────────────────────────────────────────
+  "carpeta oficio": ["carpeta oficio"],
+  "carpeta tamaño oficio": ["carpeta oficio"],
+  "carpeta of": ["carpeta oficio"],
+  "carpeta a4": ["carpeta a4"],
+  "carpeta n3": ["carpeta"],
+  "carpeta nro3": ["carpeta"],
+  "carpeta 3 solapas": ["carpeta", "solapas"],
+  "carpeta dibujo": ["carpeta dibujo", "carpeta de dibujo"],
+
+  // ── Cuadernos ────────────────────────────────────────────────────
+  "cuaderno abc": ["cuaderno abc", "cuaderno rivadavia"],
+  "cuaderno anillado": ["cuaderno espiral", "cuaderno espiralado"],
+  "cuaderno espiralado": ["cuaderno espiral", "cuaderno espiralado"],
+  "cuaderno tapa dura": ["cuaderno tapa dura", "cuaderno td"],
+  "cuaderno caligrafia": ["caligrafia"],
+  "cuaderno 24 hojas": ["cuaderno 24", "cuaderno 48"],
+  "cuaderno 48 hojas": ["cuaderno 48"],
+  "cuaderno 100 hojas": ["cuaderno 100", "cuaderno espiralado"],
+
+  // ── Blocks ───────────────────────────────────────────────────────
+  "block canson": ["block canson", "block dibujo"],
+  "block de dibujo": ["block dibujo", "block de dibujo"],
+  "block hojas blancas": ["block hojas", "block a4"],
+  "block n5": ["block n5", "block numero 5", "block nro 5"],
+  "block nro 5": ["block n5", "block numero 5"],
+  "block cartulina": ["block cartulina", "cartulina"],
+  "block hojas color": ["block hojas", "hojas color"],
+  "block hojas negras": ["block negro", "hojas negras"],
+  "repuesto hojas": ["repuesto"],
+
+  // ── Geometría ────────────────────────────────────────────────────
+  "tijera": ["tijera"],
+  "tijeras": ["tijera"],
+  "tijerita": ["tijera"],
+  "regla": ["regla"],
+  "compas": ["compas"],
+  "compás": ["compas"],
+  "transportador": ["transportador"],
+  "escuadra": ["escuadra"],
+  "utiles de geometria": ["transportador", "compas", "escuadra", "regla"],
+  "set de geometria": ["transportador", "compas", "escuadra", "regla"],
+
+  // ── Corrector / sacapuntas / borrador ────────────────────────────
+  "corrector": ["corrector"],
+  "liquid paper": ["corrector"],
+  "sacapuntas": ["sacapuntas"],
+  "goma de borrar": ["goma", "borrador"],
+  "borrador": ["goma", "borrador"],
+  "borrador lapiz": ["goma", "borrador"],
+
+  // ── Cartuchera ───────────────────────────────────────────────────
+  "cartuchera": ["cartuchera", "canopla"],
+  "estuche": ["cartuchera", "canopla"],
+  "canopla": ["canopla", "cartuchera"],
+
+  // ── Arte y manualidades ──────────────────────────────────────────
+  "tempera": ["tempera"],
+  "acuarela": ["acuarela"],
+  "lentejuelas": ["lentejuelas"],
+  "globos": ["globo"],
+  "palitos helado": ["palitos de madera", "palitos tipo paleta"],
+  "palitos de madera": ["palitos de madera"],
+  "lienzo": ["lienzo"],
+  "nepaco": ["clip"],
+  "nepachos": ["clip"],
+  "separadores": ["separador"],
+  "hojas caligrafia": ["caligrafia"],
+  "papel carbon": ["carbonico"],
+  "papel carbonico": ["carbonico"],
+  "sobre carta": ["sobre manila", "sobre"],
+  "sobre manila": ["sobre manila"],
+  "mapas": ["mapa"],
+  "planisferio": ["planisferio"],
+  "diccionario": ["diccionario"],
+};
+
+// Normalizar texto: quitar tildes y pasar a minúsculas
+function normalize(str) {
+  return str.toLowerCase()
+    .replace(/á/g, 'a').replace(/é/g, 'e').replace(/í/g, 'i')
+    .replace(/ó/g, 'o').replace(/ú/g, 'u').replace(/ü/g, 'u')
+    .replace(/ñ/g, 'n');
+}
+
+function expandKeywords(items) {
+  const expandedSet = new Set();
+  
+  for (const item of items) {
+    const itemNorm = normalize(item.item);
+    
+    // Palabras sueltas (sin tildes)
+    for (const word of itemNorm.split(/\s+/)) {
+      if (word.length > 2) expandedSet.add(word);
+    }
+    
+    // Frases sinónimas (comparar normalizadas)
+    for (const [phrase, replacements] of Object.entries(SYNONYMS)) {
+      if (itemNorm.includes(normalize(phrase))) {
+        for (const r of replacements) expandedSet.add(normalize(r));
+      }
+    }
+  }
+  
+  return Array.from(expandedSet);
+}
+
+function preFilterCatalog(items) {
+  const keywords = expandKeywords(items);
+
   const scored = CATALOG.map(p => {
-    const nameWords = p.name.toLowerCase().split(/\s+/);
-    const score = keywords.filter(k => 
+    const nameNorm = normalize(p.name);
+    const nameWords = nameNorm.split(/\s+/);
+    const score = keywords.filter(k =>
       nameWords.some(w => w.includes(k) || k.includes(w))
     ).length;
     return { ...p, score };
   });
 
-  return scored
+  const filtered = scored
     .filter(p => p.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 300);
+    .sort((a, b) => b.score - a.score);
+
+  // Si hay muy pocos resultados, incluir más del catálogo como fallback
+  if (filtered.length < 50) {
+    const rest = scored.filter(p => p.score === 0).slice(0, 100 - filtered.length);
+    return [...filtered, ...rest].slice(0, 300);
+  }
+
+  return filtered.slice(0, 300);
 }
 
 async function matchWithCatalog(parsedItems) {
   const relevantCatalog = preFilterCatalog(parsedItems);
   const catalogText = relevantCatalog.map(
-    (p) => `ID:${p.id} | "${p.name}" | $${p.price}`
+    (p) => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price}`
   ).join("\n");
 
   const itemsText = parsedItems
-    .map((i, idx) => `${idx}. "${i.item}" x${i.quantity}`)
+    .map((i, idx) => `${idx}. "${i.item}" x${i.quantity}${i.notes ? " (" + i.notes + ")" : ""}`)
     .join("\n");
 
   const response = await axios.post(
@@ -186,10 +441,13 @@ Y esta lista de útiles escolares solicitados:
 ${itemsText}
 
 Para cada ítem de la lista, encontrá el producto más parecido del catálogo.
-Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
-[{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
+La cantidad (quantity) ya viene definida en la lista — NO la cambies ni la uses para multiplicar por contenido del paquete.
+El subtotal = unitPrice × quantity.
 
-Si no encontrás un producto similar, usá matched:false, catalogId:null, catalogName:null, unitPrice:0, subtotal:0.
+Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
+[{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","catalogSku":"SKU del producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
+
+Si no encontrás un producto similar, usá matched:false, catalogId:null, catalogName:null, catalogSku:null, unitPrice:0, subtotal:0.
 Respondé ÚNICAMENTE con el JSON, empezando con [ y terminando con ].`,
         },
       ],
@@ -213,13 +471,10 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
   if (!file) return res.status(400).json({ error: "No se recibió ningún archivo" });
 
   try {
-    // 1. Extraer items según tipo de archivo
     let parsedItems;
     if (IMAGE_TYPES.includes(file.mimetype)) {
-      // Imagen → visión directa de Claude
       parsedItems = await parseListFromImage(file.path, file.mimetype);
     } else {
-      // PDF / Word / TXT → extraer texto primero
       const rawText = await extractText(file.path, file.mimetype);
       if (!rawText || rawText.trim().length < 10) {
         return res.status(400).json({ error: "No se pudo leer texto del archivo." });
@@ -227,10 +482,8 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
       parsedItems = await parseListWithAI(rawText);
     }
 
-    // 3. Matchear con catálogo
     const matchedItems = await matchWithCatalog(parsedItems);
 
-    // 4. Calcular totales
     const found = matchedItems.filter((i) => i.matched);
     const notFound = matchedItems.filter((i) => !i.matched);
     const total = found.reduce((sum, i) => sum + i.subtotal, 0);
@@ -246,13 +499,12 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
         estimatedTotal: total,
       },
       items: matchedItems,
-      rawText: "", // debug desactivado
+      rawText: "",
     });
   } catch (err) {
     console.error("Error:", err.message);
     res.status(500).json({ error: "Error procesando la lista: " + err.message });
   } finally {
-    // Limpiar archivo temporal
     if (file) fs.unlink(file.path, () => {});
   }
 });
