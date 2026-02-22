@@ -351,6 +351,13 @@ const SYNONYMS = {
   "globos": ["globos tuky", "globo"],
   "globos de colores": ["globos tuky"],
   "globo": ["globos tuky"],
+  "papel afiche": ["papel afiche", "afiche"],
+  "afiche": ["papel afiche", "afiche"],
+  "cartulina lisa": ["cartulina lisa"],
+  "cartulinas lisas": ["cartulina lisa"],
+  "barritas de silicona": ["barra adhesiva de silicona"],
+  "barras de silicona": ["barra adhesiva de silicona"],
+  "silicona gruesa": ["barra adhesiva de silicona"],
   "palitos de madera": ["palitos de madera"],
   "lienzo": ["lienzo"],
   "nepaco": ["clip"],
@@ -468,6 +475,10 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
 
 2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
+   - "papel afiche" = "Papel afiche vs colores" o similar (NO un block de dibujo)
+   - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
+   - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
+   - "globos de colores" = "GLOBOS TUKY" (NO globo terráqueo)
    - "fibron" / "felpon" = "fibra" / "marcador"  
    - "birome" = "boligrafo"
    - "plasticola" = cualquier adhesivo similar
