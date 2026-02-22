@@ -151,7 +151,7 @@ function safeJsonParse(text) {
 // Mapa de sinónimos: términos que usa el usuario → términos que aparecen en catálogo
 const SYNONYMS = {
   // ── Papel / hojas sueltas ────────────────────────────────────────
-  "hojas a4": ["resma", "hojas"],
+  "hojas a4": ["resma a7", "resma a4", "resma", "hojas a4"],
   "hojas blancas": ["resma", "hojas"],
   "hojas de color": ["hojas color", "block"],
   "hojas a4 color": ["resma color", "hojas color", "block"],
@@ -167,16 +167,17 @@ const SYNONYMS = {
   "papel satinado": ["papel glace", "glasado"],
   "papel carbonico": ["carbonico", "carbon"],
   "papel carbon": ["carbonico", "carbon"],
-  "papel calcar": ["calcar", "vegetal", "manteca"],
+  "papel calcar": ["calcar", "repuesto de calcar", "repuesto calcar"],
   "papel celofan": ["celofan", "acetato"],
   "papel acetato": ["acetato"],
   "tapa acetato": ["acetato", "tapa"],
 
   // ── Papel afiche / madera / cometa / crepe ───────────────────────
-  "papel afiche": ["papel afiche", "afiche", "block afiche", "block de dibujo n° 5 afiche"],
-  "afiche": ["afiche", "papel afiche"],
-  "afiches": ["afiche", "papel afiche"],
-  "block afiche": ["block afiche", "afiche"],
+  "papel afiche": ["papel afiche", "afiche", "block afiche", "block de dibujo n° 5 afiche", "block dibujo n° 5 afiche"],
+  "afiche": ["papel afiche", "afiche", "block de dibujo n° 5 afiche"],
+  "afiches": ["papel afiche", "afiche", "block de dibujo n° 5 afiche"],
+  "afiches color": ["papel afiche", "afiche", "block de dibujo n° 5 afiche"],
+  "block afiche": ["block afiche", "afiche", "block de dibujo n° 5 afiche"],
   "papel madera": ["papel madera"],
   "papel cometa": ["seda", "cometa", "seda / cometa", "barrilete"],
   "papel barrilete": ["seda", "cometa", "seda / cometa", "barrilete"],
@@ -280,10 +281,11 @@ const SYNONYMS = {
   "fibron indeleble": ["fibra", "marcador", "permanente", "sharpie"],
   "fibrón indeleble": ["fibra", "marcador", "permanente", "sharpie"],
   "microfibra": ["microfibra", "fibra"],
-  "fibra pizarra": ["marcador pizarra"],
-  "fibron pizarra": ["marcador pizarra"],
-  "fibrón pizarra": ["marcador pizarra"],
-  "marcador pizarra": ["marcador pizarra"],
+  "fibra pizarra": ["marcador pizarra", "edding pizarra", "marcador p/ pizarra"],
+  "fibron pizarra": ["marcador pizarra", "edding pizarra", "marcador p/ pizarra", "edding 160"],
+  "fibrón pizarra": ["marcador pizarra", "edding pizarra", "marcador p/ pizarra", "edding 160"],
+  "marcador pizarra": ["marcador pizarra", "edding pizarra", "marcador p/ pizarra", "edding 160"],
+  "edding pizarra": ["edding 160", "marcador pizarra"],
   "fibron al agua": ["marcador pizarra", "fibra"],
   "fibron fluo": ["resaltador", "marcador fluo"],
   "fibrón flúor": ["resaltador", "marcador fluo"],
@@ -370,6 +372,10 @@ const SYNONYMS = {
 
   // ── Acuarela ─────────────────────────────────────────────────────
   "acuarela": ["acuarela"],
+  "acrilico": ["tempera", "acrilica", "acrilico"],
+  "acrílico": ["tempera", "acrilica", "acrilico"],
+  "pintura acrilica": ["acrilica", "acrilico", "tempera"],
+  "pote acrilico": ["tempera", "acrilica"],
   "acuarelas": ["acuarela"],
   "paleta acuarela": ["acuarela"],
   "paleta de acuarelas": ["acuarela"],
@@ -400,7 +406,10 @@ const SYNONYMS = {
   "anillos para carpeta": ["anillos", "anillo"],
 
   // ── Cuadernos ────────────────────────────────────────────────────
-  "cuaderno abc": ["cuaderno abc", "cuaderno rivadavia"],
+  "cuaderno abc": ["cuaderno abc rivadavia", "cuaderno esp. abc", "cuaderno rivadavia abc"],
+  "cuaderno rivadavia": ["cuaderno abc rivadavia", "cuaderno esp. abc", "cuaderno rivadavia"],
+  "cuaderno espiral abc": ["cuaderno esp. abc", "cuaderno abc"],
+  "cuaderno abc 100 hojas": ["cuaderno esp. abc rivadavia x100", "cuaderno abc"],
   "cuaderno anillado": ["cuaderno espiral", "cuaderno espiralado"],
   "cuaderno espiralado": ["cuaderno espiral", "cuaderno espiralado"],
   "cuaderno tapa dura": ["cuaderno tapa dura", "cuaderno td"],
@@ -409,7 +418,8 @@ const SYNONYMS = {
   "cuaderno 48 hojas": ["cuaderno 48"],
   "cuaderno 100 hojas": ["cuaderno 100", "cuaderno espiralado"],
   "cuaderno comunicaciones": ["cuaderno comunicaciones", "cuaderno comunicacion"],
-  "libreta comunicacion": ["cuaderno comunicaciones"],
+  "libreta comunicacion": ["cuaderno comunicaciones", "comunicaciones triunfante"],
+  "cuaderno de comunicaciones": ["cuaderno de comunicaciones triunfante", "comunicaciones triunfante", "comunicaciones zeta"],
 
   // ── Blocks ───────────────────────────────────────────────────────
   "block canson": ["block canson", "block dibujo"],
@@ -468,8 +478,14 @@ const SYNONYMS = {
   "hojas caligrafia": ["caligrafia"],
   "sobre carta": ["sobre manila", "sobre"],
   "sobre manila": ["sobre manila"],
-  "mapas": ["mapa"],
-  "planisferio": ["planisferio"],
+  "mapas": ["mapas", "mapa n°", "mapa mural", "mapa politico", "mapa fisico"],
+  "mapa politico": ["mapa politico", "mapas politico"],
+  "mapa fisico": ["mapa fisico", "mapas fisico"],
+  "mapa argentina": ["mapa argentina", "mapas argentina", "encastre mapa"],
+  "mapa division politica": ["mapa politico", "mapas politico"],
+  "mapa continente americano": ["mapa mural america", "mapa america"],
+  "planisferio": ["planisferio", "mapa mural planisferio"],
+  "mapa planisferio": ["planisferio", "mapa mural planisferio"],
   "diccionario": ["diccionario"],
   "calculadora": ["calculadora"],
   "agenda": ["agenda"],
@@ -546,6 +562,9 @@ function preFilterCatalog(items) {
   const scored = CATALOG.map(p => {
     const nameNorm = normalize(p.name);
     const nameWords = nameNorm.split(/\s+/);
+    // Parte antes del "+" o "/" para detectar producto principal vs accesorio incluido
+    const primaryName = nameNorm.split(/[+\/]/)[0].trim();
+    const primaryWords = primaryName.split(/\s+/);
     
     // Keywords de una palabra: comparar contra cada palabra del nombre
     const singleScore = singleKw.filter(k =>
@@ -554,8 +573,17 @@ function preFilterCatalog(items) {
     
     // Keywords multi-palabra: comparar contra el nombre completo (x3 peso)
     const multiScore = multiKw.filter(k => nameNorm.includes(k)).length * 3;
+
+    // Bonus x2 si el keyword aparece en la parte PRINCIPAL del nombre (antes del +)
+    // Esto evita que "sacapuntas" matchee "lápices + sacapuntas" antes que "Sacapuntas Maped"
+    const primaryBonus = singleKw.filter(k =>
+      primaryWords.some(w => w.includes(k) || k.includes(w))
+    ).length;
     
-    return { ...p, score: singleScore + multiScore };
+    // Bonus adicional si el producto empieza con el keyword (producto principal)
+    const startsWithBonus = singleKw.some(k => nameNorm.startsWith(k)) ? 3 : 0;
+    
+    return { ...p, score: singleScore + multiScore + primaryBonus + startsWithBonus };
   });
 
   const filtered = scored
@@ -601,12 +629,24 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
 
 2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
-   - "papel afiche" = "Papel afiche vs colores" o similar (NO un block de dibujo)
-   - "block hojas canson N°3" / "block N3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
+   - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
+   - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
+   - "mapa planisferio" / "planisferio" = "Mapa Mural Planisferio" — NUNCA confundir con bandera
+   - "mapa continente americano" = "Mapa Mural America" 
+   - "cuaderno ABC" / "cuaderno espiral ABC 100 hojas" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA" — NO cuadernos Oxford ni Norpac
+   - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110) — NO ignorar este producto
+   - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
+   - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
    - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
    - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
    - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
    - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
+   - "papel calcar" / "sobre de papel calcar" = "Repuesto de Calcar" (N°3 o N°5 Luma/Iglu)
+   - "pote de acrílico" / "pintura acrílica" = témpera u otro tipo de pintura disponible (NO marcadores acrílicos)
+   - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares" (buscar en catálogo)
+   - REGLA CRÍTICA: Si el usuario pide "mapa" o "planisferio", NUNCA devolver "bandera" aunque ambas tengan "argentina"
+   - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC", priorizar SIEMPRE "Rivadavia ABC" sobre otros cuadernos
+   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
    - "globos de colores" = "GLOBOS TUKY" (NO globo terráqueo)
