@@ -211,7 +211,9 @@ const SYNONYMS = {
   "cartulinas": ["cartulina"],
   "cartulina lisa": ["cartulina lisa"],
   "cartulinas lisas": ["cartulina lisa"],
-  "cartulina color": ["cartulina lisa", "cartulina"],
+  "cartulina color": ["cartulina lisa varios colores", "cartulina lisa"],
+  "cartulina color claro": ["cartulina lisa varios colores"],
+  "cartulinas color": ["cartulina lisa varios colores", "cartulina lisa"],
   "cartulina fantasía": ["cartulina fantasia", "block cartulina"],
   "cartulina fantasia": ["cartulina fantasia", "block cartulina"],
 
@@ -406,10 +408,13 @@ const SYNONYMS = {
   "anillos para carpeta": ["anillos", "anillo"],
 
   // ── Cuadernos ────────────────────────────────────────────────────
-  "cuaderno abc": ["cuaderno abc rivadavia", "cuaderno esp. abc", "cuaderno rivadavia abc"],
-  "cuaderno rivadavia": ["cuaderno abc rivadavia", "cuaderno esp. abc", "cuaderno rivadavia"],
-  "cuaderno espiral abc": ["cuaderno esp. abc", "cuaderno abc"],
-  "cuaderno abc 100 hojas": ["cuaderno esp. abc rivadavia x100", "cuaderno abc"],
+  "cuaderno abc": ["cuadernos esp.abc rivadavia", "cuaderno esp. abc rivadavia", "abc rivadavia"],
+  "cuaderno abc rivadavia": ["cuadernos esp.abc rivadavia", "cuaderno esp. abc rivadavia"],
+  "cuaderno rivadavia": ["cuadernos esp.abc rivadavia", "cuaderno esp. abc rivadavia"],
+  "cuaderno espiral abc": ["cuadernos esp.abc rivadavia", "cuaderno esp. abc rivadavia"],
+  "cuaderno abc 100 hojas": ["cuaderno esp. abc rivadavia x100"],
+  "cuaderno abc 60 hojas": ["cuadernos esp.abc rivadavia aula universal x60"],
+  "cuaderno espiral abc 100": ["cuaderno esp. abc rivadavia x100"],
   "cuaderno anillado": ["cuaderno espiral", "cuaderno espiralado"],
   "cuaderno espiralado": ["cuaderno espiral", "cuaderno espiralado"],
   "cuaderno tapa dura": ["cuaderno tapa dura", "cuaderno td"],
@@ -478,14 +483,25 @@ const SYNONYMS = {
   "hojas caligrafia": ["caligrafia"],
   "sobre carta": ["sobre manila", "sobre"],
   "sobre manila": ["sobre manila"],
-  "mapas": ["mapas", "mapa n°", "mapa mural", "mapa politico", "mapa fisico"],
-  "mapa politico": ["mapa politico", "mapas politico"],
-  "mapa fisico": ["mapa fisico", "mapas fisico"],
-  "mapa argentina": ["mapa argentina", "mapas argentina", "encastre mapa"],
-  "mapa division politica": ["mapa politico", "mapas politico"],
-  "mapa continente americano": ["mapa mural america", "mapa america"],
-  "planisferio": ["planisferio", "mapa mural planisferio"],
-  "mapa planisferio": ["planisferio", "mapa mural planisferio"],
+  "mapas": ["mapas politico", "mapas fisico", "mapa mural"],
+  "mapa": ["mapas politico", "mapas fisico", "mapa mural"],
+  "mapa n3": ["mapas politico n°3", "mapas fisico n°3"],
+  "mapas n3": ["mapas politico n°3", "mapas fisico n°3"],
+  "mapa politico": ["mapas politico"],
+  "mapas politicos": ["mapas politico"],
+  "mapa fisico": ["mapas fisico"],
+  "mapas fisicos": ["mapas fisico"],
+  "mapa argentina": ["mapas politico", "mapa mural argentina"],
+  "mapa argentina division politica": ["mapas politico"],
+  "argentina division politica": ["mapas politico"],
+  "division politica argentina": ["mapas politico"],
+  "mapa continente americano": ["mapas politico", "mapas fisico", "mapa mural america"],
+  "continente americano politico": ["mapas politico"],
+  "continente americano fisico": ["mapas fisico"],
+  "america politico": ["mapas politico"],
+  "america fisico": ["mapas fisico"],
+  "planisferio": ["mapas politico", "mapas fisico", "mapa mural planisferio"],
+  "mapa planisferio": ["mapas politico", "mapas fisico", "mapa mural planisferio"],
   "diccionario": ["diccionario"],
   "calculadora": ["calculadora"],
   "agenda": ["agenda"],
@@ -645,7 +661,9 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
    - "pote de acrílico" / "pintura acrílica" = témpera u otro tipo de pintura disponible (NO marcadores acrílicos)
    - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares" (buscar en catálogo)
    - REGLA CRÍTICA: Si el usuario pide "mapa" o "planisferio", NUNCA devolver "bandera" aunque ambas tengan "argentina"
-   - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC", priorizar SIEMPRE "Rivadavia ABC" sobre otros cuadernos
+   - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC" o "cuaderno espiral ABC 100 hojas", devolver SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
+   - REGLA CRÍTICA: Los mapas en catálogo son GENÉRICOS: "MAPAS Politico N°3" (stock:67) y "MAPAS Fisico N°3" (stock:77). No hay mapas específicos por región (ni planisferio N°3 ni continente americano N°3 separados). Cuando pidan "mapa planisferio N°3", "mapa Argentina división política N°3", o "mapa continente americano N°3", devolver "MAPAS Politico N°3" o "MAPAS Fisico N°3" según corresponda, e indicar al usuario que en la descripción del producto puede seleccionar la región
+   - REGLA CRÍTICA: "cartulina color claro" = "Cartulina Lisa Varios Colores" (stock:69)
    - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
