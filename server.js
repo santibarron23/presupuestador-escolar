@@ -150,30 +150,43 @@ function safeJsonParse(text) {
 
 // Mapa de sinónimos: términos que usa el usuario → términos que aparecen en catálogo
 const SYNONYMS = {
-  // ── Papel / hojas ────────────────────────────────────────────────
-  "hojas a4": ["resma", "block", "hojas"],
-  "hojas blancas": ["resma", "block", "hojas"],
-  "hojas de color": ["block", "repuesto", "hojas color"],
+  // ── Papel / hojas sueltas ────────────────────────────────────────
+  "hojas a4": ["resma", "hojas"],
+  "hojas blancas": ["resma", "hojas"],
+  "hojas de color": ["hojas color", "block"],
+  "hojas a4 color": ["resma color", "hojas color", "block"],
   "hojas oficio": ["resma", "oficio", "hojas"],
+  "hojas oficio color": ["hojas color", "oficio"],
   "hojas maquina": ["resma", "hojas"],
   "papel a4": ["resma", "block"],
   "resma": ["resma"],
   "folio": ["folio"],
   "folios": ["folio"],
   "folios plasticos": ["folio", "sobre plastico"],
+  "folio a4": ["folio"],
   "papel satinado": ["papel glace", "glasado"],
   "papel carbonico": ["carbonico", "carbon"],
   "papel carbon": ["carbonico", "carbon"],
-  "papel afiche": ["afiche"],
-  "afiche": ["afiche"],
-  "afiches": ["afiche"],
+  "papel calcar": ["calcar", "vegetal", "manteca"],
+  "papel celofan": ["celofan", "acetato"],
+  "papel acetato": ["acetato"],
+  "tapa acetato": ["acetato", "tapa"],
+
+  // ── Papel afiche / madera / cometa / crepe ───────────────────────
+  "papel afiche": ["papel afiche", "afiche", "block afiche", "block de dibujo n° 5 afiche"],
+  "afiche": ["afiche", "papel afiche"],
+  "afiches": ["afiche", "papel afiche"],
+  "block afiche": ["block afiche", "afiche"],
   "papel madera": ["papel madera"],
-  "papel cometa": ["seda", "cometa", "seda / cometa"],
+  "papel cometa": ["seda", "cometa", "seda / cometa", "barrilete"],
+  "papel barrilete": ["seda", "cometa", "seda / cometa", "barrilete"],
   "cometa": ["seda", "cometa", "seda / cometa"],
   "papel crepe": ["crepe"],
+  "papel crepé": ["crepe"],
+  "crepe": ["crepe"],
+  "crepé": ["crepe"],
   "papel tissue": ["tissue"],
-  "cartulina": ["cartulina"],
-  "cartulinas": ["cartulina"],
+  "papel araña": ["araña", "volantin"],
 
   // ── Papel glasé / lustre / metalizado ────────────────────────────
   "glasé": ["glace"],
@@ -186,8 +199,20 @@ const SYNONYMS = {
   "fluor": ["fluo", "fluor"],
   "fluorescente": ["fluo", "fluor"],
   "papel glase opaco": ["glace lustre"],
+  "papel glase comun": ["glace lustre"],
+  "papel glase común": ["glace lustre"],
   "glase opaco": ["glace lustre"],
   "opaco": ["glace lustre", "lustre"],
+  "papel glase lustre": ["glace lustre"],
+
+  // ── Cartulina ───────────────────────────────────────────────────
+  "cartulina": ["cartulina"],
+  "cartulinas": ["cartulina"],
+  "cartulina lisa": ["cartulina lisa"],
+  "cartulinas lisas": ["cartulina lisa"],
+  "cartulina color": ["cartulina lisa", "cartulina"],
+  "cartulina fantasía": ["cartulina fantasia", "block cartulina"],
+  "cartulina fantasia": ["cartulina fantasia", "block cartulina"],
 
   // ── Goma eva ─────────────────────────────────────────────────────
   "goma eva": ["goma eva"],
@@ -195,21 +220,32 @@ const SYNONYMS = {
   "eva común": ["goma eva lisa"],
   "eva comun": ["goma eva lisa"],
   "goma eva con brillo": ["goma eva glitter", "goma eva c/glitter"],
+  "goma eva brillito": ["goma eva glitter", "goma eva c/glitter"],
   "eva brillo": ["goma eva glitter", "goma eva c/glitter"],
   "eva con brillo": ["goma eva glitter", "goma eva c/glitter"],
+  "eva con brillos": ["goma eva glitter", "goma eva c/glitter"],
   "eva glitter": ["goma eva glitter", "goma eva c/glitter"],
+  "eva gibré": ["goma eva glitter", "goma eva c/glitter"],
+  "eva gibre": ["goma eva glitter", "goma eva c/glitter"],
+  "goma eva fantasia": ["goma eva fantasia", "goma eva"],
+  "goma eva textura": ["goma eva"],
+  "goma eva toalla": ["goma eva"],
   "con brillo": ["glitter", "c/glitter"],
 
-  // ── Plastificar ──────────────────────────────────────────────────
-  "plastificar": ["plastif", "laminad"],
-  "plastificado": ["plastif", "laminad"],
-  "plancha plastificar": ["plastif"],
-  "planchuela plastificar": ["plastif"],
-  "maquina plastificar": ["laminador"],
+  // ── Plastificar / contact ────────────────────────────────────────
+  "plastificar": ["contact", "contacto"],
+  "plastificado": ["contact", "contacto"],
+  "plancha plastificar": ["contact", "contacto"],
+  "plancha de plastificar": ["contact", "contacto"],
+  "plancha contac": ["contact", "contacto"],
+  "plastificar en frio": ["contact transparente"],
+  "papel contact": ["contact"],
+  "contac": ["contact"],
 
   // ── Lápices ──────────────────────────────────────────────────────
   "lapiz negro": ["lapiz negro"],
   "lápiz negro": ["lapiz negro"],
+  "lapiz grafito": ["lapiz negro"],
   "lapiz triangular": ["lapiz", "triangular"],
   "lápiz triangular": ["lapiz", "triangular"],
   "lapiz hb": ["lapiz negro"],
@@ -220,11 +256,16 @@ const SYNONYMS = {
   "lapices de color": ["lapices de colores", "lapiz color"],
   "lápices de color": ["lapices de colores", "lapiz color"],
   "lapices de colores": ["lapices de colores"],
+  "lapices de colores fluo": ["lapiz color fluo", "lapiz color neon", "lapiz fluo"],
+  "lapices fluo": ["lapiz color fluo", "lapiz color neon", "lapiz fluo"],
+  "lápices flúo": ["lapiz color fluo", "lapiz color neon", "lapiz fluo"],
 
   // ── Fibrones / marcadores ────────────────────────────────────────
   "fibron": ["fibra", "marcador"],
   "fibrón": ["fibra", "marcador"],
   "fibrones": ["fibra", "marcador"],
+  "fibra": ["fibra", "marcador"],
+  "fibras": ["fibra", "marcador"],
   "fibrón negro": ["fibra", "marcador"],
   "fibron negro": ["fibra", "marcador"],
   "fibrón trazo": ["fibra", "marcador"],
@@ -235,11 +276,23 @@ const SYNONYMS = {
   "marcador negro": ["marcador", "fibra"],
   "marcador permanente": ["marcador", "sharpie", "permanente"],
   "marcador indeleble": ["marcador", "sharpie", "permanente"],
-  "fibra indeleble": ["fibra", "marcador", "permanente"],
+  "fibra indeleble": ["fibra", "marcador", "permanente", "sharpie"],
+  "fibron indeleble": ["fibra", "marcador", "permanente", "sharpie"],
+  "fibrón indeleble": ["fibra", "marcador", "permanente", "sharpie"],
   "microfibra": ["microfibra", "fibra"],
   "fibra pizarra": ["marcador pizarra"],
   "fibron pizarra": ["marcador pizarra"],
+  "fibrón pizarra": ["marcador pizarra"],
   "marcador pizarra": ["marcador pizarra"],
+  "fibron al agua": ["marcador pizarra", "fibra"],
+  "fibron fluo": ["resaltador", "marcador fluo"],
+  "fibrón flúor": ["resaltador", "marcador fluo"],
+  "fibras gruesas": ["fibra", "marcador", "trazo grueso"],
+  "caja de fibras": ["fibra", "marcador"],
+  "fibras largas": ["fibra", "marcador"],
+  "marcador fluo": ["resaltador"],
+  "resaltador": ["resaltador"],
+  "resaltadores": ["resaltador"],
 
   // ── Biromes / lapiceras ──────────────────────────────────────────
   "birome": ["boligrafo"],
@@ -247,7 +300,10 @@ const SYNONYMS = {
   "lapicera": ["lapicera", "boligrafo"],
   "lapicera azul": ["lapicera", "boligrafo"],
   "lapicera tinta": ["lapicera", "boligrafo"],
+  "lapicera borrable": ["lapicera borrable", "boligrafo borrable"],
+  "lapicera fuente": ["lapicera fuente", "lapicera"],
   "borra tinta": ["borra tinta", "corrector"],
+  "borratinta": ["borra tinta", "corrector"],
 
   // ── Cinta adhesiva / transparente ───────────────────────────────
   "cinta transparente": ["cinta adhesiva", "cinta"],
@@ -258,35 +314,76 @@ const SYNONYMS = {
   "cinta scotch": ["cinta adhesiva"],
   "cinta papel": ["cinta de papel"],
   "cinta bebe": ["cinta"],
-  "cinta ancha": ["cinta"],
+  "cinta ancha": ["cinta ancha", "cinta papel ancha"],
+  "cinta papel ancha": ["cinta ancha", "cinta papel"],
 
   // ── Crayones / plastilina ────────────────────────────────────────
-  "crayones plasticos": ["crayones", "crayola"],
+  "crayones": ["crayones"],
+  "crayon": ["crayones"],
+  "crayones plasticos": ["crayones"],
   "crayones de cera": ["crayones"],
+  "crayones gruesos": ["crayones"],
+  "crayones fluo": ["crayones"],
+  "crayones fluor": ["crayones"],
+  "crayones flúor": ["crayones"],
+  "crayones gel": ["crayones"],
+  "crayones con glitter": ["crayones"],
   "crayolas": ["crayones", "crayola"],
   "plastilina": ["plastilina"],
   "plasticina": ["plastilina"],
 
+  // ── Tizas ────────────────────────────────────────────────────────
+  "tiza": ["tiza"],
+  "tizas": ["tiza"],
+  "tizas blancas": ["tiza"],
+  "tizas de color": ["tiza color", "tiza"],
+  "tizas color": ["tiza color", "tiza"],
+
   // ── Adhesivos / pegamentos ───────────────────────────────────────
   "silicona liquida": ["silicona liquida"],
   "silicona líquida": ["silicona liquida"],
-  "silicona en barra": ["silicona"],
-  "silicona barra": ["silicona"],
-  "barritas de silicona": ["silicona"],
+  "silicona en barra": ["barra adhesiva de silicona", "silicona"],
+  "silicona barra": ["barra adhesiva de silicona", "silicona"],
+  "barritas de silicona": ["barra adhesiva de silicona"],
+  "barrita de silicona": ["barra adhesiva de silicona"],
+  "barras de silicona": ["barra adhesiva de silicona"],
+  "barrita silicona": ["barra adhesiva de silicona"],
+  "silicona gruesa": ["barra adhesiva de silicona"],
+  "silicona fria": ["barra adhesiva de silicona", "silicona"],
   "voligoma": ["voligoma"],
+  "voligoma pequeña": ["voligoma"],
   "boligoma": ["voligoma", "adhesivo", "cola vinilica"],
   "cola vinilica": ["cola vinilica", "adhesivo"],
   "cola vinílica": ["cola vinilica", "adhesivo"],
   "plasticola": ["plasticola", "adhesivo"],
   "plasticola color": ["plasticola color", "adhesivo color"],
   "plasticola con brillo": ["plasticola", "adhesivo"],
+  "plasticola blanca": ["plasticola", "adhesivo"],
 
-  // ── Pinceles ─────────────────────────────────────────────────────
+  // ── Tempera / pintura ────────────────────────────────────────────
+  "tempera": ["tempera"],
+  "témpera": ["tempera"],
+  "pote de tempera": ["tempera"],
+  "tempera con brillo": ["tempera", "glitter"],
+  "tempera glitter": ["tempera", "glitter"],
+  "tempera metalizada": ["tempera"],
+
+  // ── Acuarela ─────────────────────────────────────────────────────
+  "acuarela": ["acuarela"],
+  "acuarelas": ["acuarela"],
+  "paleta acuarela": ["acuarela"],
+  "paleta de acuarelas": ["acuarela"],
+
+  // ── Pinceles / rodillo ───────────────────────────────────────────
   "pincel": ["pincel"],
-  "pinceles": ["pincel", "pinceles"],
+  "pinceles": ["pincel"],
   "set pinceles": ["set de pinceles", "pinceles"],
-  "pincel escolar": ["pincel escolar", "set de pinceles"],
-  "pincel angular": ["pincel"],
+  "pincel escolar": ["pincel"],
+  "pincel angular": ["pincel angular", "pincel"],
+  "pincel chato": ["pincel chato"],
+  "pincel redondo": ["pincel redondo", "pincel"],
+  "pinceleta": ["pincel", "pinceleta"],
+  "rodillo": ["rodillo"],
 
   // ── Carpetas ─────────────────────────────────────────────────────
   "carpeta oficio": ["carpeta oficio"],
@@ -296,7 +393,11 @@ const SYNONYMS = {
   "carpeta n3": ["carpeta"],
   "carpeta nro3": ["carpeta"],
   "carpeta 3 solapas": ["carpeta", "solapas"],
+  "carpeta tres solapas": ["carpeta", "solapas"],
   "carpeta dibujo": ["carpeta dibujo", "carpeta de dibujo"],
+  "carpeta n5": ["carpeta"],
+  "carpeta plastica": ["carpeta", "plastica"],
+  "anillos para carpeta": ["anillos", "anillo"],
 
   // ── Cuadernos ────────────────────────────────────────────────────
   "cuaderno abc": ["cuaderno abc", "cuaderno rivadavia"],
@@ -304,32 +405,40 @@ const SYNONYMS = {
   "cuaderno espiralado": ["cuaderno espiral", "cuaderno espiralado"],
   "cuaderno tapa dura": ["cuaderno tapa dura", "cuaderno td"],
   "cuaderno caligrafia": ["caligrafia"],
-  "cuaderno 24 hojas": ["cuaderno 24", "cuaderno 48"],
+  "cuaderno 24 hojas": ["cuaderno 24"],
   "cuaderno 48 hojas": ["cuaderno 48"],
   "cuaderno 100 hojas": ["cuaderno 100", "cuaderno espiralado"],
+  "cuaderno comunicaciones": ["cuaderno comunicaciones", "cuaderno comunicacion"],
+  "libreta comunicacion": ["cuaderno comunicaciones"],
 
   // ── Blocks ───────────────────────────────────────────────────────
   "block canson": ["block canson", "block dibujo"],
   "block de dibujo": ["block dibujo", "block de dibujo"],
   "block hojas blancas": ["block hojas", "block a4"],
-  "block n5": ["block n5", "block numero 5", "block nro 5"],
-  "block nro 5": ["block n5", "block numero 5"],
+  "block n5": ["block n5", "block nene", "block dibujo"],
+  "block nro 5": ["block n5", "block nene"],
+  "block nene": ["block nene", "block n5"],
   "block cartulina": ["block cartulina", "cartulina"],
   "block hojas color": ["block hojas", "hojas color"],
   "block hojas negras": ["block negro", "hojas negras"],
   "repuesto hojas": ["repuesto"],
+  "hojas de carpeta": ["repuesto"],
+  "block papel afiche": ["block afiche", "afiche"],
 
   // ── Geometría ────────────────────────────────────────────────────
   "tijera": ["tijera"],
   "tijeras": ["tijera"],
   "tijerita": ["tijera"],
   "regla": ["regla"],
+  "regla flexible": ["regla"],
+  "regla rigida": ["regla"],
   "compas": ["compas"],
   "compás": ["compas"],
-  "transportador": ["transportador"],
+  "transportador": ["transportador", "escuadra"],
   "escuadra": ["escuadra"],
   "utiles de geometria": ["transportador", "compas", "escuadra", "regla"],
   "set de geometria": ["transportador", "compas", "escuadra", "regla"],
+  "juego de geometria": ["transportador", "compas", "escuadra", "regla"],
 
   // ── Corrector / sacapuntas / borrador ────────────────────────────
   "corrector": ["corrector"],
@@ -344,33 +453,50 @@ const SYNONYMS = {
   "estuche": ["cartuchera", "canopla"],
   "canopla": ["canopla", "cartuchera"],
 
-  // ── Arte y manualidades ──────────────────────────────────────────
-  "tempera": ["tempera"],
-  "acuarela": ["acuarela"],
+  // ── Arte / manualidades ──────────────────────────────────────────
   "lentejuelas": ["lentejuelas"],
   "globos": ["globos tuky", "globo"],
   "globos de colores": ["globos tuky"],
   "globo": ["globos tuky"],
-  "papel afiche": ["papel afiche", "afiche"],
-  "afiche": ["papel afiche", "afiche"],
-  "cartulina lisa": ["cartulina lisa"],
-  "cartulinas lisas": ["cartulina lisa"],
-  "barritas de silicona": ["barra adhesiva de silicona"],
-  "barras de silicona": ["barra adhesiva de silicona"],
-  "silicona gruesa": ["barra adhesiva de silicona"],
   "palitos de madera": ["palitos de madera"],
   "lienzo": ["lienzo"],
   "nepaco": ["clip"],
   "nepachos": ["clip"],
+
+  // ── Varios ───────────────────────────────────────────────────────
   "separadores": ["separador"],
   "hojas caligrafia": ["caligrafia"],
-  "papel carbon": ["carbonico"],
-  "papel carbonico": ["carbonico"],
   "sobre carta": ["sobre manila", "sobre"],
   "sobre manila": ["sobre manila"],
   "mapas": ["mapa"],
   "planisferio": ["planisferio"],
   "diccionario": ["diccionario"],
+  "calculadora": ["calculadora"],
+  "agenda": ["agenda"],
+
+  // ── Tecnología ───────────────────────────────────────────────────
+  "pendrive": ["pendrive"],
+  "pen drive": ["pendrive"],
+  "memoria usb": ["pendrive"],
+
+  // ── Hojas de carpeta / repuesto ──────────────────────────────────
+  "block hojas canson n3": ["repuesto", "hojas rayadas n3", "hojas cuadriculadas n3"],
+  "block canson n3": ["repuesto", "hojas n3"],
+  "block de hojas n3": ["repuesto", "hojas n3"],
+  "hojas de carpeta n3": ["repuesto", "hojas n3"],
+  "hojas n3": ["repuesto n3", "hojas rayadas n3"],
+  "block n3": ["repuesto n3", "repuesto"],
+  "block hojas canson n5": ["repuesto n5", "repuesto dibujo"],
+  "hojas rayadas": ["repuesto", "hojas rayadas"],
+  "hojas cuadriculadas": ["repuesto", "hojas cuadriculadas"],
+
+  // ── Tinta (contexto escolar = borratinta / lapicera) ─────────────
+  "tinta": ["borratinta", "borra tinta", "lapicera"],
+  "borra tinta": ["borratinta", "borra tinta"],
+  "borratinta": ["borratinta", "borra tinta"],
+
+  // ── Sacapuntas ───────────────────────────────────────────────────
+  "sacapuntas": ["sacapuntas"],
 };
 
 // Normalizar texto: quitar tildes y pasar a minúsculas
@@ -476,6 +602,11 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
 2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
    - "papel afiche" = "Papel afiche vs colores" o similar (NO un block de dibujo)
+   - "block hojas canson N°3" / "block N3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
+   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
+   - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
+   - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
+   - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
    - "globos de colores" = "GLOBOS TUKY" (NO globo terráqueo)
