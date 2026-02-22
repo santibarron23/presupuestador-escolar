@@ -909,7 +909,7 @@
 
     // URL directa al producto si tenemos el slug, o búsqueda si no
     const productUrl = item.catalogSlug
-      ? `https://librerialerma.com.ar/productos/${item.catalogSlug}`
+      ? `https://librerialerma.com.ar/${item.catalogSlug}`
       : `https://librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
 
     document.getElementById("modalBody").innerHTML = `
