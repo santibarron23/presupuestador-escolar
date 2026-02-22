@@ -441,7 +441,7 @@ function preFilterCatalog(items) {
 async function matchWithCatalog(parsedItems) {
   const relevantCatalog = preFilterCatalog(parsedItems);
   const catalogText = relevantCatalog.map(
-    (p) => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price}`
+    (p) => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price} | stock:${p.stock > 0 ? p.stock : "SIN_STOCK"}`
   ).join("\n");
 
   const itemsText = parsedItems
@@ -464,7 +464,9 @@ ${itemsText}
 
 Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
 
-1. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
+1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
+
+2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
    - "fibron" / "felpon" = "fibra" / "marcador"  
    - "birome" = "boligrafo"
@@ -475,13 +477,13 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
    - "crayones" = cualquier caja de crayones
    - "tempera" = cualquier tempera disponible
 
-2. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
+3. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
 
-3. La cantidad (quantity) ya viene definida — NO la cambies.
+4. La cantidad (quantity) ya viene definida — NO la cambies.
 
-4. El subtotal = unitPrice × quantity.
+5. El subtotal = unitPrice × quantity.
 
-5. Solo usá matched:false si genuinamente no existe ningún producto similar en el catálogo (ej: "colorante vegetal", "cortante de masa").
+6. Solo usá matched:false si genuinamente no existe ningún producto similar en el catálogo (ej: "colorante vegetal", "cortante de masa"). Si existe algo parecido con stock, siempre matcheá.
 
 Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
 [{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","catalogSku":"SKU del producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
