@@ -208,6 +208,16 @@ function safeJsonParse(text) {
 const SYNONYMS = {
   // ── Papel / hojas sueltas ────────────────────────────────────────
   "hojas a4": ["resma a7", "resma a4", "resma", "hojas a4"],
+  "hojas de maquina a4": ["resma a4", "resma a7", "hoja a4 blanca", "hojas a4"],
+  "hojas de máquina a4": ["resma a4", "resma a7", "hoja a4 blanca", "hojas a4"],
+  "hojas maquina a4 blancas": ["hoja a4 blanca", "resma a4", "resma a7"],
+  "hojas maquina a4 color": ["resma a4 luma color", "luma color", "block n5 luma color"],
+  "hojas de maquina a4 blancas": ["hoja a4 blanca", "resma a4", "resma a7"],
+  "hojas de maquina a4 de colores": ["resma a4 luma color", "luma color", "block n5 luma color"],
+  "hojas de maquina a4 colores": ["resma a4 luma color", "luma color"],
+  "hojas a4 blancas": ["hoja a4 blanca", "resma a4", "resma a7"],
+  "hojas a4 de colores": ["resma a4 luma color", "luma color", "resma a4 210"],
+  "hojas a4 color": ["resma a4 luma color", "luma color", "resma a4 210"],
   "hojas blancas": ["resma", "hojas"],
   "hojas de color": ["hojas color", "block"],
   "hojas a4 color": ["resma color", "hojas color", "block"],
@@ -249,7 +259,16 @@ const SYNONYMS = {
   "glasé": ["glace"],
   "glase": ["glace"],
   "papel glasé": ["glace"],
-  "papel glase": ["glace"],
+  "papel glase": ["papel glace", "glace"],
+  "papel glasé": ["papel glace", "glace"],
+  "papel glace fluo": ["papel glace fluo surtido", "glace fluo"],
+  "papel glasé fluo": ["papel glace fluo surtido", "glace fluo"],
+  "papel glace fluor": ["papel glace fluo surtido", "glace fluo"],
+  "papel glasé fluor": ["papel glace fluo surtido", "glace fluo"],
+  "papel glace mate": ["papel glace lustre", "glace lustre"],
+  "papel glasé mate": ["papel glace lustre", "glace lustre"],
+  "papel glace metalizado": ["papel glace metalizado surtido", "glace metalizado"],
+  "papel glasé metalizado": ["papel glace metalizado surtido", "glace metalizado"],
   "lustre": ["lustre"],
   "metalizado": ["metalizado"],
   "flúor": ["fluo", "fluor"],
@@ -267,6 +286,7 @@ const SYNONYMS = {
   "cartulinas": ["cartulina"],
   "cartulina lisa": ["cartulina lisa"],
   "cartulinas lisas": ["cartulina lisa"],
+  "cartulina": ["cartulina lisa varios colores", "cartulina lisa", "cartulina comun"],
   "cartulina color": ["cartulina lisa varios colores", "cartulina lisa"],
   "cartulina color claro": ["cartulina lisa varios colores"],
   "cartulinas color": ["cartulina lisa varios colores", "cartulina lisa"],
@@ -372,7 +392,10 @@ const SYNONYMS = {
   "cinta embalar": ["cinta", "embalar"],
   "scotch": ["cinta adhesiva"],
   "cinta scotch": ["cinta adhesiva"],
-  "cinta papel": ["cinta de papel"],
+  "cinta papel": ["cinta de papel auca", "cinta de papel"],
+  "cinta de papel": ["cinta de papel auca", "cinta papel"],
+  "cinta de papel gruesa": ["cinta de papel auca", "cinta papel"],
+  "cinta papel gruesa": ["cinta de papel auca", "cinta papel"],
   "cinta bebe": ["cinta"],
   "cinta ancha": ["cinta ancha", "cinta papel ancha"],
   "cinta papel ancha": ["cinta ancha", "cinta papel"],
@@ -390,6 +413,7 @@ const SYNONYMS = {
   "crayones con glitter": ["crayones"],
   "crayolas": ["crayones", "crayola"],
   "plastilina": ["plastilina"],
+  "plastilinas": ["plastilina"],
   "plasticina": ["plastilina"],
 
   // ── Tizas ────────────────────────────────────────────────────────
@@ -398,6 +422,10 @@ const SYNONYMS = {
   "tizas blancas": ["tiza"],
   "tizas de color": ["tiza color", "tiza"],
   "tizas color": ["tiza color", "tiza"],
+  "caja de tizas": ["tiza color x12", "tiza color", "tiza"],
+  "caja tizas": ["tiza color", "tiza"],
+  "tizas": ["tiza color", "tiza"],
+  "tizas escolares": ["tiza color", "tiza"],
 
   // ── Adhesivos / pegamentos ───────────────────────────────────────
   "silicona liquida": ["silicona liquida"],
@@ -515,6 +543,8 @@ const SYNONYMS = {
   "corrector": ["corrector"],
   "liquid paper": ["corrector"],
   "sacapuntas": ["sacapuntas"],
+  "caja de sacapuntas": ["sacapuntas"],
+  "afilador": ["sacapuntas"],
   "goma de borrar": ["goma", "borrador"],
   "borrador": ["goma", "borrador"],
   "borrador lapiz": ["goma", "borrador"],
@@ -749,6 +779,8 @@ const SYNONYMS = {
 
   // ── Sacapuntas ───────────────────────────────────────────────────
   "sacapuntas": ["sacapuntas"],
+  "caja de sacapuntas": ["sacapuntas"],
+  "afilador": ["sacapuntas"],
 };
 
 // Normalizar texto: quitar tildes y pasar a minúsculas
