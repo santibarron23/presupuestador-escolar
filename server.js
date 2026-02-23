@@ -506,6 +506,85 @@ const SYNONYMS = {
   "calculadora": ["calculadora"],
   "agenda": ["agenda"],
 
+  // ── Nuevos términos 2026 ─────────────────────────────────────────
+  // Fibras / marcadores
+  "marca todo": ["pelikan 420", "marcadores pelikan"],
+  "marcatodo": ["pelikan 420", "marcadores pelikan"],
+  "fibron pastel": ["resaltador", "marcadores pastel"],
+  "fibrón pastel": ["resaltador", "marcadores pastel"],
+  "fibron fluo": ["resaltador"],
+  "fibrón flúo": ["resaltador"],
+  "microfibra para mapas": ["microfibra", "stabilo"],
+  "microfibra negra": ["microfibra"],
+  "portamina": ["portaminas", "portamina"],
+
+  // Tempera / pintura
+  "plasticola fluo": ["plasticola"],
+  "plasticola flúo": ["plasticola"],
+  "tempera metalizada": ["tempera"],
+  "témpera metalizada": ["tempera"],
+  "tempera en barra": ["tempera solida", "marcador tempera solida"],
+  "témpera en barra": ["tempera solida"],
+  "tempera barra": ["tempera solida", "marcador tempera solida"],
+
+  // Cartulina flúo
+  "cartulina fluo": ["cartulina lisa", "cartulina"],
+  "cartulina flúo": ["cartulina lisa", "cartulina"],
+  "cartulina fluorescente": ["cartulina lisa", "cartulina"],
+
+  // Hojas / repuestos
+  "hojas oficio color": ["folio oficio", "folio"],
+  "hojas oficio de color": ["folio oficio", "folio"],
+  "repuesto canson n5 blanco": ["repuesto de dibujo n 5 blanco", "repuesto dibujo"],
+  "repuesto canson n5 color": ["repuesto de dibujo n 5 color", "repuesto dibujo"],
+  "repuesto canson n5 negro": ["repuesto de dibujo n 5 negro"],
+  "repuesto n5 blanco": ["repuesto de dibujo n 5 blanco", "repuesto dibujo"],
+  "repuesto n5 color": ["repuesto de dibujo n 5 color", "repuesto dibujo"],
+  "repuesto n5 negro": ["repuesto de dibujo n 5 negro"],
+  "block canson n5 blanco x8": ["repuesto de dibujo n 5 blanco"],
+  "block canson n5 color x8": ["repuesto de dibujo n 5 color"],
+  "block canson n5 negro x8": ["repuesto de dibujo n 5 negro"],
+
+  // Cuadernos
+  "cuaderno tapa blanda 24 hojas": ["cuaderno caligrafia", "cuaderno 24"],
+  "cuaderno 24 hojas tapa blanda": ["cuaderno caligrafia", "cuaderno 24"],
+  "cuaderno abc 48 hojas": ["cuadernos esp.abc rivadavia", "cuaderno abc"],
+  "cuaderno abc rivadavia 48 hojas": ["cuadernos esp.abc rivadavia aula universal x60"],
+
+  // Carpetas
+  "carpeta dibujo n5": ["carpeta tapa cristal", "carpeta"],
+  "carpeta oficio n5 dibujo": ["carpeta tapa cristal", "carpeta"],
+  "carpeta con elastico solapas": ["carpeta solapas", "carpeta 3 solapas"],
+  "carpeta elastico solapas": ["carpeta solapas", "carpeta 3 solapas"],
+  "bibliorato a4": ["carpeta tapa cristal", "bibliorato"],
+
+  // Lapicera violeta / color
+  "lapicera violeta": ["lapicera", "boligrafo"],
+  "lapicera color violeta": ["lapicera", "boligrafo"],
+
+  // Higiene (productos de higiene: aunque no están en el catálogo, Claude puede sugerirlo)
+  "papel higienico": ["papel higienico"],
+  "jabon liquido": ["jabon"],
+  "alcohol en gel": ["alcohol gel", "alcohol"],
+  "rollo de cocina": ["papel cocina"],
+  "rollo papel cocina": ["papel cocina"],
+  "servilletas": ["servilleta"],
+
+  // Artículos especiales / manualidades
+  "aro metalico": ["carpeta", "anillo"],
+  "aros metalicos": ["carpeta", "anillo"],
+  "broche mariposa": ["broche grap", "broche"],
+  "broches mariposa": ["broche grap"],
+  "cinta razo": ["cinta"],
+  "cinta de razo": ["cinta"],
+  "cinta raso": ["cinta"],
+  "papel celofan": ["acetato transparente", "acetato"],
+  "bloque canson cartulinas entretenidas": ["block cartulina entretenida"],
+  "cartulinas entretenidas": ["block cartulina entretenida"],
+  "juego de mesa": ["juego didactico", "juego de geometria"],
+  "libreta indice": ["libreta"],
+  "libreta indice alfabetico": ["libreta"],
+
   // ── Tecnología ───────────────────────────────────────────────────
   "pendrive": ["pendrive"],
   "pen drive": ["pendrive"],
@@ -664,6 +743,16 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
    - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC" o "cuaderno espiral ABC 100 hojas", devolver SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
    - REGLA CRÍTICA: Los mapas en catálogo son GENÉRICOS: "MAPAS Politico N°3" (stock:67) y "MAPAS Fisico N°3" (stock:77). No hay mapas específicos por región (ni planisferio N°3 ni continente americano N°3 separados). Cuando pidan "mapa planisferio N°3", "mapa Argentina división política N°3", o "mapa continente americano N°3", devolver "MAPAS Politico N°3" o "MAPAS Fisico N°3" según corresponda, e indicar al usuario que en la descripción del producto puede seleccionar la región
    - REGLA CRÍTICA: "cartulina color claro" = "Cartulina Lisa Varios Colores" (stock:69)
+   - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
+   - "repuesto canson N°5 blanco/color/negro x8 hojas" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
+   - "fibras punta gruesa x12 (caja)" = buscar "fibra gruesa" o "trazo grueso" en catálogo
+   - "cuaderno ABC Rivadavia 48 hojas espiralado" = "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" (el más cercano disponible)
+   - "tempera en barra" / "tempera sólida" = "Marcador Tempera Solida Fluor Sifap x6"
+   - "lapicera violeta" = cualquier lapicera de color disponible
+   - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
+   - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
+   - "cinta razo/raso bebé" = cinta genérica disponible
+   - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
    - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
