@@ -506,6 +506,91 @@ const SYNONYMS = {
   "calculadora": ["calculadora"],
   "agenda": ["agenda"],
 
+  // ── Nuevos términos 2026 (batch 3) ──────────────────────────────
+
+  // Blocks El Nene / Éxito — nombres exactos del catálogo
+  "block exito n5 blanco": ["block exito nat", "exito nat", "block exito n5"],
+  "block éxito n5 blanco": ["block exito nat", "exito nat"],
+  "block exito n5 color": ["block exito", "exito n5", "block nene color"],
+  "block el nene negro": ["block el nene negro", "el nene negro"],
+  "block el nene afiche": ["block el nene afiche", "nene afiche", "block de dibujo n° 5 afiche"],
+  "block el nene kraft": ["papel madera", "kraft"],
+  "block kraft": ["papel madera"],
+  "papel araña color": ["papel araña", "papel seda", "cartulina lisa"],
+  "papel araña": ["papel araña", "cartulina lisa"],
+
+  // Folios / plásticos
+  "folio n3": ["folio", "folios a4 luma", "sobre plastico"],
+  "folio nro 3": ["folio", "folios a4 luma"],
+  "folio plastico n3": ["folio", "folios a4 luma"],
+  "folios plasticos n3": ["folio", "folios a4 luma"],
+  "carpeta en l transparente": ["carpeta tapa cristal", "carpeta transparente"],
+  "carpeta l transparente": ["carpeta tapa cristal"],
+
+  // Biromes / lapiceras
+  "birome roja": ["boligrafo bic cristal", "bic cristal fashion"],
+  "birome negra": ["boligrafo bic cristal", "bic cristal"],
+  "birome azul": ["boligrafo bic cristal", "bic cristal"],
+  "biromes de colores": ["boligrafo bic cristal fashion", "boligrafo color"],
+  "lapicera frixion": ["lapicera borrable", "boligrafo borrable gel bic"],
+  "lapicera tinta borrable": ["lapicera borrable", "boligrafo borrable gel bic"],
+  "lapicera a cartucho": ["cartucho pelikan", "cartucho parker", "lapicera fuente"],
+  "cartucho azul lavable": ["cartucho pelikan", "cartucho pelikan corto azul", "cartucho parker"],
+  "cartucho tinta azul": ["cartucho pelikan corto azul", "cartucho pelikan"],
+
+  // Fibras / marcadores
+  "fibra trazo grueso": ["fibra", "trazo grueso"],
+  "fibras colores punta gruesa": ["fibra", "trazo grueso"],
+  "lapices gioto": ["lapices de colores", "lapiz color"],
+
+  // Mapas adicionales (todos van a MAPAS Politico/Fisico)
+  "mapa salta politico": ["mapas politico"],
+  "mapa salta fisico": ["mapas fisico"],
+  "mapa de salta": ["mapas politico", "mapas fisico"],
+  "mapa europa": ["mapas politico"],
+  "mapa america del sur": ["mapas politico", "mapas fisico"],
+  "mapa cromo planisferio": ["mapa mural planisferio", "mapas politico"],
+
+  // Repuestos  
+  "repuesto 488 hojas": ["repuesto rivadavia", "repuesto triunfante"],
+  "repuesto rayado 488": ["repuesto rivadavia", "repuesto triunfante"],
+  "repuesto cuadriculado 200": ["repuesto rivadavia", "repuesto"],
+  "block caligrafía n3": ["caligrafia", "block caligrafia"],
+  "block caligrafía": ["caligrafia", "block caligrafia"],
+
+  // Varios útiles
+  "plastico para forrar": ["plastico forrar", "contact", "plasticola"],
+  "papel azul para forrar": ["papel araña", "cartulina lisa"],
+  "etiquetas nombre": ["etiqueta"],
+  "bitacora 12 hojas a4 140grs": ["cuaderno espiral", "bitacora"],
+  "acrilico 200ml": ["tempera", "acrilico"],
+  "acrilico 60ml": ["tempera", "acrilico"],
+  "silicona liquida": ["cola silicona", "adhesivo silicona"],
+  "pincel escolar": ["pincel"],
+
+  // Descartables y artículos de higiene del jardín
+  // NOTA: Estos no están en catálogo. Claude debe indicar "consultar con asesor"
+  "flauta dulce": [],
+  "papel film": [],
+  "rociador": [],
+  "esponja": [],
+  "limpiapipas": [],
+  "vasos descartables": [],
+  "platos descartables": [],
+  "tenedores descartables": [],
+  "cucharillas descartables": [],
+  "bandejas descartables": [],
+  "gotero pipeta": [],
+  "jeringa": [],
+  "bicarbonato": [],
+  "fecula de maiz": [],
+  "cremor tartaro": [],
+  "toallitas humedas": [],
+  "espuma de afeitar": [],
+  "palo hockey": [],
+  "protector bucal": [],
+  "canilleras": [],
+
   // ── Nuevos términos 2026 ─────────────────────────────────────────
   // Fibras / marcadores
   "marca todo": ["pelikan 420", "marcadores pelikan"],
@@ -751,6 +836,18 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
    - "lapicera violeta" = cualquier lapicera de color disponible
    - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
    - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
+   - Artículos de jardín/ciencias (flauta dulce, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos/platos/tenedores descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo — indicar que consulten con un asesor
+   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
+   - "birome roja/negra/azul" = "Boligrafo BIC Cristal" (stock disponible)
+   - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion" (lo más cercano disponible)
+   - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
+   - "folio N°3 plástico" = "Folios A4 LUMA" (stock:206) — aunque es A4, es el folio disponible
+   - "block El Nene negro" = no existe en catálogo — ofrecer "Cartulina Lisa Varios Colores" como alternativa oscura
+   - "block El Nene Éxito N°5 color" = no existe en catálogo — ofrecer REPUESTO DE DIBUJO N5 COLOR LUMA o similar
+   - "mapa de Salta político/físico", "mapa de Europa", "mapa de América del Sur" = no existen mapas específicos por región — ofrecer MAPAS Politico N°3 o N°5 e indicar al cliente que verifique disponibilidad de región específica con un asesor
+   - "papel araña color" = "Papel Araña Color 50X70CM" — verificar si existe en catálogo como "papel araña"
+   - "repuesto de hojas rayadas 488 hojas" = REPUESTO RIVADAVIA N3 u otro repuesto disponible
+   - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
    - "cinta razo/raso bebé" = cinta genérica disponible
    - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
    - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
