@@ -950,6 +950,11 @@ Para cada ítem de la lista, encontrá el producto más parecido del catálogo. 
    - "lapiz negro" = cualquier lapiz negro del catálogo
    - "crayones" = cualquier caja de crayones
    - "tempera" = cualquier tempera disponible
+   - "plastilinas" / "plastilina" = elegí SIEMPRE la que tenga stock > 0: "Plastilina X10 Alba" (stock:15), "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA elijas "Plastilina Escolar KEYROAD" que tiene stock:0
+   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
+   - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
+   - "hojas A4 de colores" / "hojas de máquina A4 de colores" = "RESMA A4 210X219X100H.LUMA COLOR" o similar con stock
+   - REGLA CRÍTICA: El stock del catálogo indica unidades del PAQUETE en depósito, NO la cantidad de items del producto. Si el cliente pide 10 plastilinas, elegí cualquier plastilina con stock > 0 sin importar si el stock es 5, 15 o 100. El stock NO necesita ser >= la quantity pedida.
 
 3. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
 
