@@ -962,5 +962,97 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
       
       // Si el texto extraído es muy corto, tiene muchos caracteres raros, o parece
       // tabla rota (muchos números seguidos de espacios), tratar como imagen con visión
-      const isGarbled = !rawText || rawText.trim().length < 10 ||
-        (rawText.trim().length < 500 && /[
+            const isGarbled = !rawText || rawText.trim().length < 10 ||
+        (rawText.split("\n").filter(l => l.trim()).length < 3 && rawText.length > 50);
+
+      if (isGarbled && file.mimetype === "application/pdf") {
+        // Intentar con visión: convertir primera página a imagen
+        try {
+          parsedItems = await parseListFromPdfVision(file.path);
+        } catch (visionErr) {
+          return res.status(400).json({ error: "No se pudo leer el archivo. Intentá con una foto de la lista." });
+        }
+      } else if (!rawText || rawText.trim().length < 10) {
+        return res.status(400).json({ error: "No se pudo leer texto del archivo." });
+      } else {
+        try {
+          parsedItems = await parseListWithAI(rawText);
+        } catch (aiErr) {
+          // Si el parseo de texto falla (lista muy larga o compleja), intentar con visión PDF
+          if (file.mimetype === "application/pdf") {
+            parsedItems = await parseListFromPdfVision(file.path);
+          } else {
+            throw aiErr;
+          }
+        }
+      }
+    }
+
+    const matchedItems = await matchWithCatalog(parsedItems);
+
+    // Enriquecer con slug de URL — buscar por SKU (más confiable que por ID)
+    const catalogBySku = Object.fromEntries(
+      CATALOG.filter(p => p.sku).map(p => [String(p.sku).trim(), p])
+    );
+    const catalogByName = {};
+    CATALOG.forEach(p => { catalogByName[p.name.toLowerCase().trim()] = p; });
+
+    matchedItems.forEach(item => {
+      if (!item.matched) return;
+      let prod = null;
+
+      // 1. Buscar por SKU
+      if (item.catalogSku) {
+        prod = catalogBySku[String(item.catalogSku).trim()];
+      }
+      // 2. Buscar por nombre exacto
+      if (!prod && item.catalogName) {
+        prod = catalogByName[item.catalogName.toLowerCase().trim()];
+      }
+      // 3. Buscar por ID como fallback
+      if (!prod && item.catalogId) {
+        prod = CATALOG.find(p => p.id === item.catalogId);
+      }
+
+      if (prod) item.catalogSlug = prod.slug || null;
+    });
+
+    const found = matchedItems.filter((i) => i.matched);
+    const notFound = matchedItems.filter((i) => !i.matched);
+    const total = found.reduce((sum, i) => sum + i.subtotal, 0);
+    const coverage = Math.round((found.length / matchedItems.length) * 100);
+
+    res.json({
+      success: true,
+      summary: {
+        totalItems: matchedItems.length,
+        foundItems: found.length,
+        notFoundItems: notFound.length,
+        coveragePercent: coverage,
+        estimatedTotal: total,
+      },
+      items: matchedItems,
+      rawText: "",
+    });
+  } catch (err) {
+    console.error("Error:", err.message);
+    res.status(500).json({ error: "Error procesando la lista: " + err.message });
+  } finally {
+    if (file) fs.unlink(file.path, () => {});
+  }
+});
+
+// ─── CATÁLOGO PÚBLICO ──────────────────────────────────────────────
+app.get("/api/catalogo", (req, res) => res.json(CATALOG));
+
+// ─── SERVIR WIDGET COMO PÁGINA ────────────────────────────────────
+app.get("/widget", (req, res) => {
+  const widgetPath = path.resolve(__dirname, "widget.html");
+  console.log("Buscando widget en:", widgetPath);
+  res.sendFile(widgetPath);
+});
+
+app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
