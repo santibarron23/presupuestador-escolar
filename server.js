@@ -88,15 +88,14 @@ Respondé SOLO con el JSON, sin texto adicional.`,
       headers: {
         "x-api-key": ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
-        "anthropic-beta": "pdfs-2024-09-25",
         "Content-Type": "application/json",
       },
     }
   );
 
-  const content = response.data.content[0].text.trim();
-  const jsonStr = content.replace(/```json|```/g, "").trim();
-  return JSON.parse(jsonStr);
+  const pdfRespText = response.data.content[0].text.trim();
+  const pdfJsonStr = pdfRespText.replace(/```json|```/g, "").trim();
+  return JSON.parse(pdfJsonStr);
 }
 
 // ─── PARSEAR LISTA DESDE IMAGEN (visión de Claude) ────────────────
