@@ -42,6 +42,63 @@ async function extractText(filePath, mimeType) {
   throw new Error("Formato no soportado");
 }
 
+// ─── PARSEAR PDF COMO IMAGEN CUANDO EL TEXTO SALE GARBLED ──────────
+async function parseListFromPdfVision(pdfPath) {
+  // Convertir PDF a imagen usando pdf-poppler o similar
+  // Como fallback: leer el PDF en base64 y enviarlo como documento a Claude
+  const pdfBuffer = fs.readFileSync(pdfPath);
+  const base64 = pdfBuffer.toString("base64");
+
+  const response = await axios.post(
+    "https://api.anthropic.com/v1/messages",
+    {
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data: base64 },
+            },
+            {
+              type: "text",
+              text: `Este es un PDF de una lista de útiles escolares. Puede ser una tabla compleja con múltiples columnas por grado.
+Leé TODOS los productos únicos que aparecen en la lista, incluyendo los de todas las columnas/grados.
+
+REGLAS IMPORTANTES:
+1. Si es una tabla con columnas por grado (1°, 2°, 3°, etc.), listá cada producto UNA SOLA VEZ con quantity: 1.
+2. Si hay cantidades específicas indicadas (ej: "2 carpetas"), usá esa cantidad.
+3. Si el número es parte del producto (ej: "50 hojas A4"), quantity: 1 e incluí el número en el nombre.
+4. Si una línea tiene múltiples productos separados, creá un ítem por cada uno.
+5. Ignorá encabezados, nombres de colegios, grados, fechas, precios y texto irrelevante.
+6. Ignorá artículos de higiene (jabón, papel higiénico, etc.) y de educación física (palo hockey, etc.).
+
+Devolvé SOLO un JSON válido con este formato:
+[{"item": "nombre del producto", "quantity": número, "notes": "detalles extra si hay"}]
+
+Respondé SOLO con el JSON, sin texto adicional.`,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "pdfs-2024-09-25",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const content = response.data.content[0].text.trim();
+  const jsonStr = content.replace(/```json|```/g, "").trim();
+  return JSON.parse(jsonStr);
+}
+
 // ─── PARSEAR LISTA DESDE IMAGEN (visión de Claude) ────────────────
 async function parseListFromImage(filePath, mimeType) {
   const imageBuffer = fs.readFileSync(filePath);
@@ -51,7 +108,7 @@ async function parseListFromImage(filePath, mimeType) {
     "https://api.anthropic.com/v1/messages",
     {
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
+      max_tokens: 4000,
       messages: [
         {
           role: "user",
@@ -101,7 +158,7 @@ async function parseListWithAI(rawText) {
     "https://api.anthropic.com/v1/messages",
     {
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
+      max_tokens: 4000,
       messages: [
         {
           role: "user",
@@ -903,77 +960,8 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
       parsedItems = await parseListFromImage(file.path, file.mimetype);
     } else {
       const rawText = await extractText(file.path, file.mimetype);
-      if (!rawText || rawText.trim().length < 10) {
-        return res.status(400).json({ error: "No se pudo leer texto del archivo." });
-      }
-      parsedItems = await parseListWithAI(rawText);
-    }
-
-    const matchedItems = await matchWithCatalog(parsedItems);
-
-    // Enriquecer con slug de URL — buscar por SKU (más confiable que por ID)
-    const catalogBySku = Object.fromEntries(
-      CATALOG.filter(p => p.sku).map(p => [String(p.sku).trim(), p])
-    );
-    const catalogByName = {};
-    CATALOG.forEach(p => { catalogByName[p.name.toLowerCase().trim()] = p; });
-
-    matchedItems.forEach(item => {
-      if (!item.matched) return;
-      let prod = null;
-
-      // 1. Buscar por SKU
-      if (item.catalogSku) {
-        prod = catalogBySku[String(item.catalogSku).trim()];
-      }
-      // 2. Buscar por nombre exacto
-      if (!prod && item.catalogName) {
-        prod = catalogByName[item.catalogName.toLowerCase().trim()];
-      }
-      // 3. Buscar por ID como fallback
-      if (!prod && item.catalogId) {
-        prod = CATALOG.find(p => p.id === item.catalogId);
-      }
-
-      if (prod) item.catalogSlug = prod.slug || null;
-    });
-
-    const found = matchedItems.filter((i) => i.matched);
-    const notFound = matchedItems.filter((i) => !i.matched);
-    const total = found.reduce((sum, i) => sum + i.subtotal, 0);
-    const coverage = Math.round((found.length / matchedItems.length) * 100);
-
-    res.json({
-      success: true,
-      summary: {
-        totalItems: matchedItems.length,
-        foundItems: found.length,
-        notFoundItems: notFound.length,
-        coveragePercent: coverage,
-        estimatedTotal: total,
-      },
-      items: matchedItems,
-      rawText: "",
-    });
-  } catch (err) {
-    console.error("Error:", err.message);
-    res.status(500).json({ error: "Error procesando la lista: " + err.message });
-  } finally {
-    if (file) fs.unlink(file.path, () => {});
-  }
-});
-
-// ─── CATÁLOGO PÚBLICO ──────────────────────────────────────────────
-app.get("/api/catalogo", (req, res) => res.json(CATALOG));
-
-// ─── SERVIR WIDGET COMO PÁGINA ────────────────────────────────────
-app.get("/widget", (req, res) => {
-  const widgetPath = path.resolve(__dirname, "widget.html");
-  console.log("Buscando widget en:", widgetPath);
-  res.sendFile(widgetPath);
-});
-
-app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
+      
+      // Si el texto extraído es muy corto, tiene muchos caracteres raros, o parece
+      // tabla rota (muchos números seguidos de espacios), tratar como imagen con visión
+      const isGarbled = !rawText || rawText.trim().length < 10 ||
+        (rawText.trim().length < 500 && /[
