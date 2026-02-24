@@ -26,7 +26,8 @@
       background: var(--paper);
       color: var(--ink);
       min-height: 100vh;
-      padding: 2rem 1rem;
+      padding: 1rem 0.5rem;
+      overflow-x: hidden;
     }
 
     /* Cuando se embebe en iframe, eliminar padding y fondo propio */
@@ -39,6 +40,8 @@
     .widget {
       max-width: 780px;
       margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     /* ── HEADER ── */
