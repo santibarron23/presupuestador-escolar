@@ -44,6 +44,18 @@ async function extractText(filePath, mimeType) {
 
 
 
+// ─── JSON PARSER SEGURO ───────────────────────────────────────────────
+function safeJsonParse(text) {
+  try {
+    const clean = text.replace(/```json|```/g, "").trim();
+    const match = clean.match(/\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]);
+    return JSON.parse(clean);
+  } catch (e) {
+    throw new Error("No se pudo parsear la respuesta de la IA");
+  }
+}
+
 // ─── HELPERS COMUNES ─────────────────────────────────────────────────
 function buildCatalogText(items) {
   const relevantCatalog = preFilterCatalog(items);
