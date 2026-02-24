@@ -638,6 +638,27 @@
       .item-row { grid-template-columns: 1fr auto; }
       .loading-steps { gap: 1rem; }
     }
+  
+    .btn-pdf {
+      flex: 1.5;
+      padding: 0.85rem;
+      background: white;
+      color: #c0392b;
+      border: 1.5px solid #c0392b;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-pdf:hover { background: #fff5f5; transform: translateY(-1px); }
+    .btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
   </style>
 </head>
 <body>
@@ -880,6 +901,9 @@
       `;
     }
 
+    // Guardar datos para PDF
+    window._presupuestoData = { items, summary };
+
     html += `
       <div class="total-bar">
         <div>
@@ -891,6 +915,10 @@
 
       <div class="actions">
         <button class="btn-secondary" onclick="location.reload()">↺ Nueva lista</button>
+        <button class="btn-pdf" onclick="descargarPDF()" id="btn-pdf">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+          Descargar presupuesto PDF
+        </button>
         <button class="btn-primary" onclick="comprar()">Agregar todo al carrito →</button>
       </div>
     `;
@@ -901,6 +929,38 @@
     container.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+
+  // ─── DESCARGAR PDF ────────────────────────────────────────────
+  async function descargarPDF() {
+    const btn = document.getElementById("btn-pdf");
+    if (!window._presupuestoData) return;
+    btn.disabled = true;
+    btn.textContent = "Generando PDF...";
+    try {
+      const res = await fetch(`${API_BASE}/api/presupuesto-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: window._presupuestoData.items,
+          summary: window._presupuestoData.summary,
+          schoolName: document.querySelector(".file-name")?.textContent || ""
+        })
+      });
+      if (!res.ok) throw new Error("Error generando PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "presupuesto-lerma.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("No se pudo generar el PDF. Intentá de nuevo.");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg> Descargar presupuesto PDF`;
+    }
+  }
 
   // ─── PRODUCT MODAL ────────────────────────────────────────────
   function openModal(idx) {
