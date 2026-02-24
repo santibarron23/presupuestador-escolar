@@ -930,36 +930,135 @@
   }
 
 
-  // ─── DESCARGAR PDF ────────────────────────────────────────────
-  async function descargarPDF() {
-    const btn = document.getElementById("btn-pdf");
+  // ─── DESCARGAR PDF (cliente, sin dependencias) ───────────────
+  function descargarPDF() {
     if (!window._presupuestoData) return;
-    btn.disabled = true;
-    btn.textContent = "Generando PDF...";
-    try {
-      const res = await fetch(`${API_BASE}/api/presupuesto-pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: window._presupuestoData.items,
-          summary: window._presupuestoData.summary,
-          schoolName: document.querySelector(".file-name")?.textContent || ""
-        })
-      });
-      if (!res.ok) throw new Error("Error generando PDF");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "presupuesto-lerma.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert("No se pudo generar el PDF. Intentá de nuevo.");
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg> Descargar presupuesto PDF`;
+    const { items, summary } = window._presupuestoData;
+    const found    = items.filter(i => i.matched);
+    const notFound = items.filter(i => !i.matched);
+    const total    = summary.estimatedTotal || 0;
+    const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
+    const date = new Date().toLocaleDateString("es-AR");
+
+    const foundRows = found.map((item, i) => `
+      <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${item.quantity || 1}</td>
+        <td style="color:#888;font-size:0.8em">${item.catalogSku || item.catalogId || '-'}</td>
+        <td>${item.catalogName || item.requestedItem || ''}</td>
+        <td style="text-align:right;color:#555">${fmt(item.unitPrice || 0)}</td>
+        <td style="text-align:right;font-weight:700;color:#2d7a3a">${fmt(item.subtotal || 0)}</td>
+      </tr>`).join('');
+
+    const notFoundRows = notFound.map((item, i) => `
+      <tr style="background:${i%2===0?'#fff8f8':'#fff'}">
+        <td>${item.quantity || 1}</td>
+        <td colspan="4" style="color:#c0392b">${item.requestedItem || ''}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Presupuesto Librería Lerma</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #222; }
+    .header { background: #2d7a3a; color: white; padding: 20px 30px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { font-size: 22px; }
+    .header p { font-size: 11px; opacity: 0.85; margin-top: 4px; }
+    .header .date { font-size: 11px; opacity: 0.8; }
+    .summary { background: #f5f5f5; border: 1px solid #ddd; margin: 20px 30px; padding: 14px 20px; border-radius: 6px; display:flex; justify-content:space-between; align-items:center; }
+    .summary .total-val { font-size: 22px; font-weight: 700; color: #2d7a3a; }
+    .summary .total-lbl { font-size: 10px; color: #888; }
+    .summary .meta { font-size: 11px; color: #666; }
+    .section { margin: 0 30px 20px; }
+    .section-title { font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; }
+    .title-green { background: #2d7a3a; color: white; }
+    .title-red   { background: #c0392b; color: white; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #2d7a3a; color: white; padding: 7px 10px; text-align: left; font-size: 11px; }
+    th.right, td.right { text-align: right; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    .total-row { background: #2d7a3a !important; color: white; }
+    .total-row td { color: white; font-weight: 700; font-size: 14px; border:none; }
+    table.not-found th { background: #c0392b; }
+    .footer { background: #2d7a3a; color: white; text-align: center; padding: 12px; font-size: 10px; margin-top: 30px; }
+    .note { font-size: 10px; color: #999; margin: 8px 30px; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none; }
     }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Librería Lerma</h1>
+      <p>Presupuesto Escolar 2026</p>
+    </div>
+    <div class="date">${date}</div>
+  </div>
+
+  <div class="summary">
+    <div class="meta">
+      Artículos encontrados: <strong>${found.length}</strong> de <strong>${items.length}</strong><br>
+      Artículos no disponibles: <strong>${notFound.length}</strong>
+    </div>
+    <div style="text-align:right">
+      <div class="total-lbl">TOTAL ESTIMADO</div>
+      <div class="total-val">${fmt(total)}</div>
+    </div>
+  </div>
+
+  ${found.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-green">✓ Artículos disponibles</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th style="width:80px">SKU</th>
+          <th>PRODUCTO</th>
+          <th class="right" style="width:100px">P. UNIT.</th>
+          <th class="right" style="width:110px">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>${foundRows}</tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4">TOTAL ESTIMADO</td>
+          <td style="text-align:right">${fmt(total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>` : ''}
+
+  ${notFound.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-red">⚠ Artículos no disponibles — Consultá con un asesor</div>
+    <table class="not-found">
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th>ARTÍCULO SOLICITADO</th>
+        </tr>
+      </thead>
+      <tbody>${notFoundRows}</tbody>
+    </table>
+  </div>
+  <p class="note">* Estos artículos no están disponibles en el catálogo online. Consultá en la tienda o por WhatsApp.</p>` : ''}
+
+  <div class="footer">
+    Librería Lerma &nbsp;|&nbsp; Belgrano 635, Salta &nbsp;|&nbsp; Tel: 0387-4314736 &nbsp;|&nbsp; librerialerma.com.ar
+  </div>
+
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
   }
 
   // ─── PRODUCT MODAL ────────────────────────────────────────────
