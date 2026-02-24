@@ -97,7 +97,32 @@ async function parseAndMatchFromText(rawText) {
 
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
-2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
+REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
+   - "folio" / "folios" → SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA mapear a carpeta, bibliorato, ni ningún otro producto.
+   - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
+   - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
+   - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
+   - "lapiz" / "lápiz" / "lápices" → NUNCA recomendar bolígrafo, birome ni lapicera. Siempre recomendar un lápiz (negro o de colores según contexto).
+   - "resma" / "resmas" → SIEMPRE se refiere a hojas A4 blancas. Matchear con "RESMA A4 X100 HOJAS LUMA COLOR" u otras resmas A4. Igualmente, "hojas A4" o "hojas de máquina" → resma A4.
+   - "afiche color" / "papel afiche" / "papel de color claro" → SIEMPRE matchear con "Papel afiche vs colores" (hoja suelta). NUNCA recomendar un block de dibujo para esta búsqueda.
+   - "pote de acrílico" / "pintura acrílica" / "acrílico para pintar" → SIEMPRE matchear con pinturas acrílicas en pote como "Base Acrilica Eterna 200 cc" (stock:2), "Set Acrilico Valija ETERNA" (stock:1). NUNCA recomendar marcadores acrílicos ni marcadores en general.
+   - "block de afiches" → "Block De Dibujo N° 5 Afiche El Nene" (stock:10). Distinto de "papel afiche" suelto.
+   - "goma eva lisa" → "Goma Eva Lisa" (stock:48). NUNCA confundir con juegos de encastre.
+   - "goma eva con brillo" / "goma eva glitter" → "Goma Eva C/Glitter" (stock:49).
+
+2. Buscá por CONCEPTO, no por nombre exacto. Reglas críticas de matcheo:
+
+   ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
+   - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
+   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
+   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
+   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
+   - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
+   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
+   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
+   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
+
+   Equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
    - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
    - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
@@ -221,7 +246,32 @@ async function parseAndMatchFromImage(filePath, mimeType) {
 
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
-2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
+REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
+   - "folio" / "folios" → SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA mapear a carpeta, bibliorato, ni ningún otro producto.
+   - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
+   - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
+   - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
+   - "lapiz" / "lápiz" / "lápices" → NUNCA recomendar bolígrafo, birome ni lapicera. Siempre recomendar un lápiz (negro o de colores según contexto).
+   - "resma" / "resmas" → SIEMPRE se refiere a hojas A4 blancas. Matchear con "RESMA A4 X100 HOJAS LUMA COLOR" u otras resmas A4. Igualmente, "hojas A4" o "hojas de máquina" → resma A4.
+   - "afiche color" / "papel afiche" / "papel de color claro" → SIEMPRE matchear con "Papel afiche vs colores" (hoja suelta). NUNCA recomendar un block de dibujo para esta búsqueda.
+   - "pote de acrílico" / "pintura acrílica" / "acrílico para pintar" → SIEMPRE matchear con pinturas acrílicas en pote como "Base Acrilica Eterna 200 cc" (stock:2), "Set Acrilico Valija ETERNA" (stock:1). NUNCA recomendar marcadores acrílicos ni marcadores en general.
+   - "block de afiches" → "Block De Dibujo N° 5 Afiche El Nene" (stock:10). Distinto de "papel afiche" suelto.
+   - "goma eva lisa" → "Goma Eva Lisa" (stock:48). NUNCA confundir con juegos de encastre.
+   - "goma eva con brillo" / "goma eva glitter" → "Goma Eva C/Glitter" (stock:49).
+
+2. Buscá por CONCEPTO, no por nombre exacto. Reglas críticas de matcheo:
+
+   ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
+   - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
+   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
+   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
+   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
+   - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
+   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
+   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
+   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
+
+   Equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
    - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
    - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
@@ -346,7 +396,32 @@ async function parseAndMatchFromPdfVision(pdfPath) {
 
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
-2. Buscá por CONCEPTO, no por nombre exacto. Ejemplos de equivalencias válidas:
+REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
+   - "folio" / "folios" → SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA mapear a carpeta, bibliorato, ni ningún otro producto.
+   - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
+   - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
+   - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
+   - "lapiz" / "lápiz" / "lápices" → NUNCA recomendar bolígrafo, birome ni lapicera. Siempre recomendar un lápiz (negro o de colores según contexto).
+   - "resma" / "resmas" → SIEMPRE se refiere a hojas A4 blancas. Matchear con "RESMA A4 X100 HOJAS LUMA COLOR" u otras resmas A4. Igualmente, "hojas A4" o "hojas de máquina" → resma A4.
+   - "afiche color" / "papel afiche" / "papel de color claro" → SIEMPRE matchear con "Papel afiche vs colores" (hoja suelta). NUNCA recomendar un block de dibujo para esta búsqueda.
+   - "pote de acrílico" / "pintura acrílica" / "acrílico para pintar" → SIEMPRE matchear con pinturas acrílicas en pote como "Base Acrilica Eterna 200 cc" (stock:2), "Set Acrilico Valija ETERNA" (stock:1). NUNCA recomendar marcadores acrílicos ni marcadores en general.
+   - "block de afiches" → "Block De Dibujo N° 5 Afiche El Nene" (stock:10). Distinto de "papel afiche" suelto.
+   - "goma eva lisa" → "Goma Eva Lisa" (stock:48). NUNCA confundir con juegos de encastre.
+   - "goma eva con brillo" / "goma eva glitter" → "Goma Eva C/Glitter" (stock:49).
+
+2. Buscá por CONCEPTO, no por nombre exacto. Reglas críticas de matcheo:
+
+   ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
+   - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
+   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
+   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
+   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
+   - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
+   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
+   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
+   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
+
+   Equivalencias válidas:
    - "tijerita" = "tijera" (cualquier tijera del catálogo)
    - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
    - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
