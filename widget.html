@@ -754,11 +754,31 @@
   let selectedFile = null;
 
   function reportHeight() {
-    const height = document.body.scrollHeight;
+    // Antes de mostrar resultados, reportar solo hasta el botón "Calcular presupuesto"
+    const resultsDiv = document.getElementById("results");
+    const hasResults = resultsDiv && resultsDiv.classList.contains("show");
+    const loadingDiv = document.getElementById("loading");
+    const isLoading = loadingDiv && loadingDiv.style.display !== "none" && loadingDiv.style.display !== "";
+
+    let height;
+    if (hasResults || isLoading) {
+      height = document.body.scrollHeight;
+    } else {
+      // Solo hasta el botón inclusive
+      const btn = document.getElementById("btnPresupuestar");
+      if (btn) {
+        const rect = btn.getBoundingClientRect();
+        height = rect.bottom + window.scrollY + 24;
+      } else {
+        height = document.body.scrollHeight;
+      }
+    }
     window.parent.postMessage({ height }, "*");
   }
   const ro = new ResizeObserver(reportHeight);
   ro.observe(document.body);
+  // También reportar al cargar
+  window.addEventListener("load", () => setTimeout(reportHeight, 300));
 
   // ─── DRAG & DROP ──────────────────────────────────────────────
   const dropZone = document.getElementById("dropZone");
@@ -939,6 +959,7 @@
     container.innerHTML = html;
     container.classList.add("show");
     container.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(reportHeight, 100);
   }
 
 
