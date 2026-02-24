@@ -29,6 +29,13 @@
       padding: 2rem 1rem;
     }
 
+    /* Cuando se embebe en iframe, eliminar padding y fondo propio */
+    html.in-iframe body {
+      padding: 0;
+      background: transparent;
+      min-height: unset;
+    }
+
     .widget {
       max-width: 780px;
       margin: 0 auto;
