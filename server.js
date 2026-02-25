@@ -126,8 +126,8 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    Equivalencias completas (producto solicitado → producto en catálogo):
 
    ESCRITURA Y GRAFITO:
-   - "lápiz de grafito" / "lápices de grafito" = "Lapiz Negro" (están cargados como Lápiz Negro — Lapiz Negro Bic Evolution, Faber Castell Gold, Stabilo, etc.)
-   - "lapiz negro" = cualquier Lápiz Negro del catálogo con stock
+   - "lápiz de grafito" / "lápices de grafito" / "lapiz negro" / "lapiz HB" = preferir "Lapiz Negro Bic Evolution Hb" (stock:48) como primera opción. Alternativas: Faber Castell Gold (stock:31), Stabilo 282 (stock:18), Plantec (stock:10)
+   - "borrador" / "goma de borrar" / "goma borrar" = "Goma de Borrar 2 BANDERAS Tinta/Lapiz" (stock:20) o "Goma de Borrar 2 BANDERAS Negra" (stock:8) como primera opción
    - "birome" / "birome roja/negra/azul" = "Boligrafo BIC Cristal"
    - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion"
    - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
@@ -135,7 +135,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "portaminas" = cualquier portaminas del catálogo
 
    ADHESIVOS:
-   - "voligoma" / "boligoma" / "voligomas grandes" = "Adhesivo VOLIGOMA" (stock:43) — dentro del artículo se elige el tamaño
+   - "voligoma" / "boligoma" / "voligomas grandes" / "adhesivo voligoma" = "Adhesivo VOLIGOMA" (stock:43) — primera y única opción, dentro del artículo se elige el tamaño. SIEMPRE matchear, hay stock
    - "plasticola" / "plasticola escolar" = "Adhesivo Escolar STA" (stock:36) o "Adhesivo Plasticola Color 40 Cc" (stock:8)
    - "plasticola con glitter" / "adhesivo con glitter" / "cola glitter" = "Adhesivo con Glitter PELIKAN" (stock:5)
    - "barritas de silicona gruesa" / "barras de silicona" = "Barra Adhesiva de Silicona P/Pistola" (stock:474) — dentro del artículo se elige el espesor
@@ -180,17 +180,20 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "resaltador" = cualquier resaltador del catálogo con stock
 
    GEOMETRÍA Y REGLAS:
-   - "regla" / "regla escolar" = cualquier regla escolar del catálogo con stock (están como "Regla Escolar")
-   - "set de geometría" / "juego de geometría" = "Juego De Geometria Maped 30Cm - 4 Unidades" (stock:5) o "Juego De Geometria Maped 20Cm - 3 Unidades" (stock:6)
-   - "escuadra" / "transportador" = buscar en catálogo dentro de geometría
+   - "regla" / "regla escolar" = "Regla escolar de 20Cm. Acrilica marca Maped" (stock:15) o "Regla escolar de 30Cm. marca Pelikan" (stock:9)
+   - "regla flexible" / "regla blanda" = "Regla escolar de 30Cm. marca Pelikan" (stock:9) — es la más flexible del catálogo
+   - "regla dura 20cm" / "regla 20cm" = "Regla escolar de 20Cm. Acrilica marca Maped" (stock:15)
+   - "set de geometría" / "juego de geometría" / "elementos de geometría" = "Juego De Geometria Maped 30Cm - 4 Unidades" (stock:5) o "Juego De Geometria Maped 20Cm - 3 Unidades" (stock:6) — incluye regla, escuadra, transportador y compas
+   - "compas" / "compás escolar" = "Compas Pizzini Pk630 Tecnico" (stock:5)
+   - "escuadra" / "transportador" = buscar en catálogo dentro de juego de geometría
 
    PINCELES:
    - "pincel número 4" / "pincel N°4" / "pincel escolar" = "PINCEL KOBY REDONDO" (stock:5) — dentro del artículo se elige el número
    - "set de pinceles" = "Set De Pinceles Chatos X 8 Sabonis" (stock:6)
 
    CARPETAS:
-   - "carpeta oficio 3 solapas con elástico" / "carpeta 3 solapas" = "Carpeta 3 Solapas Carton Color" (stock:10) o "Carpeta 3 Solapas Kraft" (stock:7) — dentro del artículo se elige tamaño (A4 u oficio)
-   - "carpeta en L transparente" / "tapa cristal" = "Carpeta Tapa Cristal A4" u similar
+   - "carpeta oficio 3 solapas con elástico" / "carpeta 3 solapas" / "carpeta 3 solapas elástico" = "Carpeta 3 Solapas Carton Color" (stock:10) o "Carpeta 3 Solapas Kraft" (stock:7) — dentro del artículo se elige tamaño (A4 u oficio). SIEMPRE matchear, hay stock
+   - "carpeta en L transparente" / "tapa cristal" / "carpeta plástica transparente" / "carpeta transparente con nepaco" / "carpeta cristal" = "Carpeta Tapa Cristal A4" (stock:27) — SIEMPRE matchear, hay stock
    - "folio N°3 plástico" / "folio" = "Folios A4 LUMA" (stock:206) — dentro del artículo se elige el tamaño
 
    GLOBOS Y OTROS MATERIALES:
@@ -211,6 +214,24 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "mapa planisferio" / "mapa continente americano" / "mapa Europa" = "MAPAS Politico N°3" o "MAPAS Fisico N°3" — indicar que el cliente verifique la región disponible con un asesor
    - "mapa mural planisferio" = "Mapa Mural Planisferio"
 
+   MATERIALES DE ARTE Y PLÁSTICA:
+   - "papel crepé" / "papel crepe" = "Papel Crepe Perlado surtidos" (stock:15) o "PAPEL CREPE SIFAP EN TIRAS COLORES CLASICO" (stock:3)
+   - "papel crepé blanco" = "Papel Crepe Perlado surtidos" (stock:15) — elegir color blanco dentro del artículo
+   - "papel crepé celeste" = "Papel Crepe Perlado surtidos" (stock:15) — elegir color celeste
+   - "papel contact" / "plancha contact" / "plancha contac" / "contac transparente" = "Papel Contact Transparente X10M. ORITEC" (stock:10) o "Papel Contact Transparente X10M. Muresco" (stock:8)
+   - "acuarela" / "acuarelas" = "ACUARELA x12 SIFAP POCKET" (stock:5) o "Acuarela Sifap x 12 Colores + Paleta + Pincel" (stock:30)
+   - "pote de tempera" / "tempera en pote" / "tempera color" / "tempera celeste/naranja/etc" = "Tempera Alba Magic En Pote X 275G" (stock:9) o "Tempera FLUO Alba Magic En Pote X 275G" (stock:15) o "Tempera Surtida x 10 unidades Alba Magic" (stock:16)
+   - "caja de fibras" / "fibras x12" / "caja de fibrones" = "FIBRA COLOR X12 EZCO (NEON + PASTEL)" (stock:5) o "FIBRA COLOR X12 CARIOCA PRISMA" (stock:3)
+   - "caja lápices de colores x12" / "lapices de colores" = "LAPIZ COLOR X12 L.CARIOCA 4.0" (stock:4) o "LAPIZ COLOR x12 PELIKAN JUMBO" (stock:3)
+   - "caja de crayones x12" / "paquete crayones" = "Crayones X12 Maped Largos Plasticlean" (stock:10) o "CRAYONES X12 CARIOCA ARTISTICOS" (stock:3)
+   - "crayones cremosos" / "crayones gruesos" = "Crayones X12 Maped Largos Plasticlean" (stock:10) como opción más cercana
+   - "multibase" / "multibase goma eva" / "equipo multibase" = "Multibase X 150 Piezas De Madera" (stock:5)
+   - "pincel chato N°4" / "pincel chato escolar" = "PINCEL KOBY REDONDO" (stock:5) — elegir número dentro del artículo
+   - "pincel punta chata N°18" / "pincel N°18" = "PINCEL KOBY REDONDO" (stock:5) — elegir número dentro del artículo
+   - "pincel punta redonda" = "PINCEL KOBY REDONDO" (stock:5)
+   - "fibron recargable negro" = "Marcador P/ Pizarra Recargable TRABI 450 PLUS X4 Surtidos" (stock:7)
+   - "fibra jumbo" / "caja fibrones jumbo" = "FIBRA COLOR X10 KOBY JUMBO" (stock:5) o "FIBRA COLOR X10 FILGO JUMBO" (stock:5)
+
    NO DISPONIBLES (indicar "consultá con un asesor"):
    - Colorante vegetal en pasta: NO tenemos
    - Tapas plásticas tamaño oficio: NO tenemos
@@ -218,7 +239,16 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - Block de hojas de papel madera: sin stock actualmente
    - Artículos de higiene (papel higiénico, jabón, alcohol en gel): NO están en catálogo
    - Artículos de jardín/ciencias (flauta, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
+   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras, equipo deportivo, remera colegio, zapatillas): NO están en catálogo
+   - Libros escolares (libros de inglés, libros de matemática, Team Together, Biblias, libros de cuento para el jardín): NO están en catálogo — indicar que consulten con un asesor o librería especializada
+   - Rodillo de pintura: NO está en catálogo
+   - Papel araña: NO está en catálogo
+   - Crayones cremosos específicos: no existe esa variante — ofrecer "Crayones X12 Maped" como alternativa
+   - Juego didáctico / juego de memoria / rompecabezas: NO están en catálogo
+   - Pulverizador / rociador: NO está en catálogo
+   - Botones, telas, lanillas, broches de madera: NO están en catálogo
+   - Tablet: NO está en catálogo
+   - Taza, servilleta, cepillo de dientes: NO están en catálogo
 
    REGLA CRÍTICA DE STOCK: El campo "stock" del catálogo indica unidades del PAQUETE disponibles en depósito, NO la cantidad de items del producto. El stock NO necesita ser >= la quantity pedida para matchear.
 
@@ -329,7 +359,16 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
    - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
    - Artículos de jardín/ciencias (flauta dulce, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos/platos/tenedores descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo — indicar que consulten con un asesor
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
+   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras, equipo deportivo, remera colegio, zapatillas): NO están en catálogo
+   - Libros escolares (libros de inglés, libros de matemática, Team Together, Biblias, libros de cuento para el jardín): NO están en catálogo — indicar que consulten con un asesor o librería especializada
+   - Rodillo de pintura: NO está en catálogo
+   - Papel araña: NO está en catálogo
+   - Crayones cremosos específicos: no existe esa variante — ofrecer "Crayones X12 Maped" como alternativa
+   - Juego didáctico / juego de memoria / rompecabezas: NO están en catálogo
+   - Pulverizador / rociador: NO está en catálogo
+   - Botones, telas, lanillas, broches de madera: NO están en catálogo
+   - Tablet: NO está en catálogo
+   - Taza, servilleta, cepillo de dientes: NO están en catálogo
    - "birome roja/negra/azul" = "Boligrafo BIC Cristal" (stock disponible)
    - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion" (lo más cercano disponible)
    - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
@@ -479,7 +518,16 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
    - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
    - Artículos de jardín/ciencias (flauta dulce, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos/platos/tenedores descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo — indicar que consulten con un asesor
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
+   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras, equipo deportivo, remera colegio, zapatillas): NO están en catálogo
+   - Libros escolares (libros de inglés, libros de matemática, Team Together, Biblias, libros de cuento para el jardín): NO están en catálogo — indicar que consulten con un asesor o librería especializada
+   - Rodillo de pintura: NO está en catálogo
+   - Papel araña: NO está en catálogo
+   - Crayones cremosos específicos: no existe esa variante — ofrecer "Crayones X12 Maped" como alternativa
+   - Juego didáctico / juego de memoria / rompecabezas: NO están en catálogo
+   - Pulverizador / rociador: NO está en catálogo
+   - Botones, telas, lanillas, broches de madera: NO están en catálogo
+   - Tablet: NO está en catálogo
+   - Taza, servilleta, cepillo de dientes: NO están en catálogo
    - "birome roja/negra/azul" = "Boligrafo BIC Cristal" (stock disponible)
    - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion" (lo más cercano disponible)
    - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
