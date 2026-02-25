@@ -851,7 +851,18 @@
 
       renderResults(data);
     } catch (err) {
-      document.getElementById("errorMsg").textContent = err.message;
+      const msg = err.message || "";
+      let friendlyMsg;
+      if (msg.includes("529") || msg.includes("503") || msg.includes("overload")) {
+        friendlyMsg = "El servicio de IA está con mucha demanda en este momento. Por favor esperá 1 minuto e intentá de nuevo.";
+      } else if (msg.includes("429")) {
+        friendlyMsg = "Se alcanzó el límite de consultas. Esperá unos minutos e intentá de nuevo.";
+      } else if (msg.includes("Network") || msg.includes("network") || msg.includes("timeout")) {
+        friendlyMsg = "Error de conexión. Verificá tu internet e intentá de nuevo.";
+      } else {
+        friendlyMsg = "Ocurrió un error al procesar la lista. Intentá de nuevo en unos segundos.";
+      }
+      document.getElementById("errorMsg").textContent = friendlyMsg;
       document.getElementById("errorBox").classList.add("show");
       document.getElementById("btnPresupuestar").disabled = false;
     } finally {
