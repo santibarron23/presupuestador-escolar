@@ -114,86 +114,113 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
 
    ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
    - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
-   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
-   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
-   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
-   - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
-   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
-   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
-   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
+   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra salvo que diga explícitamente "para pizarra".
+   - Si pide "tijera" / "tijeras": matchear con tijeras normales. NUNCA tijera para zurdos salvo que la lista diga "para zurdo".
+   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43).
+   - Si pide "lápiz" / "lapiz": NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
+   - Si pide "resma" / "hojas A4" / "papel A4": SIEMPRE resma A4.
+   - Si pide "globos de colores" / "globos": SIEMPRE "GLOBOS TUKY" — NUNCA "globo terráqueo".
+   - Si pide "mapa" o "planisferio": NUNCA devolver "bandera" aunque ambas tengan "argentina".
+   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" o "Set Acrilico Valija ETERNA". NUNCA marcadores acrílicos.
 
-   Equivalencias válidas:
-   - "tijerita" = "tijera" (cualquier tijera del catálogo)
-   - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
-   - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
-   - "mapa planisferio" / "planisferio" = "Mapa Mural Planisferio" — NUNCA confundir con bandera
-   - "mapa continente americano" = "Mapa Mural America" 
-   - "cuaderno ABC" / "cuaderno espiral ABC 100 hojas" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA" — NO cuadernos Oxford ni Norpac
-   - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110) — NO ignorar este producto
-   - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
-   - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
-   - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
-   - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
-   - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
-   - "papel calcar" / "sobre de papel calcar" = "Repuesto de Calcar" (N°3 o N°5 Luma/Iglu)
-   - "pote de acrílico" / "pintura acrílica" = témpera u otro tipo de pintura disponible (NO marcadores acrílicos)
-   - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares" (buscar en catálogo)
-   - REGLA CRÍTICA: Si el usuario pide "mapa" o "planisferio", NUNCA devolver "bandera" aunque ambas tengan "argentina"
-   - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC" o "cuaderno espiral ABC 100 hojas", devolver SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
-   - REGLA CRÍTICA: Los mapas en catálogo son GENÉRICOS: "MAPAS Politico N°3" (stock:67) y "MAPAS Fisico N°3" (stock:77). No hay mapas específicos por región (ni planisferio N°3 ni continente americano N°3 separados). Cuando pidan "mapa planisferio N°3", "mapa Argentina división política N°3", o "mapa continente americano N°3", devolver "MAPAS Politico N°3" o "MAPAS Fisico N°3" según corresponda, e indicar al usuario que en la descripción del producto puede seleccionar la región
-   - REGLA CRÍTICA: "cartulina color claro" = "Cartulina Lisa Varios Colores" (stock:69)
-   - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
-   - "repuesto canson N°5 blanco/color/negro x8 hojas" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
-   - "fibras punta gruesa x12 (caja)" = buscar "fibra gruesa" o "trazo grueso" en catálogo
-   - "cuaderno ABC Rivadavia 48 hojas espiralado" = "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" (el más cercano disponible)
-   - "tempera en barra" / "tempera sólida" = "Marcador Tempera Solida Fluor Sifap x6"
-   - "lapicera violeta" = cualquier lapicera de color disponible
-   - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
-   - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
-   - Artículos de jardín/ciencias (flauta dulce, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos/platos/tenedores descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo — indicar que consulten con un asesor
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
-   - "birome roja/negra/azul" = "Boligrafo BIC Cristal" (stock disponible)
-   - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion" (lo más cercano disponible)
+   Equivalencias completas (producto solicitado → producto en catálogo):
+
+   ESCRITURA Y GRAFITO:
+   - "lápiz de grafito" / "lápices de grafito" = "Lapiz Negro" (están cargados como Lápiz Negro — Lapiz Negro Bic Evolution, Faber Castell Gold, Stabilo, etc.)
+   - "lapiz negro" = cualquier Lápiz Negro del catálogo con stock
+   - "birome" / "birome roja/negra/azul" = "Boligrafo BIC Cristal"
+   - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion"
    - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
-   - "folio N°3 plástico" = "Folios A4 LUMA" (stock:206) — aunque es A4, es el folio disponible
-   - "block El Nene negro" = no existe en catálogo — ofrecer "Cartulina Lisa Varios Colores" como alternativa oscura
-   - "block El Nene Éxito N°5 color" = no existe en catálogo — ofrecer REPUESTO DE DIBUJO N5 COLOR LUMA o similar
-   - "mapa de Salta político/físico", "mapa de Europa", "mapa de América del Sur" = no existen mapas específicos por región — ofrecer MAPAS Politico N°3 o N°5 e indicar al cliente que verifique disponibilidad de región específica con un asesor
-   - "papel araña color" = "Papel Araña Color 50X70CM" — verificar si existe en catálogo como "papel araña"
-   - "repuesto de hojas rayadas 488 hojas" = REPUESTO RIVADAVIA N3 u otro repuesto disponible
-   - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
-   - "cinta razo/raso bebé" = cinta genérica disponible
-   - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
-   - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
-   - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
-   - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
-   - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — existe en catálogo
-   - "goma eva con brillo" / "goma eva glitter" = "Goma Eva C/Glitter" (stock:49)
-   - "papel glase metalizado" / "PAQ papel glase metalizado" / "papel glasé metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
-   - "papel glase fluo" / "PAQ papel glase fluo" / "papel glasé flúor" = "Papel Glace Fluo Surtido Luma" (stock:95)
-   - "papel glase opaco" / "PAQ de papel glase opaco" / "papel glasé mate" / "papel glasé lustre" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos
-   - "cinta de embalar" / "cinta embalar" / "cinta scotch" = "Cintas Adhesivas AUCA 48x50" (stock:16)
-   - "plasticola con glitter" / "adhesivo con glitter" / "cola vinilica glitter" = "Adhesivo Plasticola Color 40 Cc" (stock:8) — es lo más cercano disponible
-   - "block de afiches" / "block afiches" / "bloque afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
-   - "block de cartulinas" / "block cartulinas" / "block de cartulinas entretenidas" = "Block De Dibujo N° 5 Color El Nene" (stock:8) o "Block Cartulina Fantasia N° 5 El Nene" (stock:14)
-   - "block de hojas de papel madera" / "block papel madera" = "Block Papel Madera MURESCO" (stock:3) o "Papel Madera 80x100" (stock:60)
-   - "pincel numero 4" / "pincel n4" / "pincel escolar" = "Set De Pinceles Chatos X 8 Sabonis" (stock:6) o "Set de Pinceles Escolares Olami" (stock:1) — mencionar que se vende en set
-   - "fibron" / "felpon" = "fibra" / "marcador"  
-   - "birome" = "boligrafo"
-   - "plasticola" = cualquier adhesivo similar
-   - "PAQ papel glase opaco" = "Papel Glace Lustre" (el más parecido disponible)
-   - "voligoma" / "boligoma" = adhesivo cola vinílica
-   - "lapiz negro" = cualquier lapiz negro del catálogo
-   - "crayones" = cualquier caja de crayones
-   - "tempera" = cualquier tempera disponible
-   - "plastilinas" / "plastilina" = elegí SIEMPRE la que tenga stock > 0: "Plastilina X10 Alba" (stock:15), "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA elijas "Plastilina Escolar KEYROAD" que tiene stock:0
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
+   - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
+   - "portaminas" = cualquier portaminas del catálogo
+
+   ADHESIVOS:
+   - "voligoma" / "boligoma" / "voligomas grandes" = "Adhesivo VOLIGOMA" (stock:43) — dentro del artículo se elige el tamaño
+   - "plasticola" / "plasticola escolar" = "Adhesivo Escolar STA" (stock:36) o "Adhesivo Plasticola Color 40 Cc" (stock:8)
+   - "plasticola con glitter" / "adhesivo con glitter" / "cola glitter" = "Adhesivo con Glitter PELIKAN" (stock:5)
+   - "barritas de silicona gruesa" / "barras de silicona" = "Barra Adhesiva de Silicona P/Pistola" (stock:474) — dentro del artículo se elige el espesor
+   - "silicona liquida" = "Silicona Liquida STA" (stock:21) o "Silicona Liquida PELIKAN" (stock:2)
+   - "cinta de papel" = "Cinta de Papel Auca" (stock:29) — dentro del artículo se elige la medida
+   - "cinta de embalar" / "cinta scotch" / "cinta adhesiva transparente" = "Cintas Adhesivas AUCA 48x50" (stock:16) — dentro del artículo se elige el color
+   - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares X 30 Unidades" (stock:4) o "Ojalillos Escolares X Unidad" (stock:32)
+
+   PAPELES Y BLOCKS:
+   - "papel glasé metalizado" / "PAQ papel glase metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
+   - "papel glasé flúo" / "PAQ papel glase fluo" = "Papel Glace Fluo Surtido Luma" (stock:95)
+   - "papel glasé opaco" / "PAQ papel glase opaco" / "papel glasé lustre" / "papel glasé mate" = "Papel Glace Lustre Surtido Luma" (stock:80)
+   - "sobres de papel glasé" (genérico, sin especificar tipo) = matchear cada uno con el tipo correspondiente: metalizado→Metalizado, lustre→Lustre, fluo→Fluo. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos.
+   - NOTA: "glase" y "glace" son la misma cosa — diferencia ortográfica del mismo producto
+   - "papel cometa" / "papel seda" = "Papel Seda / Cometa Varios Colores" (stock:45) o "Papel Seda / Cometa Fantasia Varios Colores" (stock:63) — dentro del artículo se elige el color
+   - "papel afiche" / "afiche de color" = "Papel afiche vs colores" (stock:0, consultar disponibilidad)
+   - "hojas acartonadas color" / "cartón corrugado color" = "Carton corrugado vs.colores" (stock:7) — tamaño afiche, dentro del artículo se elige el color
+   - "papel calcar" / "sobre de papel calcar" / "repuesto de calcar" = "Repuesto de Calcar N 5 Iglu" (stock:9) o "Repuesto de Calcar N 3 Luma" (stock:9)
+   - "papel madera" / "hojas de papel madera" = "Papel Madera 80x100" (stock:60)
+   - "block de papel madera" / "block papel madera" = "Block Papel Madera MURESCO" (stock:3)
    - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
-   - "hojas A4 de colores" / "hojas de máquina A4 de colores" = "RESMA A4 210X219X100H.LUMA COLOR" o similar con stock
-   - REGLA CRÍTICA: El stock del catálogo indica unidades del PAQUETE en depósito, NO la cantidad de items del producto. Si el cliente pide 10 plastilinas, elegí cualquier plastilina con stock > 0 sin importar si el stock es 5, 15 o 100. El stock NO necesita ser >= la quantity pedida.
+   - "hojas A4 de colores" = "RESMA A4 LUMA COLOR" o similar
+   - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
+
+   BLOCKS DE DIBUJO Y CARTULINA:
+   - "block de afiches" / "block afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
+   - "block de cartulinas entretenidas" / "block cartulinas" = "Block Cartulina Fantasia N° 5 El Nene" (stock:14) o "Block El Nene N° 5 Aguayos" (stock:8) o "Block El Nene N° 5 Patrios" (stock:10)
+   - "cartulina lisa" / "cartulina color" = "Cartulina Lisa Varios Colores" (stock:69)
+   - "cartulina metalizada" = "Cartulina Metalizada Varios Colores" (stock:29)
+   - "repuesto canson N°5" / "hojas de dibujo N°5" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
+   - "block canson N°3" / "hojas color N°3" = "REPUESTO RIVADAVIA N3" o "REPUESTO TRIUNFANTE N3"
+
+   GOMA EVA:
+   - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — dentro del artículo se elige el color
+   - "goma eva con brillo" / "goma eva brillante" / "goma eva glitter" = "Goma Eva C/Glitter" (stock:49) — dentro del artículo se elige el color
+
+   MARCADORES Y FIBRAS:
+   - "fibron negro o azul para pizarra" / "marcador para pizarra" / "fibrón pizarra" = "MARCADOR PARA PIZARRA OLAMI 220" (stock:10) o "MARCADOR PARA PIZARRA TRABI 450" (stock:9) — dentro del artículo se elige el color
+   - "fibron" / "felpon" / "fibra trazo grueso" = fibra de color, buscar FIBRA en catálogo
+   - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
+   - "resaltador" = cualquier resaltador del catálogo con stock
+
+   GEOMETRÍA Y REGLAS:
+   - "regla" / "regla escolar" = cualquier regla escolar del catálogo con stock (están como "Regla Escolar")
+   - "set de geometría" / "juego de geometría" = "Juego De Geometria Maped 30Cm - 4 Unidades" (stock:5) o "Juego De Geometria Maped 20Cm - 3 Unidades" (stock:6)
+   - "escuadra" / "transportador" = buscar en catálogo dentro de geometría
+
+   PINCELES:
+   - "pincel número 4" / "pincel N°4" / "pincel escolar" = "PINCEL KOBY REDONDO" (stock:5) — dentro del artículo se elige el número
+   - "set de pinceles" = "Set De Pinceles Chatos X 8 Sabonis" (stock:6)
+
+   CARPETAS:
+   - "carpeta oficio 3 solapas con elástico" / "carpeta 3 solapas" = "Carpeta 3 Solapas Carton Color" (stock:10) o "Carpeta 3 Solapas Kraft" (stock:7) — dentro del artículo se elige tamaño (A4 u oficio)
+   - "carpeta en L transparente" / "tapa cristal" = "Carpeta Tapa Cristal A4" u similar
+   - "folio N°3 plástico" / "folio" = "Folios A4 LUMA" (stock:206) — dentro del artículo se elige el tamaño
+
+   GLOBOS Y OTROS MATERIALES:
+   - "globos de colores" / "bolsa de globos" = "GLOBOS TUKY 9\" X25U." (stock disponible) — NUNCA globo terráqueo
+   - "palitos de madera" / "palitos de helado" / "palito helado color" = "Mini Palitos de Madera ONIX" (stock:55) o "Mini Palitos de Madera tipo Paleta ONIX x50" (stock:57)
+   - "plastilinas" / "plastilina" = "Plastilina X10 Alba" (stock:15) o "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA "Plastilina Escolar KEYROAD" (stock:0)
+   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
+   - "crayones" = cualquier caja de crayones del catálogo con stock
+   - "tempera" = cualquier tempera disponible
+   - "acuarela" = cualquier acuarela del catálogo
+
+   CUADERNOS:
+   - "cuaderno ABC" / "cuaderno espiral ABC" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
+   - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110)
+
+   MAPAS:
+   - "mapa Argentina" / "mapa división política" / "mapa político" = "MAPAS Politico N°3" (stock:67) o "MAPAS Fisico N°3" (stock:77)
+   - "mapa planisferio" / "mapa continente americano" / "mapa Europa" = "MAPAS Politico N°3" o "MAPAS Fisico N°3" — indicar que el cliente verifique la región disponible con un asesor
+   - "mapa mural planisferio" = "Mapa Mural Planisferio"
+
+   NO DISPONIBLES (indicar "consultá con un asesor"):
+   - Colorante vegetal en pasta: NO tenemos
+   - Tapas plásticas tamaño oficio: NO tenemos
+   - Tempera con brillo: NO tenemos stock
+   - Block de hojas de papel madera: sin stock actualmente
+   - Artículos de higiene (papel higiénico, jabón, alcohol en gel): NO están en catálogo
+   - Artículos de jardín/ciencias (flauta, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo
+   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
+
+   REGLA CRÍTICA DE STOCK: El campo "stock" del catálogo indica unidades del PAQUETE disponibles en depósito, NO la cantidad de items del producto. El stock NO necesita ser >= la quantity pedida para matchear.
+
 
 3. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
 
