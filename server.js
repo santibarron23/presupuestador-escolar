@@ -56,6 +56,136 @@ function safeJsonParse(text) {
   }
 }
 
+// ─── PRE-FILTRO DE CATÁLOGO ───────────────────────────────────────────
+function normalize(str) {
+  return str.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+
+// Mapa de sinónimos: palabra buscada → palabras a buscar en catálogo
+const KEYWORD_EXPANSIONS = {
+  // Escritura
+  "borrador":    ["borrar", "banderas", "classic", "goma"],
+  "goma":        ["borrar", "banderas", "classic"],
+  "lapiz":       ["lapiz", "negro"],
+  "lapices":     ["lapiz", "color"],
+  "folio":       ["folio", "folios", "luma"],
+  "folios":      ["folio", "folios", "luma"],
+  "regla":       ["regla", "escolar", "maped", "pelikan"],
+  "birome":      ["boligrafo", "bic", "cristal"],
+  "boligrafo":   ["boligrafo", "bic"],
+  "fibron":      ["fibra", "marcador"],
+  "fibra":       ["fibra", "color"],
+  "plasticola":  ["adhesivo", "plasticola", "cola"],
+  "voligoma":    ["voligoma"],
+  "boligoma":    ["voligoma"],
+  "silicona":    ["silicona", "barra"],
+  "tijera":      ["tijera"],
+  "sacapuntas":  ["sacapuntas"],
+  "cartuchera":  ["cartuchera"],
+  // Papeles
+  "glase":       ["glace"],
+  "glasé":       ["glace"],
+  "glace":       ["glace"],
+  "crepe":       ["crepe"],
+  "crepe":       ["crepe", "papel"],
+  "contac":      ["contact", "contac"],
+  "contact":     ["contact"],
+  "madera":      ["madera"],
+  "afiche":      ["afiche"],
+  "cartulina":   ["cartulina"],
+  "celofan":     ["acetato", "celofan"],
+  // Carpetas y cuadernos
+  "carpeta":     ["carpeta"],
+  "cuaderno":    ["cuaderno"],
+  "block":       ["block"],
+  "repuesto":    ["repuesto"],
+  "solapas":     ["solapas"],
+  "cristal":     ["cristal", "transparente"],
+  // Colores y arte
+  "tempera":     ["tempera"],
+  "acuarela":    ["acuarela"],
+  "pincel":      ["pincel", "koby"],
+  "crayones":    ["crayones", "crayons"],
+  "plastilina":  ["plastilina"],
+  "goma eva":    ["goma eva"],
+  "gomeva":      ["goma", "eva"],
+  // Otros
+  "compas":      ["compas"],
+  "geometria":   ["geometria"],
+  "mapa":        ["mapa", "mapas"],
+  "planisferio": ["planisferio", "mapa"],
+  "globo":       ["tuky", "globo"],
+  "ojalillos":   ["ojalillos"],
+  "multibase":   ["multibase"],
+  "palitos":     ["palito", "madera"],
+  "tizas":       ["tiza"],
+  "tiza":        ["tiza"],
+  "calcar":      ["calcar"],
+  "diccionario": ["diccionario"],
+  "pendrive":    ["pendrive"],
+};
+
+function expandKeywords(items) {
+  const rawWords = items.flatMap(i =>
+    normalize(i.item || "").split(/\s+/).filter(w => w.length > 2)
+  );
+  const expanded = new Set(rawWords);
+  for (const word of rawWords) {
+    if (KEYWORD_EXPANSIONS[word]) {
+      KEYWORD_EXPANSIONS[word].forEach(e => expanded.add(e));
+    }
+    // Partial match: if any key starts with this word or vice versa
+    for (const [key, vals] of Object.entries(KEYWORD_EXPANSIONS)) {
+      if (key.startsWith(word) || word.startsWith(key)) {
+        vals.forEach(e => expanded.add(e));
+      }
+    }
+  }
+  return [...expanded];
+}
+
+function preFilterCatalog(items) {
+  const keywords = expandKeywords(items);
+
+  const singleKw = keywords.filter(k => !k.includes(" "));
+  const multiKw  = keywords.filter(k =>  k.includes(" "));
+
+  const scored = CATALOG.map(p => {
+    const nameNorm  = normalize(p.name);
+    const nameWords = nameNorm.split(/\s+/);
+    const primaryName  = nameNorm.split(/[+\/]/)[0].trim();
+    const primaryWords = primaryName.split(/\s+/);
+
+    const singleScore = singleKw.filter(k =>
+      nameWords.some(w => w.includes(k) || k.includes(w))
+    ).length;
+
+    const multiScore = multiKw.filter(k => nameNorm.includes(k)).length * 3;
+
+    const primaryBonus = singleKw.filter(k =>
+      primaryWords.some(w => w.includes(k) || k.includes(w))
+    ).length;
+
+    const startsWithBonus = singleKw.some(k => nameNorm.startsWith(k)) ? 3 : 0;
+
+    return { ...p, score: singleScore + multiScore + primaryBonus + startsWithBonus };
+  });
+
+  const filtered = scored
+    .filter(p => p.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (filtered.length < 50) {
+    const rest = scored.filter(p => p.score === 0).slice(0, 100 - filtered.length);
+    return [...filtered, ...rest].slice(0, 300);
+  }
+
+  return filtered.slice(0, 300);
+}
+
 // ─── HELPERS COMUNES ─────────────────────────────────────────────────
 function buildCatalogText(items) {
   const relevantCatalog = preFilterCatalog(items);
