@@ -117,6 +117,10 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra salvo que diga explícitamente "para pizarra".
    - Si pide "tijera" / "tijeras": matchear con tijeras normales. NUNCA tijera para zurdos salvo que la lista diga "para zurdo".
    - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43).
+   - ⛔ REGLA ABSOLUTA: Si pide "lápiz" / "lapiz" en CUALQUIER forma: JAMÁS devolver bolígrafo, lapicera, birome ni portaminas. Solo lápices de grafito o de colores.
+   - ⛔ REGLA ABSOLUTA: Si pide "borrador" / "goma de borrar": SIEMPRE y ÚNICAMENTE "Goma de Borrar 2 BANDERAS Classic" (stock:497). Sin excepciones.
+   - ⛔ REGLA ABSOLUTA: Si pide "folio" / "folios": JAMÁS devolver resmas de papel. Folios son hojas plásticas para carpeta. SIEMPRE "Folios A4 LUMA" (stock:206).
+   - ⛔ REGLA ABSOLUTA: Si pide "cuaderno A4 tapa dura rayado": SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS". NUNCA cuadernos Oxford.
    - Si pide "lápiz" / "lapiz": NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
    - Si pide "resma" / "hojas A4" / "papel A4": SIEMPRE resma A4.
    - Si pide "globos de colores" / "globos": SIEMPRE "GLOBOS TUKY" — NUNCA "globo terráqueo".
@@ -126,8 +130,8 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    Equivalencias completas (producto solicitado → producto en catálogo):
 
    ESCRITURA Y GRAFITO:
-   - "lápiz de grafito" / "lápices de grafito" / "lapiz negro" / "lapiz HB" = preferir "Lapiz Negro Bic Evolution Hb" (stock:48) como primera opción. Alternativas: Faber Castell Gold (stock:31), Stabilo 282 (stock:18), Plantec (stock:10)
-   - "borrador" / "goma de borrar" / "goma borrar" = "Goma de Borrar 2 BANDERAS Tinta/Lapiz" (stock:20) o "Goma de Borrar 2 BANDERAS Negra" (stock:8) como primera opción
+   - "lápiz" / "lapiz negro" / "lápiz de grafito" / "lápices de grafito" / "lapiz HB" / "lapiz escolar" = SIEMPRE "Lapiz Negro Bic Evolution Hb" (stock:48) como primera y preferida opción. JAMÁS recomendar un bolígrafo, lapicera o birome cuando piden un lápiz. Son productos completamente distintos.
+   - "borrador" / "goma de borrar" / "goma borrar" / "goma" (en contexto escolar) = SIEMPRE y ÚNICAMENTE "Goma de Borrar 2 BANDERAS Classic" (stock:497). NUNCA otra marca, NUNCA otro modelo. Esta es la única opción correcta.
    - "birome" / "birome roja/negra/azul" = "Boligrafo BIC Cristal"
    - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion"
    - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
@@ -194,7 +198,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    CARPETAS:
    - "carpeta oficio 3 solapas con elástico" / "carpeta 3 solapas" / "carpeta 3 solapas elástico" = "Carpeta 3 Solapas Carton Color" (stock:10) o "Carpeta 3 Solapas Kraft" (stock:7) — dentro del artículo se elige tamaño (A4 u oficio). SIEMPRE matchear, hay stock
    - "carpeta en L transparente" / "tapa cristal" / "carpeta plástica transparente" / "carpeta transparente con nepaco" / "carpeta cristal" = "Carpeta Tapa Cristal A4" (stock:27) — SIEMPRE matchear, hay stock
-   - "folio N°3 plástico" / "folio" = "Folios A4 LUMA" (stock:206) — dentro del artículo se elige el tamaño
+   - "folio" / "folios" / "folio A4" / "folio N°3" / "folios plásticos" (sin especificar detalle) = SIEMPRE "Folios A4 LUMA" (stock:206). JAMÁS recomendar una resma de hojas cuando piden folios — son productos completamente distintos. Folios = hojas plásticas transparentes para carpeta.
 
    GLOBOS Y OTROS MATERIALES:
    - "globos de colores" / "bolsa de globos" = "GLOBOS TUKY 9\" X25U." (stock disponible) — NUNCA globo terráqueo
@@ -206,7 +210,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "acuarela" = cualquier acuarela del catálogo
 
    CUADERNOS:
-   - "cuaderno ABC" / "cuaderno espiral ABC" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
+   - "cuaderno A4 rayado tapa dura" / "cuaderno ABC" / "cuaderno espiral ABC" / "cuaderno A4 tapa dura rayado" = SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" (stock:5) como primera opción. NUNCA recomendar cuadernos Oxford (son demasiado caros). Alternativa: "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS"
    - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110)
 
    MAPAS:
@@ -323,7 +327,11 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
    - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
    - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
-   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
+   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43).
+   - ⛔ REGLA ABSOLUTA: Si pide "lápiz" / "lapiz" en CUALQUIER forma: JAMÁS devolver bolígrafo, lapicera, birome ni portaminas. Solo lápices de grafito o de colores.
+   - ⛔ REGLA ABSOLUTA: Si pide "borrador" / "goma de borrar": SIEMPRE y ÚNICAMENTE "Goma de Borrar 2 BANDERAS Classic" (stock:497). Sin excepciones.
+   - ⛔ REGLA ABSOLUTA: Si pide "folio" / "folios": JAMÁS devolver resmas de papel. Folios son hojas plásticas para carpeta. SIEMPRE "Folios A4 LUMA" (stock:206).
+   - ⛔ REGLA ABSOLUTA: Si pide "cuaderno A4 tapa dura rayado": SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS". NUNCA cuadernos Oxford. No buscar otro adhesivo.
    - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
    - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
    - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
@@ -482,7 +490,11 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
    - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
    - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
-   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
+   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43).
+   - ⛔ REGLA ABSOLUTA: Si pide "lápiz" / "lapiz" en CUALQUIER forma: JAMÁS devolver bolígrafo, lapicera, birome ni portaminas. Solo lápices de grafito o de colores.
+   - ⛔ REGLA ABSOLUTA: Si pide "borrador" / "goma de borrar": SIEMPRE y ÚNICAMENTE "Goma de Borrar 2 BANDERAS Classic" (stock:497). Sin excepciones.
+   - ⛔ REGLA ABSOLUTA: Si pide "folio" / "folios": JAMÁS devolver resmas de papel. Folios son hojas plásticas para carpeta. SIEMPRE "Folios A4 LUMA" (stock:206).
+   - ⛔ REGLA ABSOLUTA: Si pide "cuaderno A4 tapa dura rayado": SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS". NUNCA cuadernos Oxford. No buscar otro adhesivo.
    - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
    - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
    - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
