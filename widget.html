@@ -1,861 +1,1219 @@
-const express = require("express");
-const multer = require("multer");
-const axios = require("axios");
-const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
-const pdfParse = require("pdf-parse");
-const mammoth = require("mammoth");
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-const upload = multer({ dest: "uploads/", limits: { fileSize: 10 * 1024 * 1024 } });
-
-// ─── CONFIGURACIÓN ────────────────────────────────────────────────
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-// ─── CATÁLOGO DESDE ARCHIVO ───────────────────────────────────────
-const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, "catalog.json"), "utf8"));
-
-// ─── TIPOS DE IMAGEN ──────────────────────────────────────────────
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
-// ─── EXTRAER TEXTO DEL ARCHIVO ────────────────────────────────────
-async function extractText(filePath, mimeType) {
-  if (mimeType === "application/pdf") {
-    const buffer = fs.readFileSync(filePath);
-    const data = await pdfParse(buffer);
-    return data.text;
-  } else if (
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    mimeType === "application/msword"
-  ) {
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value;
-  } else if (mimeType === "text/plain") {
-    return fs.readFileSync(filePath, "utf8");
-  } else if (IMAGE_TYPES.includes(mimeType)) {
-    return null;
-  }
-  throw new Error("Formato no soportado");
-}
-
-
-
-// ─── JSON PARSER SEGURO ───────────────────────────────────────────────
-function safeJsonParse(text) {
-  try {
-    const clean = text.replace(/```json|```/g, "").trim();
-    const match = clean.match(/\[[\s\S]*\]/);
-    if (match) return JSON.parse(match[0]);
-    return JSON.parse(clean);
-  } catch (e) {
-    throw new Error("No se pudo parsear la respuesta de la IA");
-  }
-}
-
-// ─── HELPERS COMUNES ─────────────────────────────────────────────────
-function buildCatalogText(items) {
-  const relevantCatalog = preFilterCatalog(items);
-  return relevantCatalog.map(
-    (p) => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price} | stock:${p.stock > 0 ? p.stock : "SIN_STOCK"}`
-  ).join("\n");
-}
-
-function buildDummyItems(rawText) {
-  // Para el pre-filtro necesitamos items con formato {item: string}
-  // Extraemos palabras clave del texto crudo directamente
-  const words = rawText.toLowerCase()
-    .replace(/[^\w\sáéíóúüñ]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 3);
-  return words.map(w => ({ item: w, quantity: 1 }));
-}
-
-// ─── LLAMADA ANTHROPIC GENÉRICA ───────────────────────────────────────
-async function callAnthropic(messages, maxTokens = 4000) {
-  const response = await axios.post(
-    "https://api.anthropic.com/v1/messages",
-    { model: "claude-sonnet-4-20250514", max_tokens: maxTokens, messages },
-    { headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-    }}
-  );
-  return response.data.content[0].text.trim();
-}
-
-// ─── PARSEAR + MATCHEAR TEXTO EN 1 SOLA LLAMADA ──────────────────────
-async function parseAndMatchFromText(rawText) {
-  const dummyItems = buildDummyItems(rawText);
-  const catalogText = buildCatalogText(dummyItems);
-
-  const MATCHING_RULES_BLOCK = `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
-
-1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
-
-REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
-   - "folio" / "folios" → SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA mapear a carpeta, bibliorato, ni ningún otro producto.
-   - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
-   - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
-   - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
-   - "lapiz" / "lápiz" / "lápices" → NUNCA recomendar bolígrafo, birome ni lapicera. Siempre recomendar un lápiz (negro o de colores según contexto).
-   - "resma" / "resmas" → SIEMPRE se refiere a hojas A4 blancas. Matchear con "RESMA A4 X100 HOJAS LUMA COLOR" u otras resmas A4. Igualmente, "hojas A4" o "hojas de máquina" → resma A4.
-   - "afiche color" / "papel afiche" / "papel de color claro" → SIEMPRE matchear con "Papel afiche vs colores" (hoja suelta). NUNCA recomendar un block de dibujo para esta búsqueda.
-   - "pote de acrílico" / "pintura acrílica" / "acrílico para pintar" → SIEMPRE matchear con pinturas acrílicas en pote como "Base Acrilica Eterna 200 cc" (stock:2), "Set Acrilico Valija ETERNA" (stock:1). NUNCA recomendar marcadores acrílicos ni marcadores en general.
-   - "block de afiches" → "Block De Dibujo N° 5 Afiche El Nene" (stock:10). Distinto de "papel afiche" suelto.
-   - "goma eva lisa" → "Goma Eva Lisa" (stock:48). NUNCA confundir con juegos de encastre.
-   - "goma eva con brillo" / "goma eva glitter" → "Goma Eva C/Glitter" (stock:49).
-
-2. Buscá por CONCEPTO, no por nombre exacto. Reglas críticas de matcheo:
-
-   ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
-   - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
-   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra salvo que diga explícitamente "para pizarra".
-   - Si pide "tijera" / "tijeras": matchear con tijeras normales. NUNCA tijera para zurdos salvo que la lista diga "para zurdo".
-   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43).
-   - Si pide "lápiz" / "lapiz": NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
-   - Si pide "resma" / "hojas A4" / "papel A4": SIEMPRE resma A4.
-   - Si pide "globos de colores" / "globos": SIEMPRE "GLOBOS TUKY" — NUNCA "globo terráqueo".
-   - Si pide "mapa" o "planisferio": NUNCA devolver "bandera" aunque ambas tengan "argentina".
-   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" o "Set Acrilico Valija ETERNA". NUNCA marcadores acrílicos.
-
-   Equivalencias completas (producto solicitado → producto en catálogo):
-
-   ESCRITURA Y GRAFITO:
-   - "lápiz de grafito" / "lápices de grafito" = "Lapiz Negro" (están cargados como Lápiz Negro — Lapiz Negro Bic Evolution, Faber Castell Gold, Stabilo, etc.)
-   - "lapiz negro" = cualquier Lápiz Negro del catálogo con stock
-   - "birome" / "birome roja/negra/azul" = "Boligrafo BIC Cristal"
-   - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion"
-   - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
-   - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
-   - "portaminas" = cualquier portaminas del catálogo
-
-   ADHESIVOS:
-   - "voligoma" / "boligoma" / "voligomas grandes" = "Adhesivo VOLIGOMA" (stock:43) — dentro del artículo se elige el tamaño
-   - "plasticola" / "plasticola escolar" = "Adhesivo Escolar STA" (stock:36) o "Adhesivo Plasticola Color 40 Cc" (stock:8)
-   - "plasticola con glitter" / "adhesivo con glitter" / "cola glitter" = "Adhesivo con Glitter PELIKAN" (stock:5)
-   - "barritas de silicona gruesa" / "barras de silicona" = "Barra Adhesiva de Silicona P/Pistola" (stock:474) — dentro del artículo se elige el espesor
-   - "silicona liquida" = "Silicona Liquida STA" (stock:21) o "Silicona Liquida PELIKAN" (stock:2)
-   - "cinta de papel" = "Cinta de Papel Auca" (stock:29) — dentro del artículo se elige la medida
-   - "cinta de embalar" / "cinta scotch" / "cinta adhesiva transparente" = "Cintas Adhesivas AUCA 48x50" (stock:16) — dentro del artículo se elige el color
-   - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares X 30 Unidades" (stock:4) o "Ojalillos Escolares X Unidad" (stock:32)
-
-   PAPELES Y BLOCKS:
-   - "papel glasé metalizado" / "PAQ papel glase metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
-   - "papel glasé flúo" / "PAQ papel glase fluo" = "Papel Glace Fluo Surtido Luma" (stock:95)
-   - "papel glasé opaco" / "PAQ papel glase opaco" / "papel glasé lustre" / "papel glasé mate" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glasé" (genérico, sin especificar tipo) = matchear cada uno con el tipo correspondiente: metalizado→Metalizado, lustre→Lustre, fluo→Fluo. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos.
-   - NOTA: "glase" y "glace" son la misma cosa — diferencia ortográfica del mismo producto
-   - "papel cometa" / "papel seda" = "Papel Seda / Cometa Varios Colores" (stock:45) o "Papel Seda / Cometa Fantasia Varios Colores" (stock:63) — dentro del artículo se elige el color
-   - "papel afiche" / "afiche de color" = "Papel afiche vs colores" (stock:0, consultar disponibilidad)
-   - "hojas acartonadas color" / "cartón corrugado color" = "Carton corrugado vs.colores" (stock:7) — tamaño afiche, dentro del artículo se elige el color
-   - "papel calcar" / "sobre de papel calcar" / "repuesto de calcar" = "Repuesto de Calcar N 5 Iglu" (stock:9) o "Repuesto de Calcar N 3 Luma" (stock:9)
-   - "papel madera" / "hojas de papel madera" = "Papel Madera 80x100" (stock:60)
-   - "block de papel madera" / "block papel madera" = "Block Papel Madera MURESCO" (stock:3)
-   - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
-   - "hojas A4 de colores" = "RESMA A4 LUMA COLOR" o similar
-   - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
-
-   BLOCKS DE DIBUJO Y CARTULINA:
-   - "block de afiches" / "block afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
-   - "block de cartulinas entretenidas" / "block cartulinas" = "Block Cartulina Fantasia N° 5 El Nene" (stock:14) o "Block El Nene N° 5 Aguayos" (stock:8) o "Block El Nene N° 5 Patrios" (stock:10)
-   - "cartulina lisa" / "cartulina color" = "Cartulina Lisa Varios Colores" (stock:69)
-   - "cartulina metalizada" = "Cartulina Metalizada Varios Colores" (stock:29)
-   - "repuesto canson N°5" / "hojas de dibujo N°5" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
-   - "block canson N°3" / "hojas color N°3" = "REPUESTO RIVADAVIA N3" o "REPUESTO TRIUNFANTE N3"
-
-   GOMA EVA:
-   - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — dentro del artículo se elige el color
-   - "goma eva con brillo" / "goma eva brillante" / "goma eva glitter" = "Goma Eva C/Glitter" (stock:49) — dentro del artículo se elige el color
-
-   MARCADORES Y FIBRAS:
-   - "fibron negro o azul para pizarra" / "marcador para pizarra" / "fibrón pizarra" = "MARCADOR PARA PIZARRA OLAMI 220" (stock:10) o "MARCADOR PARA PIZARRA TRABI 450" (stock:9) — dentro del artículo se elige el color
-   - "fibron" / "felpon" / "fibra trazo grueso" = fibra de color, buscar FIBRA en catálogo
-   - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
-   - "resaltador" = cualquier resaltador del catálogo con stock
-
-   GEOMETRÍA Y REGLAS:
-   - "regla" / "regla escolar" = cualquier regla escolar del catálogo con stock (están como "Regla Escolar")
-   - "set de geometría" / "juego de geometría" = "Juego De Geometria Maped 30Cm - 4 Unidades" (stock:5) o "Juego De Geometria Maped 20Cm - 3 Unidades" (stock:6)
-   - "escuadra" / "transportador" = buscar en catálogo dentro de geometría
-
-   PINCELES:
-   - "pincel número 4" / "pincel N°4" / "pincel escolar" = "PINCEL KOBY REDONDO" (stock:5) — dentro del artículo se elige el número
-   - "set de pinceles" = "Set De Pinceles Chatos X 8 Sabonis" (stock:6)
-
-   CARPETAS:
-   - "carpeta oficio 3 solapas con elástico" / "carpeta 3 solapas" = "Carpeta 3 Solapas Carton Color" (stock:10) o "Carpeta 3 Solapas Kraft" (stock:7) — dentro del artículo se elige tamaño (A4 u oficio)
-   - "carpeta en L transparente" / "tapa cristal" = "Carpeta Tapa Cristal A4" u similar
-   - "folio N°3 plástico" / "folio" = "Folios A4 LUMA" (stock:206) — dentro del artículo se elige el tamaño
-
-   GLOBOS Y OTROS MATERIALES:
-   - "globos de colores" / "bolsa de globos" = "GLOBOS TUKY 9\" X25U." (stock disponible) — NUNCA globo terráqueo
-   - "palitos de madera" / "palitos de helado" / "palito helado color" = "Mini Palitos de Madera ONIX" (stock:55) o "Mini Palitos de Madera tipo Paleta ONIX x50" (stock:57)
-   - "plastilinas" / "plastilina" = "Plastilina X10 Alba" (stock:15) o "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA "Plastilina Escolar KEYROAD" (stock:0)
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
-   - "crayones" = cualquier caja de crayones del catálogo con stock
-   - "tempera" = cualquier tempera disponible
-   - "acuarela" = cualquier acuarela del catálogo
-
-   CUADERNOS:
-   - "cuaderno ABC" / "cuaderno espiral ABC" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
-   - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110)
-
-   MAPAS:
-   - "mapa Argentina" / "mapa división política" / "mapa político" = "MAPAS Politico N°3" (stock:67) o "MAPAS Fisico N°3" (stock:77)
-   - "mapa planisferio" / "mapa continente americano" / "mapa Europa" = "MAPAS Politico N°3" o "MAPAS Fisico N°3" — indicar que el cliente verifique la región disponible con un asesor
-   - "mapa mural planisferio" = "Mapa Mural Planisferio"
-
-   NO DISPONIBLES (indicar "consultá con un asesor"):
-   - Colorante vegetal en pasta: NO tenemos
-   - Tapas plásticas tamaño oficio: NO tenemos
-   - Tempera con brillo: NO tenemos stock
-   - Block de hojas de papel madera: sin stock actualmente
-   - Artículos de higiene (papel higiénico, jabón, alcohol en gel): NO están en catálogo
-   - Artículos de jardín/ciencias (flauta, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
-
-   REGLA CRÍTICA DE STOCK: El campo "stock" del catálogo indica unidades del PAQUETE disponibles en depósito, NO la cantidad de items del producto. El stock NO necesita ser >= la quantity pedida para matchear.
-
-
-3. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
-
-4. La cantidad (quantity) ya viene definida — NO la cambies.
-
-5. El subtotal = unitPrice × quantity.
-
-6. Solo usá matched:false si genuinamente no existe ningún producto similar en el catálogo (ej: "colorante vegetal", "cortante de masa"). Si existe algo parecido con stock, siempre matcheá.
-
-Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
-[{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","catalogSku":"SKU del producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
-
-Si no encontrás un producto similar, usá matched:false, catalogId:null, catalogName:null, catalogSku:null, unitPrice:0, subtotal:0.
-Respondé ÚNICAMENTE con el JSON, empezando con [ y terminando con ].`;
-
-  const prompt = `Tenés este catálogo de productos de una librería:
-${catalogText}
-
-Y este texto de una lista de útiles escolares:
----
-${rawText}
----
-
-PASO 1 - EXTRAER: Identificá cada producto de la lista aplicando estas reglas:
-- La cantidad es el número ANTES del producto (ej: "2 blocks" → quantity:2)
-- Si el número describe el contenido del paquete (ej: "50 hojas A4"), quantity:1 e incluilo en el nombre
-- Separar productos en distintas líneas si vienen juntos con guión o coma
-- Ignorar encabezados, grados, fechas, precios, artículos de higiene y educación física
-
-PASO 2 - MATCHEAR: Para cada producto extraído, encontrá el más parecido del catálogo.
-` + MATCHING_RULES_BLOCK;
-
-  const text = await callAnthropic([{ role: "user", content: prompt }]);
-  return safeJsonParse(text);
-}
-
-// ─── PARSEAR + MATCHEAR IMAGEN EN 1 SOLA LLAMADA ─────────────────────
-async function parseAndMatchFromImage(filePath, mimeType) {
-  const base64 = fs.readFileSync(filePath).toString("base64");
-
-  // Para el pre-filtro de catálogo usamos todo el catálogo (sin items previos)
-  // tomamos los 300 productos más comunes de útiles escolares
-  const catalogText = CATALOG
-    .filter(p => p.stock > 0)
-    .slice(0, 300)
-    .map(p => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price} | stock:${p.stock}`)
-    .join("\n");
-
-  const MATCHING_RULES_BLOCK = `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
-
-1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
-
-REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
-   - "folio" / "folios" → SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA mapear a carpeta, bibliorato, ni ningún otro producto.
-   - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
-   - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
-   - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
-   - "lapiz" / "lápiz" / "lápices" → NUNCA recomendar bolígrafo, birome ni lapicera. Siempre recomendar un lápiz (negro o de colores según contexto).
-   - "resma" / "resmas" → SIEMPRE se refiere a hojas A4 blancas. Matchear con "RESMA A4 X100 HOJAS LUMA COLOR" u otras resmas A4. Igualmente, "hojas A4" o "hojas de máquina" → resma A4.
-   - "afiche color" / "papel afiche" / "papel de color claro" → SIEMPRE matchear con "Papel afiche vs colores" (hoja suelta). NUNCA recomendar un block de dibujo para esta búsqueda.
-   - "pote de acrílico" / "pintura acrílica" / "acrílico para pintar" → SIEMPRE matchear con pinturas acrílicas en pote como "Base Acrilica Eterna 200 cc" (stock:2), "Set Acrilico Valija ETERNA" (stock:1). NUNCA recomendar marcadores acrílicos ni marcadores en general.
-   - "block de afiches" → "Block De Dibujo N° 5 Afiche El Nene" (stock:10). Distinto de "papel afiche" suelto.
-   - "goma eva lisa" → "Goma Eva Lisa" (stock:48). NUNCA confundir con juegos de encastre.
-   - "goma eva con brillo" / "goma eva glitter" → "Goma Eva C/Glitter" (stock:49).
-
-2. Buscá por CONCEPTO, no por nombre exacto. Reglas críticas de matcheo:
-
-   ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
-   - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
-   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
-   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
-   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
-   - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
-   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
-   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
-   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
-
-   Equivalencias válidas:
-   - "tijerita" = "tijera" (cualquier tijera del catálogo)
-   - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
-   - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
-   - "mapa planisferio" / "planisferio" = "Mapa Mural Planisferio" — NUNCA confundir con bandera
-   - "mapa continente americano" = "Mapa Mural America" 
-   - "cuaderno ABC" / "cuaderno espiral ABC 100 hojas" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA" — NO cuadernos Oxford ni Norpac
-   - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110) — NO ignorar este producto
-   - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
-   - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
-   - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
-   - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
-   - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
-   - "papel calcar" / "sobre de papel calcar" = "Repuesto de Calcar" (N°3 o N°5 Luma/Iglu)
-   - "pote de acrílico" / "pintura acrílica" = témpera u otro tipo de pintura disponible (NO marcadores acrílicos)
-   - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares" (buscar en catálogo)
-   - REGLA CRÍTICA: Si el usuario pide "mapa" o "planisferio", NUNCA devolver "bandera" aunque ambas tengan "argentina"
-   - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC" o "cuaderno espiral ABC 100 hojas", devolver SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
-   - REGLA CRÍTICA: Los mapas en catálogo son GENÉRICOS: "MAPAS Politico N°3" (stock:67) y "MAPAS Fisico N°3" (stock:77). No hay mapas específicos por región (ni planisferio N°3 ni continente americano N°3 separados). Cuando pidan "mapa planisferio N°3", "mapa Argentina división política N°3", o "mapa continente americano N°3", devolver "MAPAS Politico N°3" o "MAPAS Fisico N°3" según corresponda, e indicar al usuario que en la descripción del producto puede seleccionar la región
-   - REGLA CRÍTICA: "cartulina color claro" = "Cartulina Lisa Varios Colores" (stock:69)
-   - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
-   - "repuesto canson N°5 blanco/color/negro x8 hojas" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
-   - "fibras punta gruesa x12 (caja)" = buscar "fibra gruesa" o "trazo grueso" en catálogo
-   - "cuaderno ABC Rivadavia 48 hojas espiralado" = "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" (el más cercano disponible)
-   - "tempera en barra" / "tempera sólida" = "Marcador Tempera Solida Fluor Sifap x6"
-   - "lapicera violeta" = cualquier lapicera de color disponible
-   - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
-   - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
-   - Artículos de jardín/ciencias (flauta dulce, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos/platos/tenedores descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo — indicar que consulten con un asesor
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
-   - "birome roja/negra/azul" = "Boligrafo BIC Cristal" (stock disponible)
-   - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion" (lo más cercano disponible)
-   - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
-   - "folio N°3 plástico" = "Folios A4 LUMA" (stock:206) — aunque es A4, es el folio disponible
-   - "block El Nene negro" = no existe en catálogo — ofrecer "Cartulina Lisa Varios Colores" como alternativa oscura
-   - "block El Nene Éxito N°5 color" = no existe en catálogo — ofrecer REPUESTO DE DIBUJO N5 COLOR LUMA o similar
-   - "mapa de Salta político/físico", "mapa de Europa", "mapa de América del Sur" = no existen mapas específicos por región — ofrecer MAPAS Politico N°3 o N°5 e indicar al cliente que verifique disponibilidad de región específica con un asesor
-   - "papel araña color" = "Papel Araña Color 50X70CM" — verificar si existe en catálogo como "papel araña"
-   - "repuesto de hojas rayadas 488 hojas" = REPUESTO RIVADAVIA N3 u otro repuesto disponible
-   - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
-   - "cinta razo/raso bebé" = cinta genérica disponible
-   - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
-   - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
-   - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
-   - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
-   - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — existe en catálogo
-   - "goma eva con brillo" / "goma eva glitter" = "Goma Eva C/Glitter" (stock:49)
-   - "papel glase metalizado" / "PAQ papel glase metalizado" / "papel glasé metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
-   - "papel glase fluo" / "PAQ papel glase fluo" / "papel glasé flúor" = "Papel Glace Fluo Surtido Luma" (stock:95)
-   - "papel glase opaco" / "PAQ de papel glase opaco" / "papel glasé mate" / "papel glasé lustre" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos
-   - "cinta de embalar" / "cinta embalar" / "cinta scotch" = "Cintas Adhesivas AUCA 48x50" (stock:16)
-   - "plasticola con glitter" / "adhesivo con glitter" / "cola vinilica glitter" = "Adhesivo Plasticola Color 40 Cc" (stock:8) — es lo más cercano disponible
-   - "block de afiches" / "block afiches" / "bloque afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
-   - "block de cartulinas" / "block cartulinas" / "block de cartulinas entretenidas" = "Block De Dibujo N° 5 Color El Nene" (stock:8) o "Block Cartulina Fantasia N° 5 El Nene" (stock:14)
-   - "block de hojas de papel madera" / "block papel madera" = "Block Papel Madera MURESCO" (stock:3) o "Papel Madera 80x100" (stock:60)
-   - "pincel numero 4" / "pincel n4" / "pincel escolar" = "Set De Pinceles Chatos X 8 Sabonis" (stock:6) o "Set de Pinceles Escolares Olami" (stock:1) — mencionar que se vende en set
-   - "fibron" / "felpon" = "fibra" / "marcador"  
-   - "birome" = "boligrafo"
-   - "plasticola" = cualquier adhesivo similar
-   - "PAQ papel glase opaco" = "Papel Glace Lustre" (el más parecido disponible)
-   - "voligoma" / "boligoma" = adhesivo cola vinílica
-   - "lapiz negro" = cualquier lapiz negro del catálogo
-   - "crayones" = cualquier caja de crayones
-   - "tempera" = cualquier tempera disponible
-   - "plastilinas" / "plastilina" = elegí SIEMPRE la que tenga stock > 0: "Plastilina X10 Alba" (stock:15), "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA elijas "Plastilina Escolar KEYROAD" que tiene stock:0
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
-   - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
-   - "hojas A4 de colores" / "hojas de máquina A4 de colores" = "RESMA A4 210X219X100H.LUMA COLOR" o similar con stock
-   - REGLA CRÍTICA: El stock del catálogo indica unidades del PAQUETE en depósito, NO la cantidad de items del producto. Si el cliente pide 10 plastilinas, elegí cualquier plastilina con stock > 0 sin importar si el stock es 5, 15 o 100. El stock NO necesita ser >= la quantity pedida.
-
-3. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
-
-4. La cantidad (quantity) ya viene definida — NO la cambies.
-
-5. El subtotal = unitPrice × quantity.
-
-6. Solo usá matched:false si genuinamente no existe ningún producto similar en el catálogo (ej: "colorante vegetal", "cortante de masa"). Si existe algo parecido con stock, siempre matcheá.
-
-Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
-[{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","catalogSku":"SKU del producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
-
-Si no encontrás un producto similar, usá matched:false, catalogId:null, catalogName:null, catalogSku:null, unitPrice:0, subtotal:0.
-Respondé ÚNICAMENTE con el JSON, empezando con [ y terminando con ].`;
-
-  const prompt = `Esta imagen contiene una lista de útiles escolares.
-
-Tenés este catálogo de productos de una librería:
-${catalogText}
-
-PASO 1 - EXTRAER: Leé todos los productos de la imagen (incluyendo texto manuscrito o impreso).
-- La cantidad es el número ANTES del producto
-- Si el número describe el contenido del paquete, quantity:1
-- Separar productos distintos en ítems separados
-- Ignorar encabezados, fechas, artículos de higiene y educación física
-
-PASO 2 - MATCHEAR: Para cada producto extraído, encontrá el más parecido del catálogo.
-` + MATCHING_RULES_BLOCK;
-
-  const text = await callAnthropic([{
-    role: "user",
-    content: [
-      { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-      { type: "text", text: prompt }
-    ]
-  }]);
-  return safeJsonParse(text);
-}
-
-// ─── PARSEAR + MATCHEAR PDF (VISIÓN) EN 1 SOLA LLAMADA ───────────────
-async function parseAndMatchFromPdfVision(pdfPath) {
-  const base64 = fs.readFileSync(pdfPath).toString("base64");
-
-  const catalogText = CATALOG
-    .filter(p => p.stock > 0)
-    .slice(0, 300)
-    .map(p => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price} | stock:${p.stock}`)
-    .join("\n");
-
-  const MATCHING_RULES_BLOCK = `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
-
-1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
-
-REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
-   - "folio" / "folios" → SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA mapear a carpeta, bibliorato, ni ningún otro producto.
-   - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
-   - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
-   - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
-   - "lapiz" / "lápiz" / "lápices" → NUNCA recomendar bolígrafo, birome ni lapicera. Siempre recomendar un lápiz (negro o de colores según contexto).
-   - "resma" / "resmas" → SIEMPRE se refiere a hojas A4 blancas. Matchear con "RESMA A4 X100 HOJAS LUMA COLOR" u otras resmas A4. Igualmente, "hojas A4" o "hojas de máquina" → resma A4.
-   - "afiche color" / "papel afiche" / "papel de color claro" → SIEMPRE matchear con "Papel afiche vs colores" (hoja suelta). NUNCA recomendar un block de dibujo para esta búsqueda.
-   - "pote de acrílico" / "pintura acrílica" / "acrílico para pintar" → SIEMPRE matchear con pinturas acrílicas en pote como "Base Acrilica Eterna 200 cc" (stock:2), "Set Acrilico Valija ETERNA" (stock:1). NUNCA recomendar marcadores acrílicos ni marcadores en general.
-   - "block de afiches" → "Block De Dibujo N° 5 Afiche El Nene" (stock:10). Distinto de "papel afiche" suelto.
-   - "goma eva lisa" → "Goma Eva Lisa" (stock:48). NUNCA confundir con juegos de encastre.
-   - "goma eva con brillo" / "goma eva glitter" → "Goma Eva C/Glitter" (stock:49).
-
-2. Buscá por CONCEPTO, no por nombre exacto. Reglas críticas de matcheo:
-
-   ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
-   - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
-   - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que diga explícitamente "para pizarra".
-   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
-   - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43). No buscar otro adhesivo.
-   - Si pide "lápiz" / "lapiz" (negro o de color): NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
-   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
-   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
-   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
-
-   Equivalencias válidas:
-   - "tijerita" = "tijera" (cualquier tijera del catálogo)
-   - "papel afiche" / "afiches" = "Block De Dibujo N° 5 Afiche El Nene" u otro afiche disponible (NO "Bandera de Argentina", NO "Encastre Mapa")
-   - "mapa Argentina" / "mapa división política" = buscar "MAPAS POLITICO" o "Mapa Mural" — NUNCA "Bandera de Argentina"
-   - "mapa planisferio" / "planisferio" = "Mapa Mural Planisferio" — NUNCA confundir con bandera
-   - "mapa continente americano" = "Mapa Mural America" 
-   - "cuaderno ABC" / "cuaderno espiral ABC 100 hojas" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA" — NO cuadernos Oxford ni Norpac
-   - "cuaderno de comunicaciones" = "Cuaderno De Comunicaciones Triunfante" (stock:110) — NO ignorar este producto
-   - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
-   - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
-   - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
-   - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
-   - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
-   - "papel calcar" / "sobre de papel calcar" = "Repuesto de Calcar" (N°3 o N°5 Luma/Iglu)
-   - "pote de acrílico" / "pintura acrílica" = témpera u otro tipo de pintura disponible (NO marcadores acrílicos)
-   - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares" (buscar en catálogo)
-   - REGLA CRÍTICA: Si el usuario pide "mapa" o "planisferio", NUNCA devolver "bandera" aunque ambas tengan "argentina"
-   - REGLA CRÍTICA: Si el usuario pide "cuaderno ABC" o "cuaderno espiral ABC 100 hojas", devolver SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" — NO cuadernos Oxford, Norpac, ni otros
-   - REGLA CRÍTICA: Los mapas en catálogo son GENÉRICOS: "MAPAS Politico N°3" (stock:67) y "MAPAS Fisico N°3" (stock:77). No hay mapas específicos por región (ni planisferio N°3 ni continente americano N°3 separados). Cuando pidan "mapa planisferio N°3", "mapa Argentina división política N°3", o "mapa continente americano N°3", devolver "MAPAS Politico N°3" o "MAPAS Fisico N°3" según corresponda, e indicar al usuario que en la descripción del producto puede seleccionar la región
-   - REGLA CRÍTICA: "cartulina color claro" = "Cartulina Lisa Varios Colores" (stock:69)
-   - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
-   - "repuesto canson N°5 blanco/color/negro x8 hojas" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
-   - "fibras punta gruesa x12 (caja)" = buscar "fibra gruesa" o "trazo grueso" en catálogo
-   - "cuaderno ABC Rivadavia 48 hojas espiralado" = "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS" (el más cercano disponible)
-   - "tempera en barra" / "tempera sólida" = "Marcador Tempera Solida Fluor Sifap x6"
-   - "lapicera violeta" = cualquier lapicera de color disponible
-   - "papel celofán" = "Acetato Transparente 50x70" (stock:9)
-   - Productos de higiene (papel higiénico, jabón líquido, alcohol en gel, rollo de cocina): no están en catálogo, indicar al cliente que consulte disponibilidad con un asesor
-   - Artículos de jardín/ciencias (flauta dulce, papel film, espuma de afeitar, rociador, esponja, limpiapipas, vasos/platos/tenedores descartables, gotero, jeringa, bicarbonato, fécula, cremor tártaro): NO están en catálogo — indicar que consulten con un asesor
-   - Artículos de educación física (palo de hockey, bocha, protector bucal, canilleras): NO están en catálogo
-   - "birome roja/negra/azul" = "Boligrafo BIC Cristal" (stock disponible)
-   - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion" (lo más cercano disponible)
-   - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
-   - "folio N°3 plástico" = "Folios A4 LUMA" (stock:206) — aunque es A4, es el folio disponible
-   - "block El Nene negro" = no existe en catálogo — ofrecer "Cartulina Lisa Varios Colores" como alternativa oscura
-   - "block El Nene Éxito N°5 color" = no existe en catálogo — ofrecer REPUESTO DE DIBUJO N5 COLOR LUMA o similar
-   - "mapa de Salta político/físico", "mapa de Europa", "mapa de América del Sur" = no existen mapas específicos por región — ofrecer MAPAS Politico N°3 o N°5 e indicar al cliente que verifique disponibilidad de región específica con un asesor
-   - "papel araña color" = "Papel Araña Color 50X70CM" — verificar si existe en catálogo como "papel araña"
-   - "repuesto de hojas rayadas 488 hojas" = REPUESTO RIVADAVIA N3 u otro repuesto disponible
-   - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
-   - "cinta razo/raso bebé" = cinta genérica disponible
-   - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" — es el único con stock, usalo aunque diga "zurdos"
-   - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
-   - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
-   - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
-   - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — existe en catálogo
-   - "goma eva con brillo" / "goma eva glitter" = "Goma Eva C/Glitter" (stock:49)
-   - "papel glase metalizado" / "PAQ papel glase metalizado" / "papel glasé metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
-   - "papel glase fluo" / "PAQ papel glase fluo" / "papel glasé flúor" = "Papel Glace Fluo Surtido Luma" (stock:95)
-   - "papel glase opaco" / "PAQ de papel glase opaco" / "papel glasé mate" / "papel glasé lustre" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos
-   - "cinta de embalar" / "cinta embalar" / "cinta scotch" = "Cintas Adhesivas AUCA 48x50" (stock:16)
-   - "plasticola con glitter" / "adhesivo con glitter" / "cola vinilica glitter" = "Adhesivo Plasticola Color 40 Cc" (stock:8) — es lo más cercano disponible
-   - "block de afiches" / "block afiches" / "bloque afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
-   - "block de cartulinas" / "block cartulinas" / "block de cartulinas entretenidas" = "Block De Dibujo N° 5 Color El Nene" (stock:8) o "Block Cartulina Fantasia N° 5 El Nene" (stock:14)
-   - "block de hojas de papel madera" / "block papel madera" = "Block Papel Madera MURESCO" (stock:3) o "Papel Madera 80x100" (stock:60)
-   - "pincel numero 4" / "pincel n4" / "pincel escolar" = "Set De Pinceles Chatos X 8 Sabonis" (stock:6) o "Set de Pinceles Escolares Olami" (stock:1) — mencionar que se vende en set
-   - "fibron" / "felpon" = "fibra" / "marcador"  
-   - "birome" = "boligrafo"
-   - "plasticola" = cualquier adhesivo similar
-   - "PAQ papel glase opaco" = "Papel Glace Lustre" (el más parecido disponible)
-   - "voligoma" / "boligoma" = adhesivo cola vinílica
-   - "lapiz negro" = cualquier lapiz negro del catálogo
-   - "crayones" = cualquier caja de crayones
-   - "tempera" = cualquier tempera disponible
-   - "plastilinas" / "plastilina" = elegí SIEMPRE la que tenga stock > 0: "Plastilina X10 Alba" (stock:15), "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA elijas "Plastilina Escolar KEYROAD" que tiene stock:0
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
-   - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
-   - "hojas A4 de colores" / "hojas de máquina A4 de colores" = "RESMA A4 210X219X100H.LUMA COLOR" o similar con stock
-   - REGLA CRÍTICA: El stock del catálogo indica unidades del PAQUETE en depósito, NO la cantidad de items del producto. Si el cliente pide 10 plastilinas, elegí cualquier plastilina con stock > 0 sin importar si el stock es 5, 15 o 100. El stock NO necesita ser >= la quantity pedida.
-
-3. Si el ítem tiene un prefijo como "PAQ", "CAJA DE", "SET DE", ignoralo y matcheá el producto principal.
-
-4. La cantidad (quantity) ya viene definida — NO la cambies.
-
-5. El subtotal = unitPrice × quantity.
-
-6. Solo usá matched:false si genuinamente no existe ningún producto similar en el catálogo (ej: "colorante vegetal", "cortante de masa"). Si existe algo parecido con stock, siempre matcheá.
-
-Devolvé SOLO un array JSON válido con este formato exacto, sin texto adicional:
-[{"requestedItem":"nombre solicitado","quantity":1,"matched":true,"catalogId":1,"catalogName":"nombre producto","catalogSku":"SKU del producto","unitPrice":1000,"subtotal":1000,"confidence":"high"}]
-
-Si no encontrás un producto similar, usá matched:false, catalogId:null, catalogName:null, catalogSku:null, unitPrice:0, subtotal:0.
-Respondé ÚNICAMENTE con el JSON, empezando con [ y terminando con ].`;
-
-  const prompt = `Este PDF contiene una lista de útiles escolares. Puede ser una tabla con columnas por grado.
-
-Tenés este catálogo de productos de una librería:
-${catalogText}
-
-PASO 1 - EXTRAER: Leé todos los productos únicos de la lista.
-- Si es una tabla por grado, listá cada producto UNA sola vez con quantity:1
-- Si el número describe el contenido del paquete, quantity:1
-- Ignorar encabezados, fechas, artículos de higiene y educación física
-
-PASO 2 - MATCHEAR: Para cada producto extraído, encontrá el más parecido del catálogo.
-` + MATCHING_RULES_BLOCK;
-
-  const text = await callAnthropic([{
-    role: "user",
-    content: [
-      { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-      { type: "text", text: prompt }
-    ]
-  }]);
-  return safeJsonParse(text);
-}
-
-
-// ─── ENDPOINT PRINCIPAL ────────────────────────────────────────────
-app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: "No se recibió ningún archivo" });
-
-  try {
-    let matchedItems;
-
-    if (IMAGE_TYPES.includes(file.mimetype)) {
-      // IMAGEN: parseo + matching en 1 sola llamada
-      matchedItems = await parseAndMatchFromImage(file.path, file.mimetype);
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presupuestador de Lista Escolar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #1a1a2e;
+      --paper: #faf7f2;
+      --cream: #f0ebe0;
+      --accent: #e85d26;
+      --accent-light: #fde8dc;
+      --green: #2d6a4f;
+      --green-light: #d8f3dc;
+      --yellow: #f4a261;
+      --border: #d4c9b8;
+      --text-muted: #7a7060;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+      overflow-x: hidden;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Cuando se embebe en iframe, eliminar padding y fondo propio */
+    html.in-iframe body {
+      padding: 0;
+      background: transparent;
+      min-height: unset;
+    }
+
+    .widget {
+      max-width: 780px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.9rem;
+      border-radius: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .header h1 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+      color: var(--ink);
+    }
+
+    .header h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 300;
+    }
+
+    /* ── UPLOAD ZONE ── */
+    .upload-card {
+      background: white;
+      border: 2px dashed var(--border);
+      border-radius: 1.5rem;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .upload-card:hover, .upload-card.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      transform: translateY(-2px);
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--cream);
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 1.8rem;
+      transition: transform 0.3s ease;
+    }
+
+    .upload-card:hover .upload-icon {
+      transform: scale(1.1) rotate(-5deg);
+    }
+
+    .upload-card h2 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.4rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .upload-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-types {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .type-tag {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.25rem 0.7rem;
+      border-radius: 2rem;
+    }
+
+    #fileInput { display: none; }
+
+    /* ── FILE SELECTED ── */
+    .file-selected {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      background: var(--green-light);
+      border: 2px solid var(--green);
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      margin-top: 1rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .file-selected.show { display: flex; }
+
+    .file-icon { font-size: 1.5rem; }
+
+    .file-info { flex: 1; text-align: left; }
+    .file-name { font-weight: 600; font-size: 0.95rem; color: var(--green); }
+    .file-size { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ── BUTTON ── */
+    .btn-presupuestar {
+      display: block;
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: var(--ink);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .btn-presupuestar:hover:not(:disabled) {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(232, 93, 38, 0.35);
+    }
+
+    .btn-presupuestar:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .loading.show { display: block; }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid var(--cream);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+
+    .loading h3 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.3rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .loading-steps {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      opacity: 0.3;
+      transition: opacity 0.5s ease;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .step.active { opacity: 1; }
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    /* ── RESULTS ── */
+    .results { display: none; animation: fadeUp 0.4s ease both; }
+    .results.show { display: block; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .summary-card.highlight {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: white;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.6;
+      margin-bottom: 0.4rem;
+    }
+
+    .summary-value {
+      font-family: 'Fraunces', serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .summary-sub {
+      font-size: 0.78rem;
+      opacity: 0.6;
+      margin-top: 0.2rem;
+    }
+
+    /* ── ITEMS LIST ── */
+    .items-section {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .items-header {
+      padding: 1rem 1.5rem;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: start;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--cream);
+      transition: background 0.15s ease;
+    }
+
+    .item-row:last-child { border-bottom: none; }
+    .item-row:hover { background: var(--paper); }
+
+    .item-left { min-width: 0; }
+
+    .item-requested {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+      /* CORREGIDO: sin truncado, se muestra completo */
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .item-matched {
+      font-weight: 500;
+      font-size: 0.95rem;
+      /* CORREGIDO: sin truncado, se muestra completo */
+      white-space: normal;
+      word-break: break-word;
+      margin-bottom: 0.2rem;
+    }
+
+    /* SKU visible */
+    .item-sku {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      background: var(--cream);
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      display: inline-block;
+      margin-top: 0.15rem;
+    }
+
+    .item-qty {
+      font-size: 0.8rem;
+      background: var(--cream);
+      padding: 0.2rem 0.6rem;
+      border-radius: 2rem;
+      white-space: nowrap;
+      align-self: start;
+      margin-top: 0.15rem;
+    }
+
+    .item-price {
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+      align-self: start;
+      margin-top: 0.1rem;
+    }
+
+    .item-price small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .not-found-row {
+      background: #fff8f6;
+    }
+
+    .not-found-badge {
+      font-size: 0.7rem;
+      background: #fee;
+      color: #c44;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.3rem;
+      margin-left: 0.5rem;
+    }
+
+    /* ── TOTAL BAR ── */
+    .total-bar {
+      background: var(--ink);
+      color: white;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .total-label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    .total-amount {
+      font-family: 'Fraunces', serif;
+      font-size: 2rem;
+    }
+
+    /* ── ACTIONS ── */
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 0.85rem;
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--ink);
+      background: var(--cream);
+    }
+
+    .btn-primary {
+      flex: 2;
+      padding: 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: #c94a1a;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(232, 93, 38, 0.3);
+    }
+
+    /* ── COVERAGE BAR ── */
+    .coverage-bar {
+      height: 6px;
+      background: var(--cream);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0.4rem 0 0.2rem;
+    }
+
+    .coverage-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--yellow));
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+
+    /* ── ERROR ── */
+    .error-box {
+      display: none;
+      background: #fff0ed;
+      border: 1.5px solid #f4a49a;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      color: #c0392b;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .error-box.show { display: block; }
+
+
+    /* ── PRODUCT MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 26, 46, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease both; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 440px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+      animation: slideUp 0.25s ease both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+      background: var(--cream);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0.45;
+      padding: 0.1rem 0.3rem;
+      border-radius: 0.4rem;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .modal-close:hover { opacity: 1; background: var(--border); }
+    .modal-body { padding: 1.5rem; }
+    .modal-requested {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    .modal-product-name {
+      font-family: 'Fraunces', serif;
+      font-size: 1.3rem;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+    .modal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-tag {
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 2rem;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--paper);
+    }
+    .modal-tag.sku { font-family: monospace; background: var(--cream); }
+    .modal-price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--cream);
+      border-radius: 0.85rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-price-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .modal-price-val {
+      font-family: 'Fraunces', serif;
+      font-size: 1.6rem;
+      color: var(--ink);
+    }
+    .modal-qty-info { text-align: right; }
+    .modal-qty-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .modal-subtotal { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
+    .modal-btn-ver {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.7rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .modal-btn-ver:hover {
+      background: #c94a1a;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(232,93,38,0.3);
+    }
+    /* Clickeable rows */
+    .item-row.clickable { cursor: pointer; }
+    .item-row.clickable:hover { background: var(--accent-light); }
+    .item-row.clickable:hover .item-matched { color: var(--accent); }
+    .item-view-hint {
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-top: 0.15rem;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .item-row.clickable:hover .item-view-hint { opacity: 1; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 500px) {
+      .actions { flex-direction: column; }
+      .item-row { grid-template-columns: 1fr auto; }
+      .loading-steps { gap: 1rem; }
+    }
+  
+    .btn-pdf {
+      flex: 1.5;
+      padding: 0.85rem;
+      background: white;
+      color: #c0392b;
+      border: 1.5px solid #c0392b;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-pdf:hover { background: #fff5f5; transform: translateY(-1px); }
+    .btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  </style>
+</head>
+<body>
+
+<div class="widget">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">✨ Nuevo</div>
+    <h1>Presupuestá tu<br><em>lista escolar</em></h1>
+    <p>Subí la lista de útiles y calculamos el precio al instante</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📄</div>
+    <h2>Subí la lista de útiles</h2>
+    <p>PDF, Word, foto de la lista escrita a mano, o texto</p>
+    <div class="upload-types">
+      <span class="type-tag">PDF</span>
+      <span class="type-tag">Word (.docx)</span>
+      <span class="type-tag">Foto (.jpg / .png)</span>
+      <span class="type-tag">Texto (.txt)</span>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp" />
+  </div>
+
+  <!-- FILE SELECTED -->
+  <div class="file-selected" id="fileSelected">
+    <span class="file-icon">📎</span>
+    <div class="file-info">
+      <div class="file-name" id="fileName">—</div>
+      <div class="file-size" id="fileSize">—</div>
+    </div>
+    <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;opacity:0.5">✕</button>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox">
+    <strong>¡Ups!</strong> <span id="errorMsg"></span>
+  </div>
+
+  <!-- BUTTON -->
+  <button class="btn-presupuestar" id="btnPresupuestar" disabled onclick="presupuestar()">
+    Calcular presupuesto →
+  </button>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <h3>Analizando la lista…</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem">La IA está leyendo y comparando con nuestros precios</p>
+    <div class="loading-steps">
+      <div class="step" id="step1"><div class="step-dot"></div>Leyendo</div>
+      <div class="step" id="step2"><div class="step-dot"></div>Interpretando</div>
+      <div class="step" id="step3"><div class="step-dot"></div>Comparando</div>
+      <div class="step" id="step4"><div class="step-dot"></div>Listo</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results"></div>
+
+
+  <!-- PRODUCT MODAL -->
+  <div class="modal-overlay" id="productModal" onclick="closeModal(event)">
+    <div class="modal" id="modalBox">
+      <div class="modal-header">
+        <span class="modal-title">Detalle del producto</span>
+        <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API_URL = "https://presupuestador-escolar.onrender.com/api/presupuestar";
+
+  let selectedFile = null;
+
+  function reportHeight() {
+    // Antes de mostrar resultados, reportar solo hasta el botón "Calcular presupuesto"
+    const resultsDiv = document.getElementById("results");
+    const hasResults = resultsDiv && resultsDiv.classList.contains("show");
+    const loadingDiv = document.getElementById("loading");
+    const isLoading = loadingDiv && loadingDiv.style.display !== "none" && loadingDiv.style.display !== "";
+
+    let height;
+    if (hasResults || isLoading) {
+      height = document.body.scrollHeight;
     } else {
-      const rawText = await extractText(file.path, file.mimetype);
-
-      const isGarbled = !rawText || rawText.trim().length < 10 ||
-        (rawText.split("\n").filter(l => l.trim()).length < 3 && rawText.length > 50);
-
-      if (isGarbled && file.mimetype === "application/pdf") {
-        // PDF con tablas/imagen: parseo + matching en 1 sola llamada
-        try {
-          matchedItems = await parseAndMatchFromPdfVision(file.path);
-        } catch (visionErr) {
-          return res.status(400).json({ error: "No se pudo leer el archivo. Intentá con una foto de la lista." });
-        }
-      } else if (!rawText || rawText.trim().length < 10) {
-        return res.status(400).json({ error: "No se pudo leer texto del archivo." });
+      // Solo hasta el botón inclusive
+      const btn = document.getElementById("btnPresupuestar");
+      if (btn) {
+        const rect = btn.getBoundingClientRect();
+        height = rect.bottom + window.scrollY + 24;
       } else {
-        // TEXTO/PDF legible: parseo + matching en 1 sola llamada
-        try {
-          matchedItems = await parseAndMatchFromText(rawText);
-        } catch (aiErr) {
-          // Fallback: intentar con visión si es PDF
-          if (file.mimetype === "application/pdf") {
-            matchedItems = await parseAndMatchFromPdfVision(file.path);
-          } else {
-            throw aiErr;
-          }
-        }
+        height = document.body.scrollHeight;
       }
     }
+    window.parent.postMessage({ height }, "*");
+  }
+  const ro = new ResizeObserver(reportHeight);
+  ro.observe(document.body);
+  // También reportar al cargar
+  window.addEventListener("load", () => setTimeout(reportHeight, 300));
 
-    // Enriquecer con slug de URL — buscar por SKU (más confiable que por ID)
-    const catalogBySku = Object.fromEntries(
-      CATALOG.filter(p => p.sku).map(p => [String(p.sku).trim(), p])
-    );
-    const catalogByName = {};
-    CATALOG.forEach(p => { catalogByName[p.name.toLowerCase().trim()] = p; });
+  // ─── DRAG & DROP ──────────────────────────────────────────────
+  const dropZone = document.getElementById("dropZone");
+  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
 
-    matchedItems.forEach(item => {
-      if (!item.matched) return;
-      let prod = null;
+  document.getElementById("fileInput").addEventListener("change", (e) => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
 
-      // 1. Buscar por SKU
-      if (item.catalogSku) {
-        prod = catalogBySku[String(item.catalogSku).trim()];
+  function setFile(file) {
+    selectedFile = file;
+    document.getElementById("fileName").textContent = file.name;
+    document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " KB";
+    document.getElementById("fileSelected").classList.add("show");
+    document.getElementById("btnPresupuestar").disabled = false;
+    document.getElementById("errorBox").classList.remove("show");
+    document.getElementById("results").classList.remove("show");
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("fileSelected").classList.remove("show");
+    document.getElementById("btnPresupuestar").disabled = true;
+  }
+
+  // ─── LOADING STEPS ────────────────────────────────────────────
+  let stepInterval = null;
+  function startSteps() {
+    let current = 1;
+    stepInterval = setInterval(() => {
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      if (current <= 4) {
+        document.getElementById("step" + current).classList.add("active");
+        current++;
       }
-      // 2. Buscar por nombre exacto
-      if (!prod && item.catalogName) {
-        prod = catalogByName[item.catalogName.toLowerCase().trim()];
-      }
-      // 3. Buscar por ID como fallback
-      if (!prod && item.catalogId) {
-        prod = CATALOG.find(p => p.id === item.catalogId);
-      }
-
-      if (prod) item.catalogSlug = prod.slug || null;
-    });
-
-    const found = matchedItems.filter((i) => i.matched);
-    const notFound = matchedItems.filter((i) => !i.matched);
-    const total = found.reduce((sum, i) => sum + i.subtotal, 0);
-    const coverage = Math.round((found.length / matchedItems.length) * 100);
-
-    res.json({
-      success: true,
-      summary: {
-        totalItems: matchedItems.length,
-        foundItems: found.length,
-        notFoundItems: notFound.length,
-        coveragePercent: coverage,
-        estimatedTotal: total,
-      },
-      items: matchedItems,
-      rawText: "",
-    });
-  } catch (err) {
-    console.error("Error:", err.message);
-    res.status(500).json({ error: "Error procesando la lista: " + err.message });
-  } finally {
-    if (file) fs.unlink(file.path, () => {});
-  }
-});
-
-// ─── GENERAR PDF DE PRESUPUESTO ──────────────────────────────────────
-app.post("/api/presupuesto-pdf", express.json({ limit: "2mb" }), (req, res) => {
-  const { items, summary, schoolName } = req.body;
-  if (!items || !summary) {
-    return res.status(400).json({ error: "Faltan datos del presupuesto" });
+    }, 1200);
   }
 
-  const found    = items.filter(i => i.matched);
-  const notFound = items.filter(i => !i.matched);
-  const total    = summary.estimatedTotal || found.reduce((s, i) => s + (i.subtotal || 0), 0);
-
-  // ── Helpers de formato ──────────────────────────────────────────
-  const fmt = (n) => "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2 });
-  const pad = (s, len) => String(s).slice(0, len).padEnd(len);
-  const padL = (s, len) => String(s).slice(0, len).padStart(len);
-
-  // ── Colores y medidas ───────────────────────────────────────────
-  const GREEN  = "#2d7a3a";
-  const LGRAY  = "#f5f5f5";
-  const DGRAY  = "#666666";
-  const RED    = "#c0392b";
-  const BLACK  = "#1a1a1a";
-  const WHITE  = "#ffffff";
-  const PAGE_W = 595.28;  // A4
-  const PAGE_H = 841.89;
-  const ML = 40; const MR = 40;
-  const CONTENT_W = PAGE_W - ML - MR;
-
-  // ── Construir PDF con pdfkit ────────────────────────────────────
-  let PDFDocument;
-  try { PDFDocument = require("pdfkit"); }
-  catch(e) { return res.status(500).json({ error: "pdfkit no instalado. Agregalo al package.json." }); }
-
-  const doc = new PDFDocument({ size: "A4", margin: 0, info: {
-    Title: "Presupuesto Escolar - Librería Lerma",
-    Author: "Librería Lerma"
-  }});
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="presupuesto-lerma.pdf"`);
-  doc.pipe(res);
-
-  let y = 0;
-
-  // ── Función para nueva página ───────────────────────────────────
-  function newPage() {
-    doc.addPage({ size: "A4", margin: 0 });
-    y = 0;
-    drawHeader();
+  function stopSteps() {
+    clearInterval(stepInterval);
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
   }
 
-  function checkPage(needed = 20) {
-    if (y + needed > PAGE_H - 60) newPage();
+  // ─── PRESUPUESTAR ─────────────────────────────────────────────
+  async function presupuestar() {
+    if (!selectedFile) return;
+
+    document.getElementById("btnPresupuestar").disabled = true;
+    document.getElementById("loading").classList.add("show");
+    document.getElementById("results").classList.remove("show");
+    document.getElementById("errorBox").classList.remove("show");
+    startSteps();
+
+    const formData = new FormData();
+    formData.append("lista", selectedFile);
+
+    try {
+      const res = await fetch(API_URL, { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) throw new Error(data.error || "Error desconocido");
+
+      renderResults(data);
+    } catch (err) {
+      document.getElementById("errorMsg").textContent = err.message;
+      document.getElementById("errorBox").classList.add("show");
+      document.getElementById("btnPresupuestar").disabled = false;
+    } finally {
+      stopSteps();
+      document.getElementById("loading").classList.remove("show");
+    }
   }
 
-  // ── HEADER ──────────────────────────────────────────────────────
-  function drawHeader() {
-    doc.rect(0, 0, PAGE_W, 70).fill(GREEN);
-    doc.fillColor(WHITE).fontSize(22).font("Helvetica-Bold")
-       .text("Librería Lerma", ML, 18);
-    doc.fontSize(10).font("Helvetica")
-       .text("Presupuesto Escolar 2026", ML, 44);
-    const dateStr = new Date().toLocaleDateString("es-AR", { day:"2-digit", month:"2-digit", year:"numeric" });
-    doc.text(dateStr, PAGE_W - MR - 80, 44, { width: 80, align: "right" });
-    y = 85;
-  }
+  // ─── RENDER RESULTS ───────────────────────────────────────────
+  let _foundItems = [];
 
-  // ── PRIMERA PÁGINA ──────────────────────────────────────────────
-  drawHeader();
+  function renderResults(data) {
+    const { summary, items } = data;
+    _foundItems = items.filter(i => i.matched);
+    const found = items.filter(i => i.matched);
+    const notFound = items.filter(i => !i.matched);
 
-  // Sub-header con nombre del colegio si lo hay
-  if (schoolName) {
-    doc.fillColor(DGRAY).fontSize(11).font("Helvetica-Oblique")
-       .text(schoolName, ML, y, { width: CONTENT_W });
-    y += 20;
-  }
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 
-  // Resumen ejecutivo
-  doc.rect(ML, y, CONTENT_W, 56).fillAndStroke(LGRAY, "#dddddd");
-  doc.fillColor(BLACK).fontSize(10).font("Helvetica-Bold")
-     .text("Resumen del presupuesto", ML + 12, y + 10);
-  doc.font("Helvetica").fontSize(9).fillColor(DGRAY)
-     .text(`Artículos encontrados: ${found.length} de ${items.length}  |  Artículos no disponibles: ${notFound.length}`, ML + 12, y + 26);
-  doc.font("Helvetica-Bold").fontSize(14).fillColor(GREEN)
-     .text(fmt(total), PAGE_W - MR - 120, y + 18, { width: 110, align: "right" });
-  doc.font("Helvetica").fontSize(8).fillColor(DGRAY)
-     .text("TOTAL ESTIMADO", PAGE_W - MR - 120, y + 36, { width: 110, align: "right" });
-  y += 72;
+    let html = `
+      <div class="summary-grid">
+        <div class="summary-card highlight">
+          <div class="summary-label">Total estimado</div>
+          <div class="summary-value">${fmt(summary.estimatedTotal)}</div>
+          <div class="summary-sub">productos encontrados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Ítems en lista</div>
+          <div class="summary-value">${summary.totalItems}</div>
+          <div class="summary-sub">productos solicitados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Cobertura</div>
+          <div class="summary-value">${summary.coveragePercent}%</div>
+          <div class="coverage-bar"><div class="coverage-fill" style="width:${summary.coveragePercent}%"></div></div>
+          <div class="summary-sub">${summary.foundItems} de ${summary.totalItems} encontrados</div>
+        </div>
+      </div>
+    `;
 
-  // ── TABLA: ARTÍCULOS DISPONIBLES ────────────────────────────────
-  if (found.length > 0) {
-    // Título sección
-    doc.fillColor(GREEN).fontSize(12).font("Helvetica-Bold")
-       .text("✓ Artículos disponibles", ML, y);
-    y += 18;
-
-    // Cabecera tabla
-    const COL = { qty: 35, sku: 70, name: 230, unit: 80, sub: 80 };
-    function tableHeader() {
-      doc.rect(ML, y, CONTENT_W, 20).fill(GREEN);
-      doc.fillColor(WHITE).fontSize(8).font("Helvetica-Bold");
-      let x = ML + 6;
-      doc.text("CANT.",  x, y + 6, { width: COL.qty });  x += COL.qty;
-      doc.text("SKU",    x, y + 6, { width: COL.sku });  x += COL.sku;
-      doc.text("PRODUCTO", x, y + 6, { width: COL.name }); x += COL.name;
-      doc.text("P. UNIT.", x, y + 6, { width: COL.unit, align: "right" }); x += COL.unit;
-      doc.text("SUBTOTAL", x, y + 6, { width: COL.sub - 6, align: "right" });
-      y += 20;
+    if (found.length > 0) {
+      html += `
+        <div class="items-section">
+          <div class="items-header">✅ Productos disponibles en nuestra tienda</div>
+          ${found.map((item, foundIdx) => `
+            <div class="item-row clickable" onclick="openModal(${foundIdx})">
+              <div class="item-left">
+                <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
+                <div class="item-matched">${item.catalogName}</div>
+                ${item.catalogSku ? `<span class="item-sku">SKU: ${item.catalogSku}</span>` : ""}
+                <div class="item-view-hint">👁 Ver producto →</div>
+              </div>
+              <span class="item-qty">x${item.quantity}</span>
+              <div class="item-price">
+                ${fmt(item.subtotal)}
+                <small>${fmt(item.unitPrice)} c/u</small>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
     }
 
-    tableHeader();
+    if (notFound.length > 0) {
+      html += `
+        <div class="items-section">
+          <div class="items-header" style="background:#fff8f6;color:#c44">⚠️ Productos no encontrados en catálogo</div>
+          ${notFound.map(item => `
+            <div class="item-row not-found-row">
+              <div class="item-left">
+                <div class="item-matched">${item.requestedItem} <span class="not-found-badge">Sin stock</span></div>
+                <div class="item-requested">Consultá disponibilidad con un asesor</div>
+              </div>
+              <span class="item-qty">x${item.quantity}</span>
+              <div class="item-price" style="color:var(--text-muted)">—</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
 
-    found.forEach((item, idx) => {
-      checkPage(24);
-      // Reprint header if new page
-      if (y === 85) tableHeader();
+    // Guardar datos para PDF
+    window._presupuestoData = { items, summary };
 
-      const bg = idx % 2 === 0 ? WHITE : LGRAY;
-      doc.rect(ML, y, CONTENT_W, 22).fill(bg);
-      doc.strokeColor("#dddddd").rect(ML, y, CONTENT_W, 22).stroke();
+    html += `
+      <div class="total-bar">
+        <div>
+          <div class="total-label">Total estimado de tu lista</div>
+          <div style="font-size:0.75rem;opacity:0.5;margin-top:0.2rem">*Precios pueden variar según stock</div>
+        </div>
+        <div class="total-amount">${fmt(summary.estimatedTotal)}</div>
+      </div>
 
-      doc.fillColor(BLACK).fontSize(8).font("Helvetica-Bold");
-      let x = ML + 6;
-      doc.text(String(item.quantity || 1), x, y + 7, { width: COL.qty }); x += COL.qty;
+      <div class="actions">
+        <button class="btn-secondary" onclick="location.reload()">↺ Nueva lista</button>
+        <button class="btn-pdf" onclick="descargarPDF()" id="btn-pdf">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+          Descargar presupuesto PDF
+        </button>
+        <button class="btn-primary" onclick="comprar()">Agregar todo al carrito →</button>
+      </div>
+    `;
 
-      doc.font("Helvetica").fillColor(DGRAY)
-         .text(item.catalogSku || item.catalogId || "-", x, y + 7, { width: COL.sku }); x += COL.sku;
-
-      doc.fillColor(BLACK)
-         .text(item.catalogName || item.requestedItem || "", x, y + 7, { width: COL.name - 6 }); x += COL.name;
-
-      doc.fillColor(DGRAY)
-         .text(fmt(item.unitPrice || 0), x, y + 7, { width: COL.unit, align: "right" }); x += COL.unit;
-
-      doc.fillColor(GREEN).font("Helvetica-Bold")
-         .text(fmt(item.subtotal || 0), x, y + 7, { width: COL.sub - 6, align: "right" });
-      y += 22;
-    });
-
-    // Total
-    y += 4;
-    doc.rect(ML, y, CONTENT_W, 28).fill(GREEN);
-    doc.fillColor(WHITE).fontSize(11).font("Helvetica-Bold")
-       .text("TOTAL ESTIMADO", ML + 12, y + 8);
-    doc.fontSize(13)
-       .text(fmt(total), ML, y + 7, { width: CONTENT_W - 10, align: "right" });
-    y += 36;
+    const container = document.getElementById("results");
+    container.innerHTML = html;
+    container.classList.add("show");
+    container.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(reportHeight, 100);
   }
 
-  // ── TABLA: ARTÍCULOS NO DISPONIBLES ─────────────────────────────
-  if (notFound.length > 0) {
-    checkPage(40);
-    y += 12;
-    doc.fillColor(RED).fontSize(12).font("Helvetica-Bold")
-       .text("⚠ Artículos no disponibles en catálogo", ML, y);
-    doc.fontSize(8).font("Helvetica").fillColor(DGRAY)
-       .text("Consultá disponibilidad con un asesor en la tienda o por WhatsApp.", ML, y + 16);
-    y += 32;
 
-    // Cabecera
-    doc.rect(ML, y, CONTENT_W, 20).fill(RED);
-    doc.fillColor(WHITE).fontSize(8).font("Helvetica-Bold");
-    let x = ML + 6;
-    doc.text("CANT.", x, y + 6, { width: 40 }); x += 40;
-    doc.text("ARTÍCULO SOLICITADO", x, y + 6, { width: CONTENT_W - 50 });
-    y += 20;
+  // ─── DESCARGAR PDF (cliente, sin dependencias) ───────────────
+  function descargarPDF() {
+    if (!window._presupuestoData) return;
+    const { items, summary } = window._presupuestoData;
+    const found    = items.filter(i => i.matched);
+    const notFound = items.filter(i => !i.matched);
+    const total    = summary.estimatedTotal || 0;
+    const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
+    const date = new Date().toLocaleDateString("es-AR");
 
-    notFound.forEach((item, idx) => {
-      checkPage(22);
-      const bg = idx % 2 === 0 ? "#fff5f5" : WHITE;
-      doc.rect(ML, y, CONTENT_W, 20).fill(bg);
-      doc.strokeColor("#f0bbbb").rect(ML, y, CONTENT_W, 20).stroke();
+    const foundRows = found.map((item, i) => `
+      <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${item.quantity || 1}</td>
+        <td style="color:#888;font-size:0.8em">${item.catalogSku || item.catalogId || '-'}</td>
+        <td>${item.catalogName || item.requestedItem || ''}</td>
+        <td style="text-align:right;color:#555">${fmt(item.unitPrice || 0)}</td>
+        <td style="text-align:right;font-weight:700;color:#2d7a3a">${fmt(item.subtotal || 0)}</td>
+      </tr>`).join('');
 
-      let x = ML + 6;
-      doc.fillColor(RED).fontSize(8).font("Helvetica-Bold")
-         .text(String(item.quantity || 1), x, y + 6, { width: 40 }); x += 40;
-      doc.fillColor(BLACK).font("Helvetica")
-         .text(item.requestedItem || "", x, y + 6, { width: CONTENT_W - 50 });
-      y += 20;
-    });
+    const notFoundRows = notFound.map((item, i) => `
+      <tr style="background:${i%2===0?'#fff8f8':'#fff'}">
+        <td>${item.quantity || 1}</td>
+        <td colspan="4" style="color:#c0392b">${item.requestedItem || ''}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Presupuesto Librería Lerma</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #222; }
+    .header { background: #2d7a3a; color: white; padding: 20px 30px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { font-size: 22px; }
+    .header p { font-size: 11px; opacity: 0.85; margin-top: 4px; }
+    .header .date { font-size: 11px; opacity: 0.8; }
+    .summary { background: #f5f5f5; border: 1px solid #ddd; margin: 20px 30px; padding: 14px 20px; border-radius: 6px; display:flex; justify-content:space-between; align-items:center; }
+    .summary .total-val { font-size: 22px; font-weight: 700; color: #2d7a3a; }
+    .summary .total-lbl { font-size: 10px; color: #888; }
+    .summary .meta { font-size: 11px; color: #666; }
+    .section { margin: 0 30px 20px; }
+    .section-title { font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; }
+    .title-green { background: #2d7a3a; color: white; }
+    .title-red   { background: #c0392b; color: white; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #2d7a3a; color: white; padding: 7px 10px; text-align: left; font-size: 11px; }
+    th.right, td.right { text-align: right; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    .total-row { background: #2d7a3a !important; color: white; }
+    .total-row td { color: white; font-weight: 700; font-size: 14px; border:none; }
+    table.not-found th { background: #c0392b; }
+    .footer { background: #2d7a3a; color: white; text-align: center; padding: 12px; font-size: 10px; margin-top: 30px; }
+    .note { font-size: 10px; color: #999; margin: 8px 30px; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Librería Lerma</h1>
+      <p>Presupuesto Escolar 2026</p>
+    </div>
+    <div class="date">${date}</div>
+  </div>
+
+  <div class="summary">
+    <div class="meta">
+      Artículos encontrados: <strong>${found.length}</strong> de <strong>${items.length}</strong><br>
+      Artículos no disponibles: <strong>${notFound.length}</strong>
+    </div>
+    <div style="text-align:right">
+      <div class="total-lbl">TOTAL ESTIMADO</div>
+      <div class="total-val">${fmt(total)}</div>
+    </div>
+  </div>
+
+  ${found.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-green">✓ Artículos disponibles</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th style="width:80px">SKU</th>
+          <th>PRODUCTO</th>
+          <th class="right" style="width:100px">P. UNIT.</th>
+          <th class="right" style="width:110px">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>${foundRows}</tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4">TOTAL ESTIMADO</td>
+          <td style="text-align:right">${fmt(total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>` : ''}
+
+  ${notFound.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-red">⚠ Artículos no disponibles — Consultá con un asesor</div>
+    <table class="not-found">
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th>ARTÍCULO SOLICITADO</th>
+        </tr>
+      </thead>
+      <tbody>${notFoundRows}</tbody>
+    </table>
+  </div>
+  <p class="note">* Estos artículos no están disponibles en el catálogo online. Consultá en la tienda o por WhatsApp.</p>` : ''}
+
+  <div class="footer">
+    Librería Lerma &nbsp;|&nbsp; Belgrano 635, Salta &nbsp;|&nbsp; Tel: 0387-4314736 &nbsp;|&nbsp; librerialerma.com.ar
+  </div>
+
+  \u003cscript\u003ewindow.onload = function() { window.print(); }\u003c/script\u003e
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
   }
 
-  // ── FOOTER ──────────────────────────────────────────────────────
-  const footerY = PAGE_H - 40;
-  doc.rect(0, footerY, PAGE_W, 40).fill(GREEN);
-  doc.fillColor(WHITE).fontSize(8).font("Helvetica")
-     .text("Librería Lerma  |  Belgrano 635, Salta  |  Tel: 0387-4314736  |  librerialerma.com.ar",
-           ML, footerY + 14, { width: CONTENT_W, align: "center" });
+  // ─── PRODUCT MODAL ────────────────────────────────────────────
+  function openModal(idx) {
+    const item = _foundItems[idx];
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 
-  doc.end();
-});
+    // Búsqueda por nombre del producto en la tienda
+    const productUrl = item.catalogSlug
+      ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+      : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
 
-// ─── CATÁLOGO PÚBLICO ──────────────────────────────────────────────
-app.get("/api/catalogo", (req, res) => res.json(CATALOG));
+    document.getElementById("modalBody").innerHTML = `
+      <div class="modal-requested">Solicitado en la lista:</div>
+      <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
+      <div class="modal-product-name">${item.catalogName}</div>
+      <div class="modal-meta">
+        ${item.catalogSku ? `<span class="modal-tag sku">SKU ${item.catalogSku}</span>` : ""}
+        <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
+      </div>
+      <div class="modal-price-row">
+        <div>
+          <div class="modal-price-label">Precio unitario</div>
+          <div class="modal-price-val">${fmt(item.unitPrice)}</div>
+        </div>
+        <div class="modal-qty-info">
+          <div class="modal-qty-label">Subtotal (x${item.quantity})</div>
+          <div class="modal-subtotal">${fmt(item.subtotal)}</div>
+        </div>
+      </div>
+      <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener">
+        🔍 Ver en la tienda →
+      </a>
+    `;
 
-// ─── SERVIR WIDGET COMO PÁGINA ────────────────────────────────────
-app.get("/widget", (req, res) => {
-  const widgetPath = path.resolve(__dirname, "widget.html");
-  console.log("Buscando widget en:", widgetPath);
-  res.sendFile(widgetPath);
-});
+    document.getElementById("productModal").classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
 
-app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
+  function closeModal(e) {
+    if (e.target === document.getElementById("productModal")) closeModalDirect();
+  }
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
+  function closeModalDirect() {
+    document.getElementById("productModal").classList.remove("show");
+    document.body.style.overflow = "";
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModalDirect();
+  });
+
+  async function comprar() {
+    const btn = document.querySelector('.btn-primary');
+    if (!btn || _foundItems.length === 0) return;
+
+    btn.disabled = true;
+    btn.textContent = "Agregando al carrito…";
+
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+    // Build cart items list with slugs
+    const cartItems = _foundItems.map(item => ({
+      name: item.catalogName,
+      slug: item.catalogSlug,
+      sku: item.catalogSku,
+      qty: item.quantity,
+      price: item.unitPrice,
+      url: item.catalogSlug
+        ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+        : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`
+    }));
+
+    // Show cart summary modal
+    const total = _foundItems.reduce((s, i) => s + i.subtotal, 0);
+    const cartHtml = `
+      <div class="modal-requested" style="margin-bottom:1rem">
+        Abrí cada producto para agregarlo al carrito de la tienda:
+      </div>
+      <div style="max-height:280px;overflow-y:auto;margin-bottom:1.25rem">
+        ${cartItems.map((item, i) => `
+          <a href="${item.url}" target="_blank" rel="noopener"
+             style="display:flex;align-items:center;justify-content:space-between;
+                    padding:0.6rem 0.75rem;border-radius:0.6rem;margin-bottom:0.4rem;
+                    background:var(--paper);text-decoration:none;color:var(--ink);
+                    border:1px solid var(--border);transition:background 0.15s"
+             onmouseover="this.style.background='var(--accent-light)'"
+             onmouseout="this.style.background='var(--paper)'">
+            <span style="font-size:0.85rem;flex:1">${item.name}</span>
+            <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;
+                         border-radius:2rem;margin:0 0.5rem">x${item.qty}</span>
+            <span style="font-size:0.8rem;font-weight:600;color:var(--accent)">${fmt(item.price * item.qty)}</span>
+            <span style="margin-left:0.5rem;font-size:0.8rem">→</span>
+          </a>
+        `).join("")}
+      </div>
+      <div style="background:var(--ink);color:white;border-radius:0.75rem;
+                  padding:0.85rem 1.25rem;display:flex;justify-content:space-between;
+                  align-items:center;margin-bottom:1rem">
+        <span style="font-size:0.85rem;opacity:0.7">Total estimado</span>
+        <span style="font-family:'Fraunces',serif;font-size:1.4rem">${fmt(total)}</span>
+      </div>
+      <a href="https://www.librerialerma.com.ar" target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:center;gap:0.4rem;
+                width:100%;padding:0.85rem;background:var(--accent);color:white;
+                border:none;border-radius:0.7rem;font-family:'DM Sans',sans-serif;
+                font-size:0.95rem;font-weight:600;text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='#c94a1a'"
+         onmouseout="this.style.background='var(--accent)'">
+        🛒 Ir a la tienda →
+      </a>
+    `;
+
+    document.getElementById("modalBody").innerHTML = cartHtml;
+    document.getElementById("productModal").classList.add("show");
+    document.body.style.overflow = "hidden";
+    document.getElementById("modalBox").querySelector(".modal-title").textContent = 
+      `${cartItems.length} productos para agregar`;
+
+    btn.disabled = false;
+    btn.textContent = "Agregar todo al carrito →";
+  }
+</script>
+</body>
+</html>
