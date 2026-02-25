@@ -762,7 +762,7 @@
     const btn = document.getElementById("btnPresupuestar");
     if (!btn) return 600;
     const rect = btn.getBoundingClientRect();
-    const h = window.scrollY + rect.bottom + 32;
+    const h = window.scrollY + rect.bottom + 180;
     return h > 100 ? h : document.body.scrollHeight;
   }
 
