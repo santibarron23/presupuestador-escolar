@@ -205,17 +205,34 @@ function buildDummyItems(rawText) {
 }
 
 // ─── LLAMADA ANTHROPIC GENÉRICA ───────────────────────────────────────
-async function callAnthropic(messages, maxTokens = 4000) {
-  const response = await axios.post(
-    "https://api.anthropic.com/v1/messages",
-    { model: "claude-sonnet-4-20250514", max_tokens: maxTokens, messages },
-    { headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-    }}
-  );
-  return response.data.content[0].text.trim();
+async function callAnthropic(messages, maxTokens = 4000, attempt = 1) {
+  const MAX_ATTEMPTS = 4;
+  const RETRY_DELAYS = [0, 3000, 8000, 15000];
+  try {
+    const response = await axios.post(
+      "https://api.anthropic.com/v1/messages",
+      { model: "claude-sonnet-4-20250514", max_tokens: maxTokens, messages },
+      { headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+      }}
+    );
+    return response.data.content[0].text.trim();
+  } catch (err) {
+    const status = err && err.response && err.response.status;
+    const isOverloaded = status === 529 || status === 503 || status === 502;
+    const isRateLimit  = status === 429;
+    if ((isOverloaded || isRateLimit) && attempt < MAX_ATTEMPTS) {
+      const delay = isRateLimit
+        ? (parseInt((err.response.headers && err.response.headers["retry-after"]) || "20") * 1000)
+        : RETRY_DELAYS[attempt];
+      console.log("API " + status + " — reintento " + attempt + "/" + (MAX_ATTEMPTS-1) + " en " + (delay/1000) + "s");
+      await new Promise(r => setTimeout(r, delay));
+      return callAnthropic(messages, maxTokens, attempt + 1);
+    }
+    throw err;
+  }
 }
 
 // ─── PARSEAR + MATCHEAR TEXTO EN 1 SOLA LLAMADA ──────────────────────
@@ -1049,4 +1066,4 @@ app.get("/widget", (req, res) => {
 app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));;
