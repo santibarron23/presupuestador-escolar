@@ -140,7 +140,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "plasticola con glitter" / "adhesivo con glitter" / "cola glitter" = "Adhesivo con Glitter PELIKAN" (stock:5)
    - "barritas de silicona gruesa" / "barras de silicona" = "Barra Adhesiva de Silicona P/Pistola" (stock:474) — dentro del artículo se elige el espesor
    - "silicona liquida" = "Silicona Liquida STA" (stock:21) o "Silicona Liquida PELIKAN" (stock:2)
-   - "cinta de papel" = "Cinta de Papel Auca" (stock:29) — dentro del artículo se elige la medida
+   - "cinta de papel" / "cinta de papel gruesa" / "cinta papel" = "Cinta de Papel Auca" (stock:29) — dentro del artículo se elige la medida. "gruesa" es el grosor, no un producto diferente
    - "cinta de embalar" / "cinta scotch" / "cinta adhesiva transparente" = "Cintas Adhesivas AUCA 48x50" (stock:16) — dentro del artículo se elige el color
    - "ojalillos" / "plancha de ojalillos" = "Ojalillos Escolares X 30 Unidades" (stock:4) o "Ojalillos Escolares X Unidad" (stock:32)
 
@@ -148,13 +148,13 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "papel glasé metalizado" / "PAQ papel glase metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
    - "papel glasé flúo" / "PAQ papel glase fluo" = "Papel Glace Fluo Surtido Luma" (stock:95)
    - "papel glasé opaco" / "PAQ papel glase opaco" / "papel glasé lustre" / "papel glasé mate" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glasé" (genérico, sin especificar tipo) = matchear cada uno con el tipo correspondiente: metalizado→Metalizado, lustre→Lustre, fluo→Fluo. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos.
+   - "papel glace (1 fluo, 1 mate, 1 metalizado)" / "3 papel glace" / "sobres de papel glasé" = son 3 productos DISTINTOS: "Papel Glace Fluo Surtido Luma" (stock:95) + "Papel Glace Lustre Surtido Luma" (stock:80) + "Papel Glace Metalizado Surtido Luma" (stock:90). Cuando la lista pide varios tipos en la misma línea, separarlos en 3 items encontrados distintos, quantity 1 cada uno.
    - NOTA: "glase" y "glace" son la misma cosa — diferencia ortográfica del mismo producto
    - "papel cometa" / "papel seda" = "Papel Seda / Cometa Varios Colores" (stock:45) o "Papel Seda / Cometa Fantasia Varios Colores" (stock:63) — dentro del artículo se elige el color
-   - "papel afiche" / "afiche de color" = "Papel afiche vs colores" (stock:0, consultar disponibilidad)
+   - "papel afiche" / "afiche de color" / "papel afiche o papel madera" = primero verificar "Papel afiche vs colores". Si no tiene stock, ofrecer "Papel Madera 80x100" (stock:60) como alternativa
    - "hojas acartonadas color" / "cartón corrugado color" = "Carton corrugado vs.colores" (stock:7) — tamaño afiche, dentro del artículo se elige el color
    - "papel calcar" / "sobre de papel calcar" / "repuesto de calcar" = "Repuesto de Calcar N 5 Iglu" (stock:9) o "Repuesto de Calcar N 3 Luma" (stock:9)
-   - "papel madera" / "hojas de papel madera" = "Papel Madera 80x100" (stock:60)
+   - "papel madera" / "hojas de papel madera" / "papel afiche o papel madera" / "papel afiche" = "Papel Madera 80x100" (stock:60) — cuando la lista pide "papel afiche O papel madera", matchear con Papel Madera 80x100 ya que es el disponible
    - "block de papel madera" / "block papel madera" = "Block Papel Madera MURESCO" (stock:3)
    - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
    - "hojas A4 de colores" = "RESMA A4 LUMA COLOR" o similar
@@ -162,19 +162,20 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
 
    BLOCKS DE DIBUJO Y CARTULINA:
    - "block de afiches" / "block afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
-   - "block de cartulinas entretenidas" / "block cartulinas" = "Block Cartulina Fantasia N° 5 El Nene" (stock:14) o "Block El Nene N° 5 Aguayos" (stock:8) o "Block El Nene N° 5 Patrios" (stock:10)
-   - "cartulina lisa" / "cartulina color" = "Cartulina Lisa Varios Colores" (stock:69)
+   - "block de cartulinas" / "block cartulinas" / "block cartulinas fantasia" / "block cartulinas entretenidas" / "block cartulinas x24 hojas" = "Block Cartulina Fantasia N° 5 El Nene" (stock:14) o "Block El Nene N° 5 Aguayos" (stock:8) o "Block El Nene N° 5 Patrios" (stock:10). IGNORAR el número de hojas (x24, x12, etc.) al matchear — son detalles internos del producto
+   - "cartulina" / "cartulina lisa" / "cartulina color" / "1 cartulina" = "Cartulina Lisa Varios Colores" (stock:69) o "Cartulina Metalizada Varios Colores" (stock:29) según contexto
    - "cartulina metalizada" = "Cartulina Metalizada Varios Colores" (stock:29)
    - "repuesto canson N°5" / "hojas de dibujo N°5" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
    - "block canson N°3" / "hojas color N°3" = "REPUESTO RIVADAVIA N3" o "REPUESTO TRIUNFANTE N3"
 
    GOMA EVA:
    - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — dentro del artículo se elige el color
-   - "goma eva con brillo" / "goma eva brillante" / "goma eva glitter" = "Goma Eva C/Glitter" (stock:49) — dentro del artículo se elige el color
+   - "goma eva con brillo" / "goma eva brillante" / "goma eva glitter" / "1 goma eva con brillo" = "Goma Eva C/Glitter" (stock:49) — dentro del artículo se elige el color. SIEMPRE matchear con este producto cuando dice "con brillo" o "glitter"
 
    MARCADORES Y FIBRAS:
    - "fibron negro o azul para pizarra" / "marcador para pizarra" / "fibrón pizarra" = "MARCADOR PARA PIZARRA OLAMI 220" (stock:10) o "MARCADOR PARA PIZARRA TRABI 450" (stock:9) — dentro del artículo se elige el color
    - "fibron" / "felpon" / "fibra trazo grueso" = fibra de color, buscar FIBRA en catálogo
+   - "fibron negro permanente" / "marcador negro permanente" / "fibron permanente punta redonda" / "fibrones negros permanente" = "Marcador Edding 400 Permanente" (stock:20) o "Marcadores FILGO x6 Permanentes" (stock:3) o "Fibra Permanente BIC Intensity" (stock:2+). SIEMPRE hay stock de marcadores permanentes
    - "marca todo" / "marcatodo" = "Marcadores PELIKAN 420 Pastel" (stock:60)
    - "resaltador" = cualquier resaltador del catálogo con stock
 
@@ -195,8 +196,8 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    GLOBOS Y OTROS MATERIALES:
    - "globos de colores" / "bolsa de globos" = "GLOBOS TUKY 9\" X25U." (stock disponible) — NUNCA globo terráqueo
    - "palitos de madera" / "palitos de helado" / "palito helado color" = "Mini Palitos de Madera ONIX" (stock:55) o "Mini Palitos de Madera tipo Paleta ONIX x50" (stock:57)
-   - "plastilinas" / "plastilina" = "Plastilina X10 Alba" (stock:15) o "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA "Plastilina Escolar KEYROAD" (stock:0)
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
+   - "plastilinas" / "plastilina" / "10 plastilinas" / "x plastilinas" = "Plastilinas PELIKAN Pastel" (stock:10) o "Plastilina escolar PlayColor x10" (stock:5). NUNCA "Plastilina Escolar KEYROAD" (stock:0). La cantidad pedida (10, 6, etc.) NO es el stock — el stock es lo que hay en depósito
+   - "tizas" / "caja de tizas" / "1 caja de tizas" = "Tiza Color PLAYCOLOR X12" (stock:9) o "Tiza Blanca x 12 Playcolor" (stock:9). SIEMPRE matchear — hay stock
    - "crayones" = cualquier caja de crayones del catálogo con stock
    - "tempera" = cualquier tempera disponible
    - "acuarela" = cualquier acuarela del catálogo
@@ -350,7 +351,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "papel glase metalizado" / "PAQ papel glase metalizado" / "papel glasé metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
    - "papel glase fluo" / "PAQ papel glase fluo" / "papel glasé flúor" = "Papel Glace Fluo Surtido Luma" (stock:95)
    - "papel glase opaco" / "PAQ de papel glase opaco" / "papel glasé mate" / "papel glasé lustre" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos
+   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" o "1 fluo, 1 mate, 1 metalizado" son SIEMPRE 3 productos distintos: matchear cada uno con su producto correspondiente. "mate" = Lustre. Los 3 tienen stock
    - "cinta de embalar" / "cinta embalar" / "cinta scotch" = "Cintas Adhesivas AUCA 48x50" (stock:16)
    - "plasticola con glitter" / "adhesivo con glitter" / "cola vinilica glitter" = "Adhesivo Plasticola Color 40 Cc" (stock:8) — es lo más cercano disponible
    - "block de afiches" / "block afiches" / "bloque afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
@@ -366,7 +367,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "crayones" = cualquier caja de crayones
    - "tempera" = cualquier tempera disponible
    - "plastilinas" / "plastilina" = elegí SIEMPRE la que tenga stock > 0: "Plastilina X10 Alba" (stock:15), "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA elijas "Plastilina Escolar KEYROAD" que tiene stock:0
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
+   - "tizas" / "caja de tizas" / "1 caja de tizas" = "Tiza Color PLAYCOLOR X12" (stock:9) o "Tiza Blanca x 12 Playcolor" (stock:9). SIEMPRE matchear — hay stock
    - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
    - "hojas A4 de colores" / "hojas de máquina A4 de colores" = "RESMA A4 210X219X100H.LUMA COLOR" o similar con stock
    - REGLA CRÍTICA: El stock del catálogo indica unidades del PAQUETE en depósito, NO la cantidad de items del producto. Si el cliente pide 10 plastilinas, elegí cualquier plastilina con stock > 0 sin importar si el stock es 5, 15 o 100. El stock NO necesita ser >= la quantity pedida.
@@ -500,7 +501,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "papel glase metalizado" / "PAQ papel glase metalizado" / "papel glasé metalizado" = "Papel Glace Metalizado Surtido Luma" (stock:90)
    - "papel glase fluo" / "PAQ papel glase fluo" / "papel glasé flúor" = "Papel Glace Fluo Surtido Luma" (stock:95)
    - "papel glase opaco" / "PAQ de papel glase opaco" / "papel glasé mate" / "papel glasé lustre" = "Papel Glace Lustre Surtido Luma" (stock:80)
-   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" son 3 productos distintos
+   - "sobres de papel glase" / "sobres papel glase" / "papel glase" (genérico) → matchear con Papel Glace Lustre, Fluo o Metalizado según contexto. Si dice "1 metalizado, 1 lustre, 1 fluo" o "1 fluo, 1 mate, 1 metalizado" son SIEMPRE 3 productos distintos: matchear cada uno con su producto correspondiente. "mate" = Lustre. Los 3 tienen stock
    - "cinta de embalar" / "cinta embalar" / "cinta scotch" = "Cintas Adhesivas AUCA 48x50" (stock:16)
    - "plasticola con glitter" / "adhesivo con glitter" / "cola vinilica glitter" = "Adhesivo Plasticola Color 40 Cc" (stock:8) — es lo más cercano disponible
    - "block de afiches" / "block afiches" / "bloque afiches" = "Block De Dibujo N° 5 Afiche El Nene" (stock:10)
@@ -516,7 +517,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "crayones" = cualquier caja de crayones
    - "tempera" = cualquier tempera disponible
    - "plastilinas" / "plastilina" = elegí SIEMPRE la que tenga stock > 0: "Plastilina X10 Alba" (stock:15), "Plastilina X6 Alba" (stock:18) o "Plastilinas PELIKAN Pastel" (stock:10). NUNCA elijas "Plastilina Escolar KEYROAD" que tiene stock:0
-   - "tizas" / "caja de tizas" = "Tiza Color X12 KOBY" u otras tizas con stock
+   - "tizas" / "caja de tizas" / "1 caja de tizas" = "Tiza Color PLAYCOLOR X12" (stock:9) o "Tiza Blanca x 12 Playcolor" (stock:9). SIEMPRE matchear — hay stock
    - "hojas A4 blancas" / "hojas de máquina A4" = "Hoja A4 Blanca x50 U."
    - "hojas A4 de colores" / "hojas de máquina A4 de colores" = "RESMA A4 210X219X100H.LUMA COLOR" o similar con stock
    - REGLA CRÍTICA: El stock del catálogo indica unidades del PAQUETE en depósito, NO la cantidad de items del producto. Si el cliente pide 10 plastilinas, elegí cualquier plastilina con stock > 0 sin importar si el stock es 5, 15 o 100. El stock NO necesita ser >= la quantity pedida.
