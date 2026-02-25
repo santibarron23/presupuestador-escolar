@@ -25,7 +25,7 @@
       font-family: 'DM Sans', sans-serif;
       background: var(--paper);
       color: var(--ink);
-      min-height: 100vh;
+      min-height: unset;
       padding: 1.5rem 1rem;
       overflow-x: hidden;
       width: 100%;
@@ -753,32 +753,32 @@
 
   let selectedFile = null;
 
-  function reportHeight() {
-    // Antes de mostrar resultados, reportar solo hasta el botón "Calcular presupuesto"
-    const resultsDiv = document.getElementById("results");
-    const hasResults = resultsDiv && resultsDiv.classList.contains("show");
-    const loadingDiv = document.getElementById("loading");
-    const isLoading = loadingDiv && loadingDiv.style.display !== "none" && loadingDiv.style.display !== "";
-
-    let height;
-    if (hasResults || isLoading) {
-      height = document.body.scrollHeight;
-    } else {
-      // Solo hasta el botón inclusive
-      const btn = document.getElementById("btnPresupuestar");
-      if (btn) {
-        const rect = btn.getBoundingClientRect();
-        height = rect.bottom + window.scrollY + 24;
-      } else {
-        height = document.body.scrollHeight;
-      }
-    }
+  function reportHeight(expanded) {
+    const height = expanded ? document.body.scrollHeight : getCompactHeight();
     window.parent.postMessage({ height }, "*");
   }
-  const ro = new ResizeObserver(reportHeight);
+
+  function getCompactHeight() {
+    const btn = document.getElementById("btnPresupuestar");
+    if (!btn) return 600;
+    const rect = btn.getBoundingClientRect();
+    const h = window.scrollY + rect.bottom + 32;
+    return h > 100 ? h : document.body.scrollHeight;
+  }
+
+  function reportCompactWithRetry(attempts) {
+    reportHeight(false);
+    if (attempts > 0) setTimeout(() => reportCompactWithRetry(attempts - 1), 300);
+  }
+  window.addEventListener("load", () => reportCompactWithRetry(3));
+
+  const ro = new ResizeObserver(() => {
+    const hasResults = document.getElementById("results")?.classList.contains("show");
+    const isLoading = document.getElementById("loading")?.style.display === "flex";
+    if (hasResults || isLoading) reportHeight(true);
+    else reportHeight(false);
+  });
   ro.observe(document.body);
-  // También reportar al cargar
-  window.addEventListener("load", () => setTimeout(reportHeight, 300));
 
   // ─── DRAG & DROP ──────────────────────────────────────────────
   const dropZone = document.getElementById("dropZone");
@@ -959,7 +959,7 @@
     container.innerHTML = html;
     container.classList.add("show");
     container.scrollIntoView({ behavior: "smooth", block: "start" });
-    setTimeout(reportHeight, 100);
+    setTimeout(() => reportHeight(true), 100);
   }
 
 
