@@ -71,8 +71,8 @@ const KEYWORD_EXPANSIONS = {
   "goma":        ["borrar", "banderas", "classic"],
   "lapiz":       ["lapiz", "negro"],
   "lapices":     ["lapiz", "color"],
-  "folio":       ["folio", "folios", "luma"],
-  "folios":      ["folio", "folios", "luma"],
+  "folio":       ["folio", "folios", "luma", "plastico"],
+  "folios":      ["folio", "folios", "luma", "plastico"],
   "regla":       ["regla", "escolar", "maped", "pelikan"],
   "birome":      ["boligrafo", "bic", "cristal"],
   "boligrafo":   ["boligrafo", "bic"],
@@ -83,12 +83,14 @@ const KEYWORD_EXPANSIONS = {
   "boligoma":    ["voligoma"],
   "silicona":    ["silicona", "barra"],
   "tijera":      ["tijera"],
-  "sacapuntas":  ["sacapuntas"],
+  "sacapuntas":  ["sacapunta", "maped", "metal", "satelite", "filgo"],
+  "sacapunta":   ["sacapunta", "maped", "metal", "satelite", "filgo"],
   "cartuchera":  ["cartuchera"],
   // Papeles
-  "glase":       ["glace"],
-  "glasé":       ["glace"],
-  "glace":       ["glace"],
+  "glase":       ["glace", "lustre", "luma"],
+  "glasé":       ["glace", "lustre", "luma"],
+  "glace":       ["glace", "lustre", "luma"],
+  "glase":       ["glace", "lustre", "luma"],
   "crepe":       ["crepe"],
   "crepe":       ["crepe", "papel"],
   "contac":      ["contact", "contac"],
@@ -245,7 +247,7 @@ async function parseAndMatchFromText(rawText) {
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
 REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
-   - "folio" / "folios" / "10 folios" / "10 folios (3 anillos)" / "folios para carpeta" → SIEMPRE "Folios A4 LUMA" (stock:206) — son paquetes de 10 unidades. NUNCA resmas de papel, NUNCA carpetas ni biblioratos.
+   - "folio" / "folios" / "10 folios" / "10 folios (3 anillos)" / "folios para carpeta" → SIEMPRE "Folios A4 LUMA" (stock:206) — HAY STOCK (206 unidades), son paquetes de 10. NUNCA resmas, NUNCA carpetas, NUNCA biblioratos.
    - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
    - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
    - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
@@ -279,7 +281,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    ESCRITURA Y GRAFITO:
    - "lápiz" / "lapiz negro" / "lápiz de grafito" / "lápices de grafito" / "lapiz HB" / "lapiz escolar" = SIEMPRE "Lapiz Negro Bic Evolution Hb" (stock:48) como primera y preferida opción. JAMÁS recomendar un bolígrafo, lapicera o birome cuando piden un lápiz. Son productos completamente distintos.
    - "borrador" / "goma de borrar" / "goma borrar" / "goma" (en contexto escolar) = SIEMPRE y ÚNICAMENTE "Goma de Borrar 2 BANDERAS Classic" (stock:497). NUNCA otra marca, NUNCA otro modelo. Esta es la única opción correcta.
-   - "birome roja" / "birome" / "lapicera roja" = "Boligrafo Bic 0,7 Punta Fina Cristal" (stock:69) — primera opción por defecto para cualquier birome/boligrafo estándar
+   - "birome roja" / "birome" / "lapicera" / "boligrafo" = SIEMPRE "Boligrafo Bic 0,7 Punta Fina Cristal" (stock:69) como primera y única opción por defecto. Sin excepciones.
    - "lapicera Frixión" / "lapicera tinta borrable" = "Boligrafo Borrable Gel BIC Gelocity Ilusion"
    - "cartucho azul lavable" / "cartucho tinta azul" = "Cartucho Pelikan corto x6u Azul" (stock:19) o "Cartucho Repuesto Parker Pluma x5" (stock:34)
    - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
@@ -317,7 +319,12 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "cartulina" / "cartulina lisa" / "cartulina color" / "1 cartulina" = "Cartulina Lisa Varios Colores" (stock:69) o "Cartulina Metalizada Varios Colores" (stock:29) según contexto
    - "cartulina metalizada" = "Cartulina Metalizada Varios Colores" (stock:29)
    - "repuesto canson N°5" / "hojas de dibujo N°5" = "REPUESTO DE DIBUJO N 5 BLANCO/COLOR/NEGRO LUMA"
-   - "block canson N°3" / "hojas color N°3" = "REPUESTO RIVADAVIA N3" o "REPUESTO TRIUNFANTE N3"
+   - "hojas de colores y blancas (canson)" / "hojas canson color y blancas" = son DOS productos distintos que deben aparecer por separado:
+     * Hojas de colores: "Repuesto De Dibujo N° 3 Color Exito" (stock:2) o "REPUESTO DE DIBUJO N 5 COLOR LUMA" (stock:6)
+     * Hojas blancas: "Repuesto De Dibujo N° 3 Blanco Exito" (stock:10) o "REPUESTO DE DIBUJO N° 3 BLANCO LUMA" (stock:9)
+   - "hojas canson de color" / "hojas de colores N°3" / "block canson color" = "Repuesto De Dibujo N° 3 Color Exito" (stock:2) o "REPUESTO DE DIBUJO N 5 COLOR LUMA" (stock:6)
+   - "hojas canson blancas" / "hojas blancas N°3" / "block canson blanco" = "Repuesto De Dibujo N° 3 Blanco Exito" (stock:10) o "REPUESTO DE DIBUJO N° 3 BLANCO LUMA" (stock:9)
+   - "block canson N°3" / "hojas color N°3" = "Repuesto De Dibujo N° 3 Color Exito" (stock:2) o "REPUESTO RIVADAVIA N3"
 
    GOMA EVA:
    - "goma eva lisa" = "Goma Eva Lisa" (stock:48) — dentro del artículo se elige el color
@@ -359,7 +366,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
 
    CUADERNOS:
    - "cuaderno A4 rayado tapa dura" / "cuaderno ABC" / "cuaderno espiral ABC" / "cuaderno A4 tapa dura rayado" = SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" (stock:5) como primera opción. NUNCA recomendar cuadernos Oxford (son demasiado caros). Alternativa: "CUADERNOS ESP.ABC RIVADAVIA AULA UNIVERSAL x60 HOJAS"
-   - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" = "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10) como primera opción
+   - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" / "cuaderno de comunicaciones" = SIEMPRE "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10). "comunicados" y "comunicaciones" son la misma cosa.
 
    MAPAS:
    - "mapa Argentina" / "mapa división política" / "mapa político" = "MAPAS Politico N°3" (stock:67) o "MAPAS Fisico N°3" (stock:77)
@@ -457,7 +464,7 @@ async function parseAndMatchFromImage(filePath, mimeType) {
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
 REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
-   - "folio" / "folios" / "10 folios" / "10 folios (3 anillos)" / "folios para carpeta" → SIEMPRE "Folios A4 LUMA" (stock:206) — son paquetes de 10 unidades. NUNCA resmas de papel, NUNCA carpetas ni biblioratos.
+   - "folio" / "folios" / "10 folios" / "10 folios (3 anillos)" / "folios para carpeta" → SIEMPRE "Folios A4 LUMA" (stock:206) — HAY STOCK (206 unidades), son paquetes de 10. NUNCA resmas, NUNCA carpetas, NUNCA biblioratos.
    - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
    - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
    - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
@@ -492,7 +499,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "mapa planisferio" / "planisferio" = "Mapa Mural Planisferio" — NUNCA confundir con bandera
    - "mapa continente americano" = "Mapa Mural America" 
    - "cuaderno ABC" / "cuaderno espiral ABC 100 hojas" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA" — NO cuadernos Oxford ni Norpac
-   - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" = "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10) como primera opción — NO ignorar este producto
+   - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" / "cuaderno de comunicaciones" = SIEMPRE "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10). "comunicados" y "comunicaciones" son la misma cosa. — NO ignorar este producto
    - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
    - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
    - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
@@ -537,7 +544,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
    - "cinta razo/raso bebé" = cinta genérica disponible
    - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" / "sacapunta" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) como primera opción por defecto
+   - "sacapuntas" / "sacapunta" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) o "SACAPUNTA MAPED METAL 2 BOCAS" (stock:4) — HAY STOCK, nunca marcar como sin stock. Alternativas: SACAPUNTA FILGO METAL (stock:18), SACAPUNTA MAPED VIVO MONSTER (stock:8)
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
    - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
@@ -620,7 +627,7 @@ async function parseAndMatchFromPdfVision(pdfPath) {
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
 REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
-   - "folio" / "folios" / "10 folios" / "10 folios (3 anillos)" / "folios para carpeta" → SIEMPRE "Folios A4 LUMA" (stock:206) — son paquetes de 10 unidades. NUNCA resmas de papel, NUNCA carpetas ni biblioratos.
+   - "folio" / "folios" / "10 folios" / "10 folios (3 anillos)" / "folios para carpeta" → SIEMPRE "Folios A4 LUMA" (stock:206) — HAY STOCK (206 unidades), son paquetes de 10. NUNCA resmas, NUNCA carpetas, NUNCA biblioratos.
    - "fibron" / "fibrón" / "fibrones" → SIEMPRE matchear con fibras/marcadores de color (ej: "FIBRA COLOR X10 TRABI MEGA"). NUNCA recomendar marcadores para pizarra (Edding, Trabi pizarra, etc.) salvo que explícitamente diga "para pizarra".
    - "tijera" / "tijeras" → NUNCA recomendar tijera para zurdos salvo que el ítem diga explícitamente "zurdo" o "zurdos".
    - "voligoma" → SIEMPRE matchear con "Adhesivo VOLIGOMA" (stock:43). No buscar alternativas.
@@ -655,7 +662,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "mapa planisferio" / "planisferio" = "Mapa Mural Planisferio" — NUNCA confundir con bandera
    - "mapa continente americano" = "Mapa Mural America" 
    - "cuaderno ABC" / "cuaderno espiral ABC 100 hojas" = "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS" o "CUADERNOS ESP.ABC RIVADAVIA" — NO cuadernos Oxford ni Norpac
-   - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" = "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10) como primera opción — NO ignorar este producto
+   - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" / "cuaderno de comunicaciones" = SIEMPRE "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10). "comunicados" y "comunicaciones" son la misma cosa. — NO ignorar este producto
    - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
    - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
    - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
@@ -700,7 +707,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
    - "cinta razo/raso bebé" = cinta genérica disponible
    - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" / "sacapunta" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) como primera opción por defecto
+   - "sacapuntas" / "sacapunta" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) o "SACAPUNTA MAPED METAL 2 BOCAS" (stock:4) — HAY STOCK, nunca marcar como sin stock. Alternativas: SACAPUNTA FILGO METAL (stock:18), SACAPUNTA MAPED VIVO MONSTER (stock:8)
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
    - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
