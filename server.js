@@ -966,12 +966,24 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // resma A4 / hojas A4 → Resmas A4 AUTOR
-    test: (item) => /b(resma|hojas?)b.*ba4b|ba4b.*(resma|hojas?)/i.test(item.requestedItem),
+    // resma A4 / hojas A4 → Resmas A4 AUTOR (solo en sucursal)
+    test: (item) => /resma|hoja.*a4|a4.*hoja|papel.*a4|a4.*papel/i.test(item.requestedItem) &&
+                    !/oficio|legal/i.test(item.requestedItem),
     override: {
       matched: true,
+      inStoreOnly: true,
       catalogName: "Resmas A4 AUTOR",
       catalogSlug: "resmas-a4-autor",
+    }
+  },
+  {
+    // resma oficio → según gramaje si se especifica, sino Resma Oficio Autor 75 grs. por defecto
+    test: (item) => /resma.*oficio|oficio.*resma|hoja.*oficio|oficio.*hoja|papel.*oficio|oficio.*papel/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      inStoreOnly: true,
+      catalogName: "Resma Oficio Autor 75 grs.",
+      catalogSlug: "resma-oficio-autor-75-grs",
     }
   },
   {
@@ -1053,7 +1065,6 @@ function applyHardcodedRules(matchedItems, catalogByName) {
   matchedItems.forEach(item => {
     for (const rule of HARDCODED_RULES) {
       if (rule.test(item)) {
-        // Buscar el producto en el catálogo para obtener precio e ID
         const prod = catalogByName[rule.override.catalogName.toLowerCase().trim()];
         const unitPrice = prod ? prod.price : (item.unitPrice || 0);
         const qty = item.quantity || 1;
@@ -1062,8 +1073,10 @@ function applyHardcodedRules(matchedItems, catalogByName) {
           catalogSku: prod ? prod.sku : item.catalogSku,
           unitPrice,
           subtotal: unitPrice * qty,
+          // inStoreOnly: indica que el producto no se vende online, solo en sucursal
+          inStoreOnly: rule.override.inStoreOnly || false,
         });
-        break; // una sola regla por item
+        break;
       }
     }
   });
@@ -1143,16 +1156,18 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
       if (prod) item.catalogSlug = prod.slug || null;
     });
 
-    const found = matchedItems.filter((i) => i.matched);
+    const found = matchedItems.filter((i) => i.matched && !i.inStoreOnly);
+    const inStore = matchedItems.filter((i) => i.matched && i.inStoreOnly);
     const notFound = matchedItems.filter((i) => !i.matched);
     const total = found.reduce((sum, i) => sum + i.subtotal, 0);
-    const coverage = Math.round((found.length / matchedItems.length) * 100);
+    const coverage = Math.round(((found.length + inStore.length) / matchedItems.length) * 100);
 
     res.json({
       success: true,
       summary: {
         totalItems: matchedItems.length,
         foundItems: found.length,
+        inStoreItems: inStore.length,
         notFoundItems: notFound.length,
         coveragePercent: coverage,
         estimatedTotal: total,
