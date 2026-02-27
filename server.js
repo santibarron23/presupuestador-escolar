@@ -128,6 +128,41 @@ const KEYWORD_EXPANSIONS = {
   "pendrive":    ["pendrive"],
 };
 
+// ─── FUZZY SEARCH: distancia de Levenshtein ─────────────────────────────────
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// Devuelve true si la palabra es "cercana" a alguna keyword (tolerancia según largo)
+function fuzzyMatchWord(word, keyword) {
+  if (word === keyword) return true;
+  if (word.includes(keyword) || keyword.includes(word)) return true;
+  const maxDist = keyword.length <= 4 ? 1 : keyword.length <= 7 ? 2 : 3;
+  return levenshtein(word, keyword) <= maxDist;
+}
+
+// Expande keywords con fuzzy matching sobre el diccionario de sinónimos
+function fuzzyExpandKeywords(words) {
+  const extra = new Set();
+  for (const word of words) {
+    for (const [key, vals] of Object.entries(KEYWORD_EXPANSIONS)) {
+      if (fuzzyMatchWord(word, key)) {
+        vals.forEach(v => extra.add(v));
+        extra.add(key);
+      }
+    }
+  }
+  return [...extra];
+}
+
 function expandKeywords(items) {
   const rawWords = items.flatMap(i =>
     normalize(i.item || "").split(/\s+/).filter(w => w.length > 2)
@@ -137,13 +172,16 @@ function expandKeywords(items) {
     if (KEYWORD_EXPANSIONS[word]) {
       KEYWORD_EXPANSIONS[word].forEach(e => expanded.add(e));
     }
-    // Partial match: if any key starts with this word or vice versa
+    // Partial match exacto
     for (const [key, vals] of Object.entries(KEYWORD_EXPANSIONS)) {
       if (key.startsWith(word) || word.startsWith(key)) {
         vals.forEach(e => expanded.add(e));
       }
     }
   }
+  // Fuzzy match: expande aunque el usuario haya escrito mal la palabra
+  const fuzzyExtras = fuzzyExpandKeywords(rawWords);
+  fuzzyExtras.forEach(e => expanded.add(e));
   return [...expanded];
 }
 
@@ -946,12 +984,67 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // pote de tempera → Tempera Alba Magic En Pote X 275G
-    test: (item) => /potes+des+t[eé]mpera|t[eé]mpera.*pote/i.test(item.requestedItem),
+    // pote de tempera (cualquier variante: "pote de tempera de color", etc.)
+    test: (item) => /pote/i.test(item.requestedItem) && /t[eé]mpera/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Tempera Alba Magic En Pote X 275G",
       catalogSlug: "tempera-alba-magic-en-pote-x-275g",
+    }
+  },
+  {
+    // plasticola blanca → Adhesivo Escolar STA
+    test: (item) => /plasticola/i.test(item.requestedItem) && /blanc[ao]/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Adhesivo Escolar STA",
+      catalogSlug: "adhesivo-escolar-sta",
+    }
+  },
+  {
+    // plasticola de color / plasticolas de colores → Adhesivo Plasticola Color 40 Cc
+    test: (item) => /plasticola/i.test(item.requestedItem) && /color(es)?/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Adhesivo Plasticola Color 40 Cc",
+      catalogSlug: "adhesivo-plasticola-color-40-cc",
+    }
+  },
+  {
+    // papel madera → Papel Madera 80x100
+    test: (item) => /papel\s+madera/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Papel Madera 80x100",
+      catalogSlug: "papel-madera-80x100",
+    }
+  },
+  {
+    // cartulina / cartulina de color → Cartulina Lisa Varios Colores (excluye metalizada)
+    test: (item) => /cartulina/i.test(item.requestedItem) && !/metaliz/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Cartulina Lisa Varios Colores",
+      catalogSlug: "cartulina-lisa-varios-colores",
+    }
+  },
+  {
+    // afiche / afiche de color / papel afiche → Papel afiche vs colores (excluye block de afiches)
+    test: (item) => /afiche/i.test(item.requestedItem) && !/block/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Papel afiche vs colores",
+      catalogSlug: "papel-afiche-vs-colores",
+    }
+  },
+  {
+    // fibra permanente / fibron permanente / marcador permanente → Marcador Edding 400 Permanente
+    test: (item) => /permanente/i.test(item.requestedItem) &&
+                    /fibra|fibr[oó]n|marcador|felp[oó]n/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Marcador Edding 400 Permanente",
+      catalogSlug: "marcador-edding-400-permanente",
     }
   },
 ];
