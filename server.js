@@ -831,22 +831,24 @@ PASO 2 - MATCHEAR: Para cada producto extraído, encontrá el más parecido del 
 // La IA puede equivocarse en el prompt. Estas reglas en código JS nunca fallan.
 const HARDCODED_RULES = [
   {
-    // birome / lapicera / boligrafo → SIEMPRE Bic 0,7 Punta Fina Cristal
-    test: (item) => /birome|lapicera|boligoma(?!.*voligoma)|boligrafo/i.test(item.requestedItem) &&
-                    !/frixion|borrable|cartucho|tinta\s+borrable/i.test(item.requestedItem),
-    override: {
-      matched: true,
-      catalogName: "Boligrafo Bic 0,7 Punta Fina Cristal",
-      catalogSlug: "boligrafo-bic-07-punta-fina-cristal",
-    }
-  },
-  {
-    // voligoma / boligoma → SIEMPRE Adhesivo VOLIGOMA
+    // voligoma / boligoma (incluso "plasticola o boligoma") → SIEMPRE Adhesivo VOLIGOMA
+    // IMPORTANTE: esta regla va ANTES que la de birome para que "boligoma" no caiga en birome
     test: (item) => /voligoma|boligoma/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Adhesivo VOLIGOMA",
       catalogSlug: "adhesivo-voligoma",
+    }
+  },
+  {
+    // birome / lapicera / boligrafo → SIEMPRE Bic 0,7 Punta Fina Cristal
+    // No matchea si ya fue capturado por la regla de voligoma/boligoma
+    test: (item) => /\b(birome|lapicera|boligrafo)\b/i.test(item.requestedItem) &&
+                    !/frixion|borrable|cartucho|tinta\s+borrable/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Boligrafo Bic 0,7 Punta Fina Cristal",
+      catalogSlug: "boligrafo-bic-07-punta-fina-cristal",
     }
   },
   {
@@ -857,6 +859,24 @@ const HARDCODED_RULES = [
       matched: true,
       catalogName: "Folios A4 LUMA",
       catalogSlug: "folios-a4-luma",
+    }
+  },
+  {
+    // sacapuntas / sacapunta → SIEMPRE SACAPUNTA MAPED METAL SATELITE GRIS
+    test: (item) => /\bsacapuntas?\b/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "SACAPUNTA MAPED METAL SATELITE GRIS",
+      catalogSlug: "sacapunta-maped-metal-satelite-gris-18a8h",
+    }
+  },
+  {
+    // cuaderno de comunicados / comunicaciones → SIEMPRE CUADERNO DE COMUNICACIONES LAPRIDA
+    test: (item) => /comunicad[oa]s?|comunicaciones/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "CUADERNO DE COMUNICACIONES LAPRIDA",
+      catalogSlug: "cuaderno-de-comunicaciones-laprida-8xf4j",
     }
   },
 ];
