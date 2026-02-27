@@ -889,6 +889,33 @@ const HARDCODED_RULES = [
       catalogSlug: "papel-glace-lustre-surtido-luma",
     }
   },
+  {
+    // corrector / liquido corrector / liquid paper → Liquido Corrector PIZZINI
+    test: (item) => /corrector|liquid[o]?s*paper/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Liquido Corrector PIZZINI",
+      catalogSlug: "liquido-corrector-pizzini",
+    }
+  },
+  {
+    // cinta de papel → Cinta de Papel Auca
+    test: (item) => /cintas+des+papel/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Cinta de Papel Auca",
+      catalogSlug: "cinta-de-papel-auca",
+    }
+  },
+  {
+    // cinta de embalar / cinta scotch / cinta adhesiva → Cintas Adhesivas AUCA 48x50
+    test: (item) => /cintas+des+embalar|cintas+embalar|cintas+scotch/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Cintas Adhesivas AUCA 48x50",
+      catalogSlug: "cintas-adhesivas-auca-48x50",
+    }
+  },
 ];
 
 function applyHardcodedRules(matchedItems, catalogByName) {
