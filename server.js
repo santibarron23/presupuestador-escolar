@@ -1068,6 +1068,25 @@ const HARDCODED_RULES = [
       catalogSlug: "tijera-filgo-escolar-pinto-utcln",
     }
   },
+  {
+    // ojalillos / ojalillos escolares → Ojalillos Escolares X 30 Unidades
+    test: (item) => /ojalillo/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Ojalillos Escolares X 30 Unidades",
+      catalogSlug: "ojalillos-escolares-x-30-unidades",
+    }
+  },
+  {
+    // goma eva (cualquier color) → Goma Eva Lisa, EXCEPTO metalizada
+    test: (item) => /goma\s+eva/i.test(item.requestedItem) &&
+                    !/metaliz|glitter|brillo|con\s+brillo/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Goma Eva Lisa",
+      catalogSlug: "goma-eva-lisa",
+    }
+  },
 ];
 
 function applyHardcodedRules(matchedItems, catalogByName) {
