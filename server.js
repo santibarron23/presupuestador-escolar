@@ -287,6 +287,17 @@ NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
 11. "hojas rayadas" / "hojas de carpeta" / "hojas de cuaderno"
     → Buscar repuesto de hojas en catálogo | matched:true. JAMÁS sin stock si hay repuestos.
 
+12. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
+    → Si piden "A4" o "carta": JAMÁS recomendar producto "oficio" ni "legal"
+    → Si piden "oficio" o "legal": JAMÁS recomendar producto "A4" o "carta"
+    → Esta regla aplica a resmas, blocks, repuestos, carpetas y cualquier papel.
+
+13. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
+    → Si piden "cuadriculado": JAMÁS recomendar rayado ni liso
+    → Si piden "rayado" o "rayadas": JAMÁS recomendar cuadriculado ni liso
+    → Si piden "liso" o "lisa": JAMÁS recomendar cuadriculado ni rayado
+    → Esta regla aplica a cuadernos, blocks, repuestos y cualquier hoja.
+
 ====================================================================
 FIN DE REGLAS ABSOLUTAS
 ====================================================================
@@ -914,6 +925,24 @@ const HARDCODED_RULES = [
       matched: true,
       catalogName: "Cintas Adhesivas AUCA 48x50",
       catalogSlug: "cintas-adhesivas-auca-48x50",
+    }
+  },
+  {
+    // resma A4 / hojas A4 → Resmas A4 AUTOR
+    test: (item) => /b(resma|hojas?)b.*ba4b|ba4b.*(resma|hojas?)/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Resmas A4 AUTOR",
+      catalogSlug: "resmas-a4-autor",
+    }
+  },
+  {
+    // block canson / hojas de colores N5 → Block De Dibujo N° 5 Color El Nene
+    test: (item) => /(block|hojas?).*(color|colores).*(n[°o]?s*5|5)|canson.*colores?.*5|colores?.*canson.*5/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Block De Dibujo N° 5 Color El Nene",
+      catalogSlug: "block-de-dibujo-n-5-color-el-nene",
     }
   },
 ];
