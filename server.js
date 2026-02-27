@@ -1059,16 +1059,16 @@ const HARDCODED_RULES = [
       catalogSlug: "marcador-edding-400-permanente",
     }
   },
-];
   {
     // tijerita / tijera punta redonda → TIJERA FILGO ESCOLAR PINTO
-    test: (item) => /tijerita|tijeras+puntas+redonda|tijeras+escolar/i.test(item.requestedItem),
+    test: (item) => /tijerita|tijera\s+punta\s+redonda|tijera\s+escolar/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "TIJERA FILGO ESCOLAR PINTO",
       catalogSlug: "tijera-filgo-escolar-pinto-utcln",
     }
   },
+];
 
 function applyHardcodedRules(matchedItems, catalogByName) {
   matchedItems.forEach(item => {
