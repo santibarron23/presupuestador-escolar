@@ -1060,6 +1060,15 @@ const HARDCODED_RULES = [
     }
   },
 ];
+  {
+    // tijerita / tijera punta redonda → TIJERA FILGO ESCOLAR PINTO
+    test: (item) => /tijerita|tijeras+puntas+redonda|tijeras+escolar/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "TIJERA FILGO ESCOLAR PINTO",
+      catalogSlug: "tijera-filgo-escolar-pinto-utcln",
+    }
+  },
 
 function applyHardcodedRules(matchedItems, catalogByName) {
   matchedItems.forEach(item => {
