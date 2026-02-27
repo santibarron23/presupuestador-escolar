@@ -945,6 +945,15 @@ const HARDCODED_RULES = [
       catalogSlug: "block-de-dibujo-n-5-color-el-nene",
     }
   },
+  {
+    // pote de tempera → Tempera Alba Magic En Pote X 275G
+    test: (item) => /potes+des+t[eé]mpera|t[eé]mpera.*pote/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Tempera Alba Magic En Pote X 275G",
+      catalogSlug: "tempera-alba-magic-en-pote-x-275g",
+    }
+  },
 ];
 
 function applyHardcodedRules(matchedItems, catalogByName) {
