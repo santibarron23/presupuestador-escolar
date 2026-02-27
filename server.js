@@ -827,6 +827,61 @@ PASO 2 - MATCHEAR: Para cada producto extraído, encontrá el más parecido del 
 }
 
 
+// ─── REGLAS HARDCODEADAS (se aplican DESPUÉS de la IA, son inviolables) ──────
+// La IA puede equivocarse en el prompt. Estas reglas en código JS nunca fallan.
+const HARDCODED_RULES = [
+  {
+    // birome / lapicera / boligrafo → SIEMPRE Bic 0,7 Punta Fina Cristal
+    test: (item) => /birome|lapicera|boligoma(?!.*voligoma)|boligrafo/i.test(item.requestedItem) &&
+                    !/frixion|borrable|cartucho|tinta\s+borrable/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Boligrafo Bic 0,7 Punta Fina Cristal",
+      catalogSlug: "boligrafo-bic-07-punta-fina-cristal",
+    }
+  },
+  {
+    // voligoma / boligoma → SIEMPRE Adhesivo VOLIGOMA
+    test: (item) => /voligoma|boligoma/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Adhesivo VOLIGOMA",
+      catalogSlug: "adhesivo-voligoma",
+    }
+  },
+  {
+    // folio / folios → SIEMPRE Folios A4 LUMA
+    test: (item) => /^folios?\b/i.test(item.requestedItem.trim()) ||
+                    /\bfolios?\s*(a4|n[°o]?\s*3|plástico|para\s+carpeta|\(\d+\s*anillo)/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Folios A4 LUMA",
+      catalogSlug: "folios-a4-luma",
+    }
+  },
+];
+
+function applyHardcodedRules(matchedItems, catalogByName) {
+  matchedItems.forEach(item => {
+    for (const rule of HARDCODED_RULES) {
+      if (rule.test(item)) {
+        // Buscar el producto en el catálogo para obtener precio e ID
+        const prod = catalogByName[rule.override.catalogName.toLowerCase().trim()];
+        const unitPrice = prod ? prod.price : (item.unitPrice || 0);
+        const qty = item.quantity || 1;
+        Object.assign(item, rule.override, {
+          catalogId: prod ? prod.id : item.catalogId,
+          catalogSku: prod ? prod.sku : item.catalogSku,
+          unitPrice,
+          subtotal: unitPrice * qty,
+        });
+        break; // una sola regla por item
+      }
+    }
+  });
+  return matchedItems;
+}
+
 // ─── ENDPOINT PRINCIPAL ────────────────────────────────────────────
 app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
   const file = req.file;
@@ -875,6 +930,10 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
     );
     const catalogByName = {};
     CATALOG.forEach(p => { catalogByName[p.name.toLowerCase().trim()] = p; });
+
+    // ⚡ Aplicar reglas hardcodeadas ANTES de enriquecer slugs
+    // Estas reglas son inviolables — corrigen cualquier error de la IA
+    applyHardcodedRules(matchedItems, catalogByName);
 
     matchedItems.forEach(item => {
       if (!item.matched) return;
