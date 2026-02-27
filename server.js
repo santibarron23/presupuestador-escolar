@@ -90,8 +90,6 @@ const KEYWORD_EXPANSIONS = {
   "glase":       ["glace", "lustre", "luma"],
   "glasé":       ["glace", "lustre", "luma"],
   "glace":       ["glace", "lustre", "luma"],
-  "glase":       ["glace", "lustre", "luma"],
-  "crepe":       ["crepe"],
   "crepe":       ["crepe", "papel"],
   "contac":      ["contact", "contac"],
   "contact":     ["contact"],
@@ -237,12 +235,69 @@ async function callAnthropic(messages, maxTokens = 4000, attempt = 1) {
   }
 }
 
+// ─── BLOQUE DE REGLAS ABSOLUTAS ──────────────────────────────────────
+// Se inyecta al INICIO de cada MATCHING_RULES_BLOCK en las 3 funciones.
+// Tiene prioridad máxima sobre cualquier otra regla del prompt.
+const ABSOLUTE_RULES_BLOCK = `
+====================================================================
+⛔ REGLAS ABSOLUTAS — LEER ANTES DE TODO. NUNCA IGNORAR. ⛔
+====================================================================
+
+Estas reglas tienen PRIORIDAD MÁXIMA sobre cualquier otra instrucción.
+Si la lista pide alguno de estos productos, SIEMPRE usá el indicado.
+NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
+
+1. "birome" / "birome roja" / "birome azul" / "birome negra" / "lapicera" / "boligrafo"
+   → SIEMPRE: catalogName="Boligrafo Bic 0,7 Punta Fina Cristal" | matched:true
+   → JAMÁS devolver otro bolígrafo ni marcar como sin stock.
+
+2. "voligoma" / "boligoma" / "plasticola o boligoma" / "plasticola o voligoma"
+   → SIEMPRE: catalogName="Adhesivo VOLIGOMA" | matched:true | stock:43
+   → JAMÁS devolver otra plasticola ni marcar como sin stock.
+
+3. "folio" / "folios" / "10 folios" / "folios (3 anillos)" / "folios para carpeta" / "folio A4" / "folio N°3"
+   → SIEMPRE: catalogName="Folios A4 LUMA" | matched:true | stock:206
+   → Son hojas PLÁSTICAS para carpeta. JAMÁS devolver resmas de papel.
+
+4. "hojas A4" / "hojas de máquina" / "40 hojas A4" / "50 hojas A4" / "hojas A4 blancas" / "resma" / "papel A4"
+   → SIEMPRE buscar resma A4 o "Hoja A4 Blanca" en catálogo | matched:true
+   → JAMÁS marcar como sin stock si existe alguna resma A4 en catálogo.
+
+5. "sacapuntas" / "sacapunta"
+   → SIEMPRE: catalogName="SACAPUNTA MAPED METAL SATELITE GRIS" o "SACAPUNTA FILGO METAL" | matched:true
+   → HAY STOCK. JAMÁS marcar como sin stock.
+
+6. "cuaderno de comunicados" / "cuaderno comunicados" / "cuaderno de comunicaciones"
+   → SIEMPRE: catalogName="CUADERNO DE COMUNICACIONES LAPRIDA" | matched:true | stock:10
+   → JAMÁS marcar como sin stock.
+
+7. "borrador" / "goma de borrar"
+   → SIEMPRE: catalogName="Goma de Borrar 2 BANDERAS Classic" | matched:true | stock:497
+
+8. "lápiz" / "lapiz" / "lápiz negro" / "lápiz HB"
+   → SIEMPRE: catalogName="Lapiz Negro Bic Evolution Hb" | matched:true | stock:48
+   → JAMÁS devolver bolígrafo, birome ni lapicera cuando piden lápiz.
+
+9. "plasticola" / "plasticola escolar" (sin mencionar voligoma/boligoma)
+   → SIEMPRE: catalogName="Adhesivo Escolar STA" | matched:true | stock:36
+
+10. "tizas" / "caja de tizas" / "1 caja de tizas"
+    → SIEMPRE: catalogName="Tiza Color PLAYCOLOR X12" | matched:true | stock:9
+
+11. "hojas rayadas" / "hojas de carpeta" / "hojas de cuaderno"
+    → Buscar repuesto de hojas en catálogo | matched:true. JAMÁS sin stock si hay repuestos.
+
+====================================================================
+FIN DE REGLAS ABSOLUTAS
+====================================================================
+`;
+
 // ─── PARSEAR + MATCHEAR TEXTO EN 1 SOLA LLAMADA ──────────────────────
 async function parseAndMatchFromText(rawText) {
   const dummyItems = buildDummyItems(rawText);
   const catalogText = buildCatalogText(dummyItems);
 
-  const MATCHING_RULES_BLOCK = `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
+  const MATCHING_RULES_BLOCK = ABSOLUTE_RULES_BLOCK + `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
 
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
@@ -264,17 +319,16 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    ⚠️ REGLAS DE EXCLUSIÓN OBLIGATORIAS (nunca ignorar):
    - Si pide "folio" o "folios": SIEMPRE matchear con "Folios A4 LUMA" (stock:206) o "Folios Oficio LUMA" (stock:46). NUNCA con carpetas, biblioratos ni otro producto.
    - Si pide "fibron" / "fibrón" / "marcador grueso": matchear con FIBRAS de color (ej: FIBRA COLOR X10 TRABI MEGA). NUNCA con marcadores para pizarra salvo que diga explícitamente "para pizarra".
-   - Si pide "tijera" / "tijeras": matchear con tijeras normales. NUNCA tijera para zurdos salvo que la lista diga "para zurdo".
+   - Si pide "tijera" / "tijeras": matchear con tijeras normales (TIJERA SABONIS, TIJERA PIZZINI, TIJERA SIMBALL). NUNCA elegir tijera para zurdos salvo que la lista diga "para zurdo" o "zurdo".
    - Si pide "voligoma" / "boligoma": matchear SIEMPRE con "Adhesivo VOLIGOMA" (stock:43).
    - ⛔ REGLA ABSOLUTA: Si pide "lápiz" / "lapiz" en CUALQUIER forma: JAMÁS devolver bolígrafo, lapicera, birome ni portaminas. Solo lápices de grafito o de colores.
    - ⛔ REGLA ABSOLUTA: Si pide "borrador" / "goma de borrar": SIEMPRE y ÚNICAMENTE "Goma de Borrar 2 BANDERAS Classic" (stock:497). Sin excepciones.
    - ⛔ REGLA ABSOLUTA: Si pide "folio" / "folios": JAMÁS devolver resmas de papel. Folios son hojas plásticas para carpeta. SIEMPRE "Folios A4 LUMA" (stock:206).
    - ⛔ REGLA ABSOLUTA: Si pide "cuaderno A4 tapa dura rayado": SIEMPRE "CUADERNO ESP. ABC RIVADAVIA x100 HOJAS". NUNCA cuadernos Oxford.
    - Si pide "lápiz" / "lapiz": NUNCA matchear con bolígrafo, lapicera ni birome. Siempre un lápiz.
-   - Si pide "resma" / "hojas A4" / "papel A4": SIEMPRE resma A4.
-   - Si pide "globos de colores" / "globos": SIEMPRE "GLOBOS TUKY" — NUNCA "globo terráqueo".
-   - Si pide "mapa" o "planisferio": NUNCA devolver "bandera" aunque ambas tengan "argentina".
-   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" o "Set Acrilico Valija ETERNA". NUNCA marcadores acrílicos.
+   - Si pide "resma" / "resmas" sin especificar: SIEMPRE matchear con resma A4 (ej: "RESMA A4 X100 HOJAS LUMA COLOR"). Viceversa: "hojas A4" o "papel A4" = resma A4.
+   - Si pide "afiche de color claro" / "papel afiche" / "afiche color": NUNCA recomendar un block. Buscar "Papel afiche vs colores" (aunque tenga stock 0, es el producto correcto — indicar al cliente que consulte disponibilidad). Si hay stock de ese producto, mostrarlo.
+   - Si pide "pote de acrílico" / "pintura acrílica" / "acrílico" para arte: recomendar "Base Acrilica Eterna 200 cc" (stock:2) o "Set Acrilico Valija ETERNA". NUNCA recomendar marcadores acrílicos ni impermeabilizante.
 
    Equivalencias completas (producto solicitado → producto en catálogo):
 
@@ -459,7 +513,7 @@ async function parseAndMatchFromImage(filePath, mimeType) {
     .map(p => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price} | stock:${p.stock}`)
     .join("\n");
 
-  const MATCHING_RULES_BLOCK = `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
+  const MATCHING_RULES_BLOCK = ABSOLUTE_RULES_BLOCK + `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
 
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
@@ -502,7 +556,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" / "cuaderno de comunicaciones" = SIEMPRE "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10). "comunicados" y "comunicaciones" son la misma cosa. — NO ignorar este producto
    - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
    - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
+   - "sacapuntas" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) o "SACAPUNTA MAPED METAL 2 BOCAS" (stock:4) — HAY STOCK, nunca marcar como sin stock. Alternativas: SACAPUNTA FILGO METAL (stock:18), SACAPUNTA MAPED VIVO MONSTER (stock:8)
    - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
    - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
    - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
@@ -544,7 +598,6 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
    - "cinta razo/raso bebé" = cinta genérica disponible
    - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" / "sacapunta" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) o "SACAPUNTA MAPED METAL 2 BOCAS" (stock:4) — HAY STOCK, nunca marcar como sin stock. Alternativas: SACAPUNTA FILGO METAL (stock:18), SACAPUNTA MAPED VIVO MONSTER (stock:8)
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
    - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
@@ -622,7 +675,7 @@ async function parseAndMatchFromPdfVision(pdfPath) {
     .map(p => `ID:${p.id} | SKU:${p.sku || "-"} | "${p.name}" | $${p.price} | stock:${p.stock}`)
     .join("\n");
 
-  const MATCHING_RULES_BLOCK = `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
+  const MATCHING_RULES_BLOCK = ABSOLUTE_RULES_BLOCK + `Para cada ítem de la lista, encontrá el producto más parecido del catálogo. Reglas:
 
 1. PRIORIDAD DE STOCK: Siempre preferí productos con stock disponible. Si hay varias opciones similares, elegí la que tenga stock > 0. Solo matcheá un producto con SIN_STOCK si no existe ninguna otra opción con stock.
 
@@ -665,7 +718,7 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "cuaderno de comunicaciones" / "cuaderno comunicados" / "cuaderno de comunicados" / "cuaderno de comunicaciones" = SIEMPRE "CUADERNO DE COMUNICACIONES LAPRIDA" (stock:10). "comunicados" y "comunicaciones" son la misma cosa. — NO ignorar este producto
    - "fibron para pizarra" / "fibrón pizarra" = "Marcador Edding 160 P/Pizarra" o "Marcador P/ Pizarra Recargable TRABI"
    - "block canson N°3" / "hojas color N°3" = "Repuesto" de hojas para carpeta N3 (ej: REPUESTO RIVADAVIA N3, REPUESTO TRIUNFANTE N3)
-   - "sacapuntas" = "Sacapuntas Para Zurdos Igloo Maped" (el único con stock)
+   - "sacapuntas" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) o "SACAPUNTA MAPED METAL 2 BOCAS" (stock:4) — HAY STOCK, nunca marcar como sin stock. Alternativas: SACAPUNTA FILGO METAL (stock:18), SACAPUNTA MAPED VIVO MONSTER (stock:8)
    - "tinta" en contexto escolar = "Borratinta Pelikan" o lapicera con tinta
    - "diccionario" = cualquier diccionario del catálogo (español, inglés, sinónimos)
    - "pendrive" = "Pendrive KINGSTON" u otro pendrive disponible
@@ -707,7 +760,6 @@ REGLAS CRÍTICAS DE TIPO DE PRODUCTO (nunca las ignores):
    - "fibra trazo grueso" / "fibras punta gruesa" = buscar marcadores con "trazo grueso" o "punta gruesa" en catálogo
    - "cinta razo/raso bebé" = cinta genérica disponible
    - "cartulinas entretenidas" = "Block Cartulina Entretenida MURESCO"
-   - "sacapuntas" / "sacapunta" = SIEMPRE "SACAPUNTA MAPED METAL SATELITE GRIS" (stock:5) o "SACAPUNTA MAPED METAL 2 BOCAS" (stock:4) — HAY STOCK, nunca marcar como sin stock. Alternativas: SACAPUNTA FILGO METAL (stock:18), SACAPUNTA MAPED VIVO MONSTER (stock:8)
    - "cartulina lisa" = "Cartulina Lisa Varios Colores" 
    - "barritas de silicona gruesa" = "Barra Adhesiva de Silicona P/Pistola"
    - "globos de colores" = "GLOBOS TUKY" (stock:2+) — NUNCA "globo terraqueo"
