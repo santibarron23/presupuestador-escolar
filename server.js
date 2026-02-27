@@ -879,6 +879,16 @@ const HARDCODED_RULES = [
       catalogSlug: "cuaderno-de-comunicaciones-laprida-8xf4j",
     }
   },
+  {
+    // papel glasé / glase / glace (genérico) → Papel Glace Lustre Surtido Luma
+    test: (item) => /papel\s+(glas[eé]|glace)/i.test(item.requestedItem) &&
+                    !/fluo|flu[oó]|metaliz|lustre|mate|opaco/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Papel Glace Lustre Surtido Luma",
+      catalogSlug: "papel-glace-lustre-surtido-luma",
+    }
+  },
 ];
 
 function applyHardcodedRules(matchedItems, catalogByName) {
