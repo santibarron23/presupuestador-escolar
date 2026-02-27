@@ -1005,8 +1005,8 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // plasticola blanca → Adhesivo Escolar STA
-    test: (item) => /plasticola/i.test(item.requestedItem) && /blanc[ao]/i.test(item.requestedItem),
+    // plasticola blanca → Adhesivo Escolar STA (tolera tilde: plásticola)
+    test: (item) => /pl[aá]sticola/i.test(item.requestedItem) && /blanc[ao]/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Adhesivo Escolar STA",
@@ -1014,8 +1014,8 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // plasticola de color / plasticolas de colores → Adhesivo Plasticola Color 40 Cc
-    test: (item) => /plasticola/i.test(item.requestedItem) && /color(es)?/i.test(item.requestedItem),
+    // plasticola de color / plasticolas de colores → Adhesivo Plasticola Color 40 Cc (tolera tilde)
+    test: (item) => /pl[aá]sticola/i.test(item.requestedItem) && /color(es)?/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Adhesivo Plasticola Color 40 Cc",
@@ -1023,8 +1023,8 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // papel madera → Papel Madera 80x100
-    test: (item) => /papel\s+madera/i.test(item.requestedItem),
+    // papel madera / papel de madera → Papel Madera 80x100
+    test: (item) => /papel\s+(de\s+)?madera/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Papel Madera 80x100",
