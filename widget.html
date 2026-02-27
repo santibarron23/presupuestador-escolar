@@ -19,6 +19,10 @@
       --yellow: #f4a261;
       --border: #d4c9b8;
       --text-muted: #7a7060;
+      /* ── NUEVO: colores para "solo en sucursal" ── */
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --amber-border: #fcd34d;
     }
 
     body {
@@ -320,6 +324,37 @@
       gap: 0.5rem;
     }
 
+    /* ── NUEVO: sección solo en sucursal ── */
+    .items-section.instore-section {
+      border-color: var(--amber-border);
+    }
+    .items-header.instore-header {
+      background: var(--amber-light);
+      border-bottom-color: var(--amber-border);
+      color: var(--amber);
+    }
+    .instore-row {
+      background: var(--amber-light);
+    }
+    .instore-row:hover {
+      background: #fef9ec !important;
+    }
+    .instore-badge {
+      font-size: 0.68rem;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid var(--amber-border);
+      padding: 0.12rem 0.45rem;
+      border-radius: 0.3rem;
+      margin-left: 0.35rem;
+      white-space: nowrap;
+    }
+    .instore-note {
+      font-size: 0.75rem;
+      color: #92400e;
+      margin-top: 0.25rem;
+    }
+
     .item-row {
       display: grid;
       grid-template-columns: 1fr auto auto;
@@ -339,7 +374,6 @@
       font-size: 0.78rem;
       color: var(--text-muted);
       margin-bottom: 0.2rem;
-      /* CORREGIDO: sin truncado, se muestra completo */
       white-space: normal;
       word-break: break-word;
     }
@@ -347,7 +381,6 @@
     .item-matched {
       font-weight: 500;
       font-size: 0.95rem;
-      /* CORREGIDO: sin truncado, se muestra completo */
       white-space: normal;
       word-break: break-word;
       margin-bottom: 0.2rem;
@@ -622,6 +655,22 @@
       transform: translateY(-1px);
       box-shadow: 0 4px 16px rgba(232,93,38,0.3);
     }
+    /* NUEVO: modal notice sucursal */
+    .modal-instore-notice {
+      background: var(--amber-light);
+      border: 1.5px solid var(--amber-border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+      color: #92400e;
+      line-height: 1.5;
+    }
+    .modal-instore-notice strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
     /* Clickeable rows */
     .item-row.clickable { cursor: pointer; }
     .item-row.clickable:hover { background: var(--accent-light); }
@@ -872,13 +921,18 @@
   }
 
   // ─── RENDER RESULTS ───────────────────────────────────────────
-  let _foundItems = [];
+  // CAMBIO: separamos found / inStore / notFound
+  let _allClickableItems = [];
 
   function renderResults(data) {
     const { summary, items } = data;
-    _foundItems = items.filter(i => i.matched);
-    const found = items.filter(i => i.matched);
+
+    const found    = items.filter(i => i.matched && !i.inStoreOnly);
+    const inStore  = items.filter(i => i.matched && i.inStoreOnly);
     const notFound = items.filter(i => !i.matched);
+
+    // índice global para el modal: found primero, luego inStore
+    _allClickableItems = [...found, ...inStore];
 
     const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 
@@ -887,7 +941,7 @@
         <div class="summary-card highlight">
           <div class="summary-label">Total estimado</div>
           <div class="summary-value">${fmt(summary.estimatedTotal)}</div>
-          <div class="summary-sub">productos encontrados</div>
+          <div class="summary-sub">productos con precio online</div>
         </div>
         <div class="summary-card">
           <div class="summary-label">Ítems en lista</div>
@@ -898,17 +952,18 @@
           <div class="summary-label">Cobertura</div>
           <div class="summary-value">${summary.coveragePercent}%</div>
           <div class="coverage-bar"><div class="coverage-fill" style="width:${summary.coveragePercent}%"></div></div>
-          <div class="summary-sub">${summary.foundItems} de ${summary.totalItems} encontrados</div>
+          <div class="summary-sub">${found.length + inStore.length} de ${summary.totalItems} encontrados</div>
         </div>
       </div>
     `;
 
+    // ── Sección 1: disponibles online ──
     if (found.length > 0) {
       html += `
         <div class="items-section">
           <div class="items-header">✅ Productos disponibles en nuestra tienda</div>
-          ${found.map((item, foundIdx) => `
-            <div class="item-row clickable" onclick="openModal(${foundIdx})">
+          ${found.map((item, idx) => `
+            <div class="item-row clickable" onclick="openModal(${idx})">
               <div class="item-left">
                 <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
                 <div class="item-matched">${item.catalogName}</div>
@@ -926,6 +981,33 @@
       `;
     }
 
+    // ── Sección 2: solo en sucursal (NUEVO) ──
+    if (inStore.length > 0) {
+      html += `
+        <div class="items-section instore-section">
+          <div class="items-header instore-header">🏪 Disponible solo en sucursal</div>
+          ${inStore.map((item, idx) => `
+            <div class="item-row clickable instore-row" onclick="openModal(${found.length + idx})">
+              <div class="item-left">
+                <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
+                <div class="item-matched">
+                  ${item.catalogName}
+                  <span class="instore-badge">🏪 Solo sucursal</span>
+                </div>
+                <div class="instore-note">No se vende online · Consultá en nuestras sucursales o por WhatsApp</div>
+              </div>
+              <span class="item-qty">x${item.quantity}</span>
+              <div class="item-price" style="color:var(--amber)">
+                Consultar
+                <small style="color:var(--text-muted)">en sucursal</small>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    // ── Sección 3: no encontrados ──
     if (notFound.length > 0) {
       html += `
         <div class="items-section">
@@ -945,13 +1027,13 @@
     }
 
     // Guardar datos para PDF
-    window._presupuestoData = { items, summary };
+    window._presupuestoData = { items, summary, found, inStore, notFound };
 
     html += `
       <div class="total-bar">
         <div>
           <div class="total-label">Total estimado de tu lista</div>
-          <div style="font-size:0.75rem;opacity:0.5;margin-top:0.2rem">*Precios pueden variar según stock</div>
+          <div style="font-size:0.75rem;opacity:0.5;margin-top:0.2rem">*Precios pueden variar según stock · Resmas disponibles solo en sucursal</div>
         </div>
         <div class="total-amount">${fmt(summary.estimatedTotal)}</div>
       </div>
@@ -974,13 +1056,11 @@
   }
 
 
-  // ─── DESCARGAR PDF (cliente, sin dependencias) ───────────────
+  // ─── DESCARGAR PDF ───────────────────────────────────────────
   function descargarPDF() {
     if (!window._presupuestoData) return;
-    const { items, summary } = window._presupuestoData;
-    const found    = items.filter(i => i.matched);
-    const notFound = items.filter(i => !i.matched);
-    const total    = summary.estimatedTotal || 0;
+    const { items, summary, found, inStore, notFound } = window._presupuestoData;
+    const total = summary.estimatedTotal || 0;
     const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
     const date = new Date().toLocaleDateString("es-AR");
 
@@ -991,6 +1071,15 @@
         <td>${item.catalogName || item.requestedItem || ''}</td>
         <td style="text-align:right;color:#555">${fmt(item.unitPrice || 0)}</td>
         <td style="text-align:right;font-weight:700;color:#2d7a3a">${fmt(item.subtotal || 0)}</td>
+      </tr>`).join('');
+
+    const inStoreRows = inStore.map((item, i) => `
+      <tr style="background:${i%2===0?'#fffbeb':'#fefce8'}">
+        <td>${item.quantity || 1}</td>
+        <td style="color:#888;font-size:0.8em">—</td>
+        <td>${item.catalogName || item.requestedItem || ''}</td>
+        <td style="text-align:right;color:#d97706">Consultar</td>
+        <td style="text-align:right;color:#d97706;font-weight:700">En sucursal</td>
       </tr>`).join('');
 
     const notFoundRows = notFound.map((item, i) => `
@@ -1017,20 +1106,21 @@
     .summary .meta { font-size: 11px; color: #666; }
     .section { margin: 0 30px 20px; }
     .section-title { font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; }
-    .title-green { background: #2d7a3a; color: white; }
-    .title-red   { background: #c0392b; color: white; }
+    .title-green  { background: #2d7a3a; color: white; }
+    .title-amber  { background: #d97706; color: white; }
+    .title-red    { background: #c0392b; color: white; }
     table { width: 100%; border-collapse: collapse; }
     th { background: #2d7a3a; color: white; padding: 7px 10px; text-align: left; font-size: 11px; }
     th.right, td.right { text-align: right; }
     td { padding: 7px 10px; border-bottom: 1px solid #eee; }
     .total-row { background: #2d7a3a !important; color: white; }
     .total-row td { color: white; font-weight: 700; font-size: 14px; border:none; }
+    table.amber-tbl th { background: #d97706; }
     table.not-found th { background: #c0392b; }
     .footer { background: #2d7a3a; color: white; text-align: center; padding: 12px; font-size: 10px; margin-top: 30px; }
     .note { font-size: 10px; color: #999; margin: 8px 30px; }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .no-print { display: none; }
     }
   </style>
 </head>
@@ -1045,18 +1135,19 @@
 
   <div class="summary">
     <div class="meta">
-      Artículos encontrados: <strong>${found.length}</strong> de <strong>${items.length}</strong><br>
-      Artículos no disponibles: <strong>${notFound.length}</strong>
+      Artículos con precio online: <strong>${found.length}</strong><br>
+      Solo en sucursal: <strong>${inStore.length}</strong><br>
+      No disponibles: <strong>${notFound.length}</strong>
     </div>
     <div style="text-align:right">
-      <div class="total-lbl">TOTAL ESTIMADO</div>
+      <div class="total-lbl">TOTAL ESTIMADO (online)</div>
       <div class="total-val">${fmt(total)}</div>
     </div>
   </div>
 
   ${found.length > 0 ? `
   <div class="section">
-    <div class="section-title title-green">✓ Artículos disponibles</div>
+    <div class="section-title title-green">✓ Artículos disponibles en tienda online</div>
     <table>
       <thead>
         <tr>
@@ -1077,6 +1168,24 @@
     </table>
   </div>` : ''}
 
+  ${inStore.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-amber">🏪 Solo disponible en sucursal — Consultá disponibilidad y precio</div>
+    <table class="amber-tbl">
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th style="width:80px">SKU</th>
+          <th>PRODUCTO</th>
+          <th class="right" style="width:100px">P. UNIT.</th>
+          <th class="right" style="width:110px">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>${inStoreRows}</tbody>
+    </table>
+  </div>
+  <p class="note">* Estos productos no se venden online. Consultá precio y disponibilidad en cualquiera de nuestras sucursales o por WhatsApp.</p>` : ''}
+
   ${notFound.length > 0 ? `
   <div class="section">
     <div class="section-title title-red">⚠ Artículos no disponibles — Consultá con un asesor</div>
@@ -1096,7 +1205,7 @@
     Librería Lerma &nbsp;|&nbsp; Belgrano 635, Salta &nbsp;|&nbsp; Tel: 0387-4314736 &nbsp;|&nbsp; librerialerma.com.ar
   </div>
 
-  \u003cscript\u003ewindow.onload = function() { window.print(); }\u003c/script\u003e
+  <script>window.onload = function() { window.print(); }<\/script>
 </body>
 </html>`;
 
@@ -1107,36 +1216,55 @@
 
   // ─── PRODUCT MODAL ────────────────────────────────────────────
   function openModal(idx) {
-    const item = _foundItems[idx];
+    const item = _allClickableItems[idx];
     const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 
-    // Búsqueda por nombre del producto en la tienda
     const productUrl = item.catalogSlug
       ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
       : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
 
-    document.getElementById("modalBody").innerHTML = `
-      <div class="modal-requested">Solicitado en la lista:</div>
-      <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
-      <div class="modal-product-name">${item.catalogName}</div>
-      <div class="modal-meta">
-        ${item.catalogSku ? `<span class="modal-tag sku">SKU ${item.catalogSku}</span>` : ""}
-        <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
-      </div>
-      <div class="modal-price-row">
-        <div>
-          <div class="modal-price-label">Precio unitario</div>
-          <div class="modal-price-val">${fmt(item.unitPrice)}</div>
+    if (item.inStoreOnly) {
+      // NUEVO: modal especial para productos solo en sucursal
+      document.getElementById("modalBody").innerHTML = `
+        <div class="modal-requested">Solicitado en la lista:</div>
+        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
+        <div class="modal-product-name">${item.catalogName}</div>
+        <div class="modal-meta">
+          <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
         </div>
-        <div class="modal-qty-info">
-          <div class="modal-qty-label">Subtotal (x${item.quantity})</div>
-          <div class="modal-subtotal">${fmt(item.subtotal)}</div>
+        <div class="modal-instore-notice">
+          <strong>🏪 Disponible solo en sucursal</strong>
+          Este producto no se vende por nuestra tienda online. Podés consultarlo en cualquiera de nuestras sucursales o por WhatsApp para conocer disponibilidad y precio.
         </div>
-      </div>
-      <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener">
-        🔍 Ver en la tienda →
-      </a>
-    `;
+        <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener"
+           style="background:var(--amber)">
+          Ver producto →
+        </a>
+      `;
+    } else {
+      document.getElementById("modalBody").innerHTML = `
+        <div class="modal-requested">Solicitado en la lista:</div>
+        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
+        <div class="modal-product-name">${item.catalogName}</div>
+        <div class="modal-meta">
+          ${item.catalogSku ? `<span class="modal-tag sku">SKU ${item.catalogSku}</span>` : ""}
+          <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
+        </div>
+        <div class="modal-price-row">
+          <div>
+            <div class="modal-price-label">Precio unitario</div>
+            <div class="modal-price-val">${fmt(item.unitPrice)}</div>
+          </div>
+          <div class="modal-qty-info">
+            <div class="modal-qty-label">Subtotal (x${item.quantity})</div>
+            <div class="modal-subtotal">${fmt(item.subtotal)}</div>
+          </div>
+        </div>
+        <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener">
+          🔍 Ver en la tienda →
+        </a>
+      `;
+    }
 
     document.getElementById("productModal").classList.add("show");
     document.body.style.overflow = "hidden";
@@ -1157,52 +1285,44 @@
 
   async function comprar() {
     const btn = document.querySelector('.btn-primary');
-    if (!btn || _foundItems.length === 0) return;
+    if (!btn || _allClickableItems.length === 0) return;
 
     btn.disabled = true;
     btn.textContent = "Agregando al carrito…";
 
     const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+    const total = _allClickableItems.filter(i => !i.inStoreOnly).reduce((s, i) => s + i.subtotal, 0);
 
-    // Build cart items list with slugs
-    const cartItems = _foundItems.map(item => ({
-      name: item.catalogName,
-      slug: item.catalogSlug,
-      sku: item.catalogSku,
-      qty: item.quantity,
-      price: item.unitPrice,
-      url: item.catalogSlug
-        ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
-        : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`
-    }));
-
-    // Show cart summary modal
-    const total = _foundItems.reduce((s, i) => s + i.subtotal, 0);
     const cartHtml = `
       <div class="modal-requested" style="margin-bottom:1rem">
         Abrí cada producto para agregarlo al carrito de la tienda:
       </div>
       <div style="max-height:280px;overflow-y:auto;margin-bottom:1.25rem">
-        ${cartItems.map((item, i) => `
-          <a href="${item.url}" target="_blank" rel="noopener"
-             style="display:flex;align-items:center;justify-content:space-between;
-                    padding:0.6rem 0.75rem;border-radius:0.6rem;margin-bottom:0.4rem;
-                    background:var(--paper);text-decoration:none;color:var(--ink);
-                    border:1px solid var(--border);transition:background 0.15s"
-             onmouseover="this.style.background='var(--accent-light)'"
-             onmouseout="this.style.background='var(--paper)'">
-            <span style="font-size:0.85rem;flex:1">${item.name}</span>
-            <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;
-                         border-radius:2rem;margin:0 0.5rem">x${item.qty}</span>
-            <span style="font-size:0.8rem;font-weight:600;color:var(--accent)">${fmt(item.price * item.qty)}</span>
-            <span style="margin-left:0.5rem;font-size:0.8rem">→</span>
-          </a>
-        `).join("")}
+        ${_allClickableItems.map((item) => {
+          const url = item.catalogSlug
+            ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+            : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
+          return `
+            <a href="${url}" target="_blank" rel="noopener"
+               style="display:flex;align-items:center;justify-content:space-between;
+                      padding:0.6rem 0.75rem;border-radius:0.6rem;margin-bottom:0.4rem;
+                      background:${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'};text-decoration:none;color:var(--ink);
+                      border:1px solid ${item.inStoreOnly ? '#fcd34d' : 'var(--border)'};transition:background 0.15s"
+               onmouseover="this.style.background='${item.inStoreOnly ? '#fef9ec' : 'var(--accent-light)'}'"
+               onmouseout="this.style.background='${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'}'">
+              <span style="font-size:0.85rem;flex:1">${item.catalogName}${item.inStoreOnly ? ' <span style="font-size:0.7em;color:#d97706">(sucursal)</span>' : ''}</span>
+              <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;border-radius:2rem;margin:0 0.5rem">x${item.quantity}</span>
+              <span style="font-size:0.8rem;font-weight:600;color:${item.inStoreOnly ? '#d97706' : 'var(--accent)'}">
+                ${item.inStoreOnly ? 'Consultar' : fmt(item.unitPrice * item.quantity)}
+              </span>
+              <span style="margin-left:0.5rem;font-size:0.8rem">→</span>
+            </a>`;
+        }).join("")}
       </div>
       <div style="background:var(--ink);color:white;border-radius:0.75rem;
                   padding:0.85rem 1.25rem;display:flex;justify-content:space-between;
                   align-items:center;margin-bottom:1rem">
-        <span style="font-size:0.85rem;opacity:0.7">Total estimado</span>
+        <span style="font-size:0.85rem;opacity:0.7">Total estimado (online)</span>
         <span style="font-family:'Fraunces',serif;font-size:1.4rem">${fmt(total)}</span>
       </div>
       <a href="https://www.librerialerma.com.ar" target="_blank" rel="noopener"
@@ -1219,8 +1339,8 @@
     document.getElementById("modalBody").innerHTML = cartHtml;
     document.getElementById("productModal").classList.add("show");
     document.body.style.overflow = "hidden";
-    document.getElementById("modalBox").querySelector(".modal-title").textContent = 
-      `${cartItems.length} productos para agregar`;
+    document.getElementById("modalBox").querySelector(".modal-title").textContent =
+      `${_allClickableItems.length} productos encontrados`;
 
     btn.disabled = false;
     btn.textContent = "Agregar todo al carrito →";
