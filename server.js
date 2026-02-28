@@ -966,14 +966,17 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // resma A4 / hojas A4 → Resmas A4 AUTOR (solo en sucursal)
+    // resma A4 / hojas A4 blancas → Resmas A4 AUTOR (solo en sucursal)
+    // EXCLUYE "colores" porque "hojas A4 de colores" es otro producto (resma de color)
+    // quantity se fuerza a 1 porque 1 resma (100 hojas) ya cubre cualquier pedido de hojas sueltas
     test: (item) => /resma|hoja.*a4|a4.*hoja|papel.*a4|a4.*papel/i.test(item.requestedItem) &&
-                    !/oficio|legal/i.test(item.requestedItem),
+                    !/oficio|legal|color(es)?/i.test(item.requestedItem),
     override: {
       matched: true,
       inStoreOnly: true,
       catalogName: "Resmas A4 AUTOR",
       catalogSlug: "resmas-a4-autor",
+      forceQuantity: 1,
     }
   },
   {
@@ -1095,13 +1098,14 @@ function applyHardcodedRules(matchedItems, catalogByName) {
       if (rule.test(item)) {
         const prod = catalogByName[rule.override.catalogName.toLowerCase().trim()];
         const unitPrice = prod ? prod.price : (item.unitPrice || 0);
-        const qty = item.quantity || 1;
+        // forceQuantity: cuando 1 unidad del producto ya cubre la cantidad pedida (ej: resma)
+        const qty = rule.override.forceQuantity || item.quantity || 1;
         Object.assign(item, rule.override, {
           catalogId: prod ? prod.id : item.catalogId,
           catalogSku: prod ? prod.sku : item.catalogSku,
           unitPrice,
+          quantity: qty,
           subtotal: unitPrice * qty,
-          // inStoreOnly: indica que el producto no se vende online, solo en sucursal
           inStoreOnly: rule.override.inStoreOnly || false,
         });
         break;
