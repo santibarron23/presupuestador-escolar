@@ -1092,11 +1092,20 @@ const HARDCODED_RULES = [
   },
 ];
 
+function findProductByName(catalogByName, name) {
+  const nameLower = name.toLowerCase().trim();
+  if (catalogByName[nameLower]) return catalogByName[nameLower];
+  return CATALOG.find(p =>
+    p.name.toLowerCase().includes(nameLower) ||
+    nameLower.includes(p.name.toLowerCase().trim())
+  ) || null;
+}
+
 function applyHardcodedRules(matchedItems, catalogByName) {
   matchedItems.forEach(item => {
     for (const rule of HARDCODED_RULES) {
       if (rule.test(item)) {
-        const prod = catalogByName[rule.override.catalogName.toLowerCase().trim()];
+        const prod = findProductByName(catalogByName, rule.override.catalogName);
         const unitPrice = prod ? prod.price : (item.unitPrice || 0);
         // forceQuantity: cuando 1 unidad del producto ya cubre la cantidad pedida (ej: resma)
         const qty = rule.override.forceQuantity || item.quantity || 1;
