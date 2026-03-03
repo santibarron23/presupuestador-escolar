@@ -293,9 +293,11 @@ NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
    → SIEMPRE: catalogName="Adhesivo VOLIGOMA" | matched:true | stock:43
    → JAMÁS devolver otra plasticola ni marcar como sin stock.
 
-3. "folio" / "folios" / "10 folios" / "folios (3 anillos)" / "folios para carpeta" / "folio A4" / "folio N°3"
+3. "folio A4" / "folios" genérico / "folio N°3" / "folios para carpeta"
    → SIEMPRE: catalogName="Folios A4 LUMA" | matched:true | stock:206
    → Son hojas PLÁSTICAS para carpeta. JAMÁS devolver resmas de papel.
+   ⚠️ EXCEPCIÓN: Si dice "oficio" o "legal" → catalogName="Folios Oficio LUMA" | stock:46
+   → NUNCA mezclar tamaños. Folio oficio ≠ folio A4.
 
 4. "hojas A4" / "hojas de máquina" / "40 hojas A4" / "50 hojas A4" / "hojas A4 blancas" / "resma" / "papel A4"
    → SIEMPRE buscar resma A4 o "Hoja A4 Blanca" en catálogo | matched:true
@@ -325,12 +327,16 @@ NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
 11. "hojas rayadas" / "hojas de carpeta" / "hojas de cuaderno"
     → Buscar repuesto de hojas en catálogo | matched:true. JAMÁS sin stock si hay repuestos.
 
-12. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
+12. "resaltador" / "marcador resaltador" / "marcador" (contexto fluo/color)
+    → SIEMPRE: catalogName="Resaltador Faber 48" | matched:true
+    → JAMÁS devolver otro resaltador ni otra marca salvo pedido explícito.
+
+13. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
     → Si piden "A4" o "carta": JAMÁS recomendar producto "oficio" ni "legal"
     → Si piden "oficio" o "legal": JAMÁS recomendar producto "A4" o "carta"
     → Esta regla aplica a resmas, blocks, repuestos, carpetas y cualquier papel.
 
-13. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
+14. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
     → Si piden "cuadriculado": JAMÁS recomendar rayado ni liso
     → Si piden "rayado" o "rayadas": JAMÁS recomendar cuadriculado ni liso
     → Si piden "liso" o "lisa": JAMÁS recomendar cuadriculado ni rayado
@@ -901,9 +907,20 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // folio / folios → SIEMPRE Folios A4 LUMA
-    test: (item) => /^folios?\b/i.test(item.requestedItem.trim()) ||
-                    /\bfolios?\s*(a4|n[°o]?\s*3|plástico|para\s+carpeta|\(\d+\s*anillo)/i.test(item.requestedItem),
+    // folio / folios OFICIO → Folios Oficio LUMA (va ANTES que la regla A4)
+    test: (item) => /folios?/i.test(item.requestedItem) &&
+                    /oficio|legal/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Folios Oficio LUMA",
+      catalogSlug: "folios-oficio-luma",
+    }
+  },
+  {
+    // folio / folios A4 o genérico (sin mención de oficio) → Folios A4 LUMA
+    test: (item) => (/^folios?\b/i.test(item.requestedItem.trim()) ||
+                    /\bfolios?\s*(a4|n[°o]?\s*3|pl[aá]stico|para\s+carpeta|\(\d+\s*anillo)/i.test(item.requestedItem)) &&
+                    !/oficio|legal/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Folios A4 LUMA",
@@ -936,6 +953,17 @@ const HARDCODED_RULES = [
       matched: true,
       catalogName: "Papel Glace Lustre Surtido Luma",
       catalogSlug: "papel-glace-lustre-surtido-luma",
+    }
+  },
+  {
+    // resaltador / marcador resaltador → SIEMPRE Resaltador Faber 48
+    test: (item) => /resaltador/i.test(item.requestedItem) ||
+                    (/marcador/i.test(item.requestedItem) &&
+                     /amarill|fluo|color|resalt/i.test(item.requestedItem)),
+    override: {
+      matched: true,
+      catalogName: 'Resaltador Faber 48',
+      catalogSlug: 'resaltador-faber-48',
     }
   },
   {
