@@ -296,7 +296,7 @@ NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
 3. "folio A4" / "folios" genérico / "folio N°3" / "folios para carpeta"
    → SIEMPRE: catalogName="Folios A4 LUMA" | matched:true | stock:206
    → Son hojas PLÁSTICAS para carpeta. JAMÁS devolver resmas de papel.
-   ⚠️ EXCEPCIÓN: Si dice "oficio" o "legal" → catalogName="Folios Oficio LUMA" | stock:46
+   ⚠️ EXCEPCIÓN OBLIGATORIA: Si dice "oficio" o "legal" → catalogName="Folios Oficio LUMA" | stock:46
    → NUNCA mezclar tamaños. Folio oficio ≠ folio A4.
 
 4. "hojas A4" / "hojas de máquina" / "40 hojas A4" / "50 hojas A4" / "hojas A4 blancas" / "resma" / "papel A4"
@@ -327,16 +327,27 @@ NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
 11. "hojas rayadas" / "hojas de carpeta" / "hojas de cuaderno"
     → Buscar repuesto de hojas en catálogo | matched:true. JAMÁS sin stock si hay repuestos.
 
-12. "resaltador" / "marcador resaltador" / "marcador" (contexto fluo/color)
+12. "resaltador" / "marcador resaltador" / variantes con color fluo
     → SIEMPRE: catalogName="Resaltador Faber 48" | matched:true
-    → JAMÁS devolver otro resaltador ni otra marca salvo pedido explícito.
+    → JAMÁS otra marca aunque diga "o similar".
 
-13. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
+13. "lapicera bic trazo grueso" / "bic 1mm" / "lapicera gruesa"
+    → SIEMPRE: catalogName="Boligrafo Bic 1 Mm Punta Gruesa" | matched:true
+    → JAMÁS confundir con Bic 0.7 punta fina.
+
+14. "minas 0.5 HB" / "repuesto minas 0.5" / "minas portaminas 0.5"
+    → SIEMPRE: catalogName="Minas Pizzini 0.5" | matched:true
+    → JAMÁS otra marca.
+
+15. "perforadora maped" / "perforador maped essentials"
+    → SIEMPRE: catalogName="Perforador Maped Essentials 30/35H" | matched:true
+
+16. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
     → Si piden "A4" o "carta": JAMÁS recomendar producto "oficio" ni "legal"
     → Si piden "oficio" o "legal": JAMÁS recomendar producto "A4" o "carta"
-    → Esta regla aplica a resmas, blocks, repuestos, carpetas y cualquier papel.
+    → Esta regla aplica a resmas, blocks, repuestos, carpetas, folios y cualquier papel.
 
-14. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
+17. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
     → Si piden "cuadriculado": JAMÁS recomendar rayado ni liso
     → Si piden "rayado" o "rayadas": JAMÁS recomendar cuadriculado ni liso
     → Si piden "liso" o "lisa": JAMÁS recomendar cuadriculado ni rayado
@@ -959,11 +970,41 @@ const HARDCODED_RULES = [
     // resaltador / marcador resaltador → SIEMPRE Resaltador Faber 48
     test: (item) => /resaltador/i.test(item.requestedItem) ||
                     (/marcador/i.test(item.requestedItem) &&
-                     /amarill|fluo|color|resalt/i.test(item.requestedItem)),
+                     /amarill|fluo|color|resalt|naranj/i.test(item.requestedItem)),
     override: {
       matched: true,
-      catalogName: 'Resaltador Faber 48',
-      catalogSlug: 'resaltador-faber-48',
+      catalogName: "Resaltador Faber 48",
+      catalogSlug: "resaltador-faber-48",
+    }
+  },
+  {
+    // lapicera bic trazo grueso / bic 1mm → Boligrafo Bic 1 Mm Punta Gruesa
+    test: (item) => /bic/i.test(item.requestedItem) &&
+                    /grueso|gruesa|1s*mm/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Boligrafo Bic 1 Mm Punta Gruesa",
+      catalogSlug: "boligrafo-bic-1-mm-punta-gruesa",
+    }
+  },
+  {
+    // minas 0.5 HB → SIEMPRE Minas Pizzini 0.5
+    test: (item) => /minas?/i.test(item.requestedItem) &&
+                    /0[.,]5/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Minas Pizzini 0.5",
+      catalogSlug: "minas-pizzini-0-5",
+    }
+  },
+  {
+    // perforadora maped / perforador maped essentials → Perforador Maped Essentials 30/35H
+    test: (item) => /perfor/i.test(item.requestedItem) &&
+                    /maped/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Perforador Maped Essentials 30/35H",
+      catalogSlug: "perforador-maped-essentials-30-35h",
     }
   },
   {
