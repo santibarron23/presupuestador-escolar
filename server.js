@@ -337,17 +337,20 @@ NUNCA los marques como matched:false. SIEMPRE tienen stock disponible.
 
 14. "minas 0.5 HB" / "repuesto minas 0.5" / "minas portaminas 0.5"
     → SIEMPRE: catalogName="Minas Pizzini 0.5" | matched:true
-    → JAMÁS otra marca.
 
 15. "perforadora maped" / "perforador maped essentials"
     → SIEMPRE: catalogName="Perforador Maped Essentials 30/35H" | matched:true
 
-16. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
+16. "bolígrafo azul" / "bolígrafo rojo" / "bolígrafo negro" / "bolígrafo color" (sin marca específica)
+    → SIEMPRE: catalogName="Boligrafo Bic 0,7 Punta Fina Cristal" | matched:true | stock:69
+    → Son bolígrafos genéricos. JAMÁS marcar como sin stock.
+
+17. TAMAÑO DE HOJA — NUNCA mezclar A4 con Oficio:
     → Si piden "A4" o "carta": JAMÁS recomendar producto "oficio" ni "legal"
     → Si piden "oficio" o "legal": JAMÁS recomendar producto "A4" o "carta"
     → Esta regla aplica a resmas, blocks, repuestos, carpetas, folios y cualquier papel.
 
-17. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
+18. TIPO DE HOJA — NUNCA mezclar rayado, cuadriculado ni liso:
     → Si piden "cuadriculado": JAMÁS recomendar rayado ni liso
     → Si piden "rayado" o "rayadas": JAMÁS recomendar cuadriculado ni liso
     → Si piden "liso" o "lisa": JAMÁS recomendar cuadriculado ni rayado
@@ -980,7 +983,7 @@ const HARDCODED_RULES = [
   {
     // lapicera bic trazo grueso / bic 1mm → Boligrafo Bic 1 Mm Punta Gruesa
     test: (item) => /bic/i.test(item.requestedItem) &&
-                    /grueso|gruesa|1s*mm/i.test(item.requestedItem),
+                    /grueso|gruesa|1\s*mm/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Boligrafo Bic 1 Mm Punta Gruesa",
@@ -998,13 +1001,25 @@ const HARDCODED_RULES = [
     }
   },
   {
-    // perforadora maped / perforador maped essentials → Perforador Maped Essentials 30/35H
+    // perforadora maped → Perforador Maped Essentials 30/35H
     test: (item) => /perfor/i.test(item.requestedItem) &&
                     /maped/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Perforador Maped Essentials 30/35H",
       catalogSlug: "perforador-maped-essentials-30-35h",
+    }
+  },
+  {
+    // bolígrafo azul/rojo/negro/color sin marca → Boligrafo Bic 0,7 Punta Fina Cristal
+    // Excluye: si ya tiene marca específica (bic, faber, pelikan, paper mate, etc.)
+    test: (item) => /bол[ií]grafo|boligrafo/i.test(item.requestedItem) &&
+                    /azul|rojo|negro|color/i.test(item.requestedItem) &&
+                    !/bic|faber|pelikan|papers*mate|filgo|wero|writech|deli|ezco|parker|lamy|simball/i.test(item.requestedItem),
+    override: {
+      matched: true,
+      catalogName: "Boligrafo Bic 0,7 Punta Fina Cristal",
+      catalogSlug: "boligrafo-bic-07-punta-fina-cristal",
     }
   },
   {
