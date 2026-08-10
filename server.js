@@ -1309,7 +1309,9 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
 });
 
 // ─── GENERAR PDF DE PRESUPUESTO ──────────────────────────────────────
-app.post("/api/presupuesto-pdf", express.json({ limit: "2mb" }), (req, res) => {
+git add .
+git commit -m "fix: presupuesto-pdf recalcula precios desde catalogo, no confia en el body"
+git push", express.json({ limit: "2mb" }), (req, res) => {
   const { items, summary, schoolName } = req.body;
   if (!items || !summary) {
     return res.status(400).json({ error: "Faltan datos del presupuesto" });
