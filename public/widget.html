@@ -423,6 +423,18 @@
       color: var(--text-muted);
     }
 
+    .review-badge {
+      font-size: 0.68rem;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 0.1rem 0.45rem;
+      border-radius: 0.3rem;
+      margin-left: 0.35rem;
+      white-space: nowrap;
+    }
+    .item-variant { font-weight: 400; color: var(--text-muted); font-size: 0.85rem; }
+    .item-note { font-size: 0.75rem; color: var(--green); margin-bottom: 0.2rem; }
+
     .not-found-row {
       background: #fff8f6;
     }
@@ -798,7 +810,7 @@
 </div>
 
 <script>
-  const API_URL = "https://presupuestador-escolar.onrender.com/api/presupuestar";
+  const API_URL = "/api/presupuestar"; // mismo servidor que sirve el widget
 
   let selectedFile = null;
 
@@ -884,6 +896,23 @@
     document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
   }
 
+  // Las fotos de celular suelen pesar más de 5 MB (límite para leerlas): se achican a 2000 px en JPEG.
+  async function shrinkImage(file) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1.5 * 1024 * 1024) return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+      return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }) : file;
+    } catch (e) {
+      return file;
+    }
+  }
+
   // ─── PRESUPUESTAR ─────────────────────────────────────────────
   async function presupuestar() {
     if (!selectedFile) return;
@@ -894,29 +923,24 @@
     document.getElementById("errorBox").classList.remove("show");
     startSteps();
 
-    const formData = new FormData();
-    formData.append("lista", selectedFile);
-
     try {
-      const res = await fetch(API_URL, { method: "POST", body: formData });
-      const data = await res.json();
+      const formData = new FormData();
+      formData.append("lista", await shrinkImage(selectedFile), selectedFile.name);
 
-      if (!res.ok || !data.success) throw new Error(data.error || "Error desconocido");
+      let res;
+      try {
+        res = await fetch(API_URL, { method: "POST", body: formData });
+      } catch (netErr) {
+        throw new Error("Error de conexión. Verificá tu internet e intentá de nuevo.");
+      }
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* respuesta no JSON */ }
+      // El servidor ya devuelve mensajes pensados para la familia.
+      if (!res.ok || !data || !data.success) throw new Error((data && data.error) || "Ocurrió un error al procesar la lista. Intentá de nuevo en unos segundos.");
 
       renderResults(data);
     } catch (err) {
-      const msg = err.message || "";
-      let friendlyMsg;
-      if (msg.includes("529") || msg.includes("503") || msg.includes("overload")) {
-        friendlyMsg = "El servicio de IA está con mucha demanda en este momento. Por favor esperá 1 minuto e intentá de nuevo.";
-      } else if (msg.includes("429")) {
-        friendlyMsg = "Se alcanzó el límite de consultas. Esperá unos minutos e intentá de nuevo.";
-      } else if (msg.includes("Network") || msg.includes("network") || msg.includes("timeout")) {
-        friendlyMsg = "Error de conexión. Verificá tu internet e intentá de nuevo.";
-      } else {
-        friendlyMsg = "Ocurrió un error al procesar la lista. Intentá de nuevo en unos segundos.";
-      }
-      document.getElementById("errorMsg").textContent = friendlyMsg;
+      document.getElementById("errorMsg").textContent = err.message;
       document.getElementById("errorBox").classList.add("show");
       document.getElementById("btnPresupuestar").disabled = false;
     } finally {
@@ -971,7 +995,8 @@
             <div class="item-row clickable" onclick="openModal(${idx})">
               <div class="item-left">
                 <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
-                <div class="item-matched">${esc(item.catalogName)}</div>
+                <div class="item-matched">${esc(item.catalogName)}${item.product && item.product.variantLabel ? ` <span class="item-variant">· ${esc(item.product.variantLabel)}</span>` : ""}${item.status === "review" ? ` <span class="review-badge" title="Encontramos varias opciones: revisá que sea el que pide la lista">Revisá</span>` : ""}</div>
+                ${item.quantityNote ? `<div class="item-note">${esc(item.quantityNote)}</div>` : ""}
                 ${item.catalogSku ? `<span class="item-sku">SKU: ${esc(item.catalogSku)}</span>` : ""}
                 <div class="item-view-hint">👁 Ver producto →</div>
               </div>
@@ -1020,8 +1045,8 @@
           ${notFound.map(item => `
             <div class="item-row not-found-row">
               <div class="item-left">
-                <div class="item-matched">${esc(item.requestedItem)} <span class="not-found-badge">No disponible</span></div>
-                <div class="item-requested">Consultá disponibilidad con un asesor</div>
+                <div class="item-matched">${esc(item.requestedItem)} <span class="not-found-badge">${item.status === "suggested" ? "Sin confirmar" : "No disponible"}</span></div>
+                <div class="item-requested">${item.status === "suggested" ? "No pudimos confirmar cuál es: consultalo con un asesor." : esc(item.reason || "Consultá disponibilidad con un asesor")}</div>
               </div>
               <span class="item-qty">x${esc(item.quantity)}</span>
               <div class="item-price" style="color:var(--text-muted)">—</div>
@@ -1224,8 +1249,8 @@
     const item = _allClickableItems[idx];
     const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 
-    const productUrl = item.catalogSlug
-      ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+    const productUrl = item.product && item.product.url ? item.product.url
+      : item.catalogSlug ? `https://www.librerialerma.com.ar/productos/${encodeURIComponent(item.catalogSlug)}/`
       : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
 
     if (item.inStoreOnly) {
