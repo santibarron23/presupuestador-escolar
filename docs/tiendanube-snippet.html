@@ -56,6 +56,13 @@
     // 1. Alto del iframe
     if (e.data.height) { iframe.style.height = (e.data.height + 24) + "px"; return; }
 
+    // Al pasar de pantalla, mostrar el inicio del presupuestador (debajo del header fijo de la tienda)
+    if (e.data.type === "lerma-presupuestador:scroll-top") {
+      var top = iframe.getBoundingClientRect().top + window.pageYOffset - 180;
+      if (window.pageYOffset > top) window.scrollTo({ top: top, behavior: "smooth" });
+      return;
+    }
+
     // 2. Eventos de analítica
     if (e.data.type === "lerma-presupuestador:event") {
       var params = e.data.params || {};

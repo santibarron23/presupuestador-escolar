@@ -165,6 +165,8 @@
   /* Dentro del iframe el alto crece con el contenido y la página que scrollea es la de la tienda: sin barra fija. */
   html.embedded .sticky { display: none; }
   html.embedded .wrap { padding-bottom: 24px; }
+  /* La página de la tienda ya tiene su título. */
+  html.embedded .hero h1 { display: none; }
 
   /* ── Panel (cambiar producto) ── */
   .sheet-backdrop { position: fixed; inset: 0; background: rgba(15, 25, 20, .45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
@@ -293,6 +295,9 @@
     if (embedded) window.parent.postMessage({ height: document.documentElement.scrollHeight }, "*");
   }
   new ResizeObserver(reportHeight).observe(document.body);
+  // Red de seguridad: el iframe es lazy y las fuentes cambian el alto al cargar.
+  window.addEventListener("load", reportHeight);
+  if (document.fonts) document.fonts.ready.then(reportHeight);
 
   function toast(message, action) {
     const root = $("#toast-root");
@@ -450,6 +455,8 @@
     $("#view-results").hidden = view !== "results";
     window.scrollTo({ top: 0 });
     reportHeight();
+    // Dentro de la tienda, el que scrollea es la página: le pedimos que muestre el inicio del widget.
+    if (embedded) window.parent.postMessage({ type: "lerma-presupuestador:scroll-top" }, "*");
   }
 
   // ─── Resultados ──────────────────────────────────────────────
