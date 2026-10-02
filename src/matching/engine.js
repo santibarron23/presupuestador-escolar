@@ -98,8 +98,10 @@ function scoreCandidate(req, product, ctx) {
     for (const re of rule.boost || []) if (re.test(product.norm)) score += 0.15;
   }
   for (const rule of EXCLUDE_UNLESS_REQUESTED) {
-    if (rule.soft && rule.product.test(product.norm) && !rule.request.test(req.norm)) score -= 0.1;
+    if (rule.soft && rule.product.test(product.norm) && !rule.request.test(req.norm)) score -= 0.25;
   }
+
+  for (const w of req.negated || []) if (new RegExp("\\b" + w.slice(0, -1)).test(product.norm)) score -= 0.5;
 
   // A igualdad, preferir lo más accesible (sin dominar: el más barato no siempre es el correcto).
   score -= 0.08 * (priceRank.get(product.id) || 0);
@@ -249,6 +251,7 @@ function matchItem(text, store, opts = {}) {
   let confidence = forcedConfidence || confidenceFor(req, best, ranked[1]);
   // Un sustituto (concepto aceptado, no el pedido) nunca se da por bueno solo: la familia lo confirma.
   if (!forcedConfidence && req.accepted.includes(best.product.concept) && (confidence === "alta" || confidence === "muy_alta")) confidence = "media";
+  if (!forcedConfidence && (getConcept(req.concept) || {}).alwaysReview && (confidence === "alta" || confidence === "muy_alta")) confidence = "media";
   // Si no podemos asegurar la cantidad, que la familia la revise.
   if (choice.quantityMode === "unknown-pack-size" && (confidence === "alta" || confidence === "muy_alta")) confidence = "media";
   const selected = productView(best.product, choice);

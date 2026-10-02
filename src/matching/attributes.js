@@ -23,7 +23,7 @@ const DIMENSIONS = {
   punta: {},
   mina: {},
   zurdo: {},
-  acabado: { compat: [["lustre", "liso"]] },
+  acabado: { compat: [["lustre", "liso"], ["liso", "negro"], ["liso", "blanco"], ["liso", "color"]] },
   medida: {},
   dureza: {},
   tipoMapa: {},

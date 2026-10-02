@@ -30,6 +30,11 @@ function unknownHeadBefore(text, index) {
 const NUMBER_WORDS = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8,
   nueve: 9, diez: 10, once: 11, doce: 12, quince: 15, veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50 };
 
+// Palabras comunes que no son productos: nunca se corrigen (si no, "litro" se volvería "libro").
+const PROTECTED = new Set([...CONTAINER_UNITS, ...HEAD_FILLERS, "litro", "litros", "kilos", "gramos", "metro", "metros", "mediano",
+  "mediana", "grande", "grandes", "chico", "chica", "color", "colores", "claro", "claros", "oscuro", "oscuros", "nombre", "rotulado",
+  "forrado", "forrada", "plastico", "plastica", "madera", "carton", "cartón", "tela", "transparente", "eleccion", "elección"]);
+
 // Corrige errores de tipeo contra el vocabulario del catálogo (sólo palabras largas, distancia acotada).
 function fixTypos(norm, vocabulary) {
   if (!vocabulary || !vocabulary.size) return norm;
@@ -37,7 +42,7 @@ function fixTypos(norm, vocabulary) {
     .split(" ")
     .map((w) => {
       if (TYPOS[w]) return TYPOS[w];
-      if (w.length < 5 || /\d/.test(w) || vocabulary.has(w) || isKnownWord(w)) return w;
+      if (w.length < 5 || /\d/.test(w) || vocabulary.has(w) || isKnownWord(w) || PROTECTED.has(w)) return w;
       const tol = typoTolerance(w);
       let best = null;
       let bestD = tol + 1;
@@ -95,7 +100,9 @@ function parseRequest(text, { quantityHint = null, vocabulary = null } = {}) {
   return {
     raw,
     norm,
-    tokens: tokenize(norm),
+    tokens: tokenize(norm.replace(/\b(no|sin|ni)\s+(\w+\s?){1,2}/g, " ")),
+    // "no bicolor", "sin dibujos", "(NO PLÁSTICA)": productos con esas palabras quedan atrás
+    negated: [...norm.matchAll(/\b(?:no|sin|ni)\s+(\w{4,})/g)].map((m) => m[1]),
     concept,
     alternatives,
     accepted: accepted || [],

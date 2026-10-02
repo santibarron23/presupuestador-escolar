@@ -1195,5 +1195,131 @@
       "notSelected": true
     },
     "source": "real"
+  },
+  {
+    "input": "1 litro de aceite (el más barato)",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "3 cartulina negra",
+    "expect": {
+      "concept": "cartulina",
+      "variant": "negro",
+      "packs": 3
+    },
+    "source": "real (prod): lisa vs negra no es conflicto"
+  },
+  {
+    "input": "2 cartulina verde oscuro",
+    "expect": {
+      "concept": "cartulina",
+      "variant": "verde"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "lápices de colores sin dibujos, no bicolor",
+    "expect": {
+      "concept": "lapiz_color",
+      "mustNot": "bicolor"
+    },
+    "source": "real (prod): negación"
+  },
+  {
+    "input": "1 hojas pentagramadas",
+    "expect": {
+      "concept": "pentagramado"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "1 Somos Geniales en Matemática 6 Ed. Kapelusz",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod): editorial"
+  },
+  {
+    "input": "1 Shine on! Plus 5 Ed. Oxford (Book)",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod): no es cuaderno Oxford"
+  },
+  {
+    "input": "1 joggins azul",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "1 paquete de broches de madera",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "1 paquete de 3 rollos de cocina",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "1 rodillo pequeño",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "30 bandejas plásticas descartables",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "1 recipiente chico o vasito de plástico duro para enjuagar pincel",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "1 cuaderno rayado 20x24cm tapa dura 48 hojas",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "sonic|garfield|miami|capybara|cuadricul"
+    },
+    "source": "real (prod): sin personajes si no se piden"
+  },
+  {
+    "input": "1 papel satinado",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real (prod): no está online"
+  },
+  {
+    "input": "1 estampa de la Santísima Trinidad",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real (prod)"
+  },
+  {
+    "input": "2 mapa N°3 Argentina división política",
+    "expect": {
+      "concept": "mapa",
+      "variant": "republica argentina",
+      "nameMatch": "politico"
+    },
+    "source": "real (prod)"
   }
 ]

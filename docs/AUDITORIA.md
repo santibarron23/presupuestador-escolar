@@ -304,3 +304,23 @@ La tienda arma el carrito con `POST /comprar/` (`add_to_cart=<product_id>`, `var
 ## 15. Bugs críticos a resolver antes de cualquier refactor
 
 B1 (modelo), B2 (sintaxis), B3 (precios de IA), B5 (XSS), endpoint abierto a abuso. B4 (catálogo) se resuelve en Fase 1 con el sync, que no depende del refactor.
+
+---
+
+## Anexo — Análisis de listas reales (11 archivos, 14 fotos, 1 presupuesto de vendedor)
+
+### Resultados en producción (IA real)
+10 listas de archivos → 376 ítems. Antes de los ajustes de este anexo: 255 elegidos solos, 38 sin confirmar, 63 marcados como "no vendemos" (comida, higiene, uniforme, libros), 12 no encontrados. Los errores encontrados se corrigieron y quedaron como casos de prueba (`test/fixtures/real-lists-cases.json`, 176 líneas, 0 falsos positivos).
+
+### Patrones de las listas que el sistema ahora maneja
+- Útiles agrupados sin cantidades ("Cartuchera completa: lápiz, goma, regla…") y productos con contenido ("carpeta N°3 con hojas rayadas, cuadriculadas y folios").
+- Opciones por género o con "o" ("blanco (nenas) – negro (varones)", "afiche o papel madera").
+- Ítems opcionales, reutilizables o que se compran en el colegio → fuera del total, con botón para sumarlos.
+- Mapas por región (planisferio, continente americano, Argentina, Salta) y tamaño de envase (250 gr, 50 ml, ½ kg).
+- Negaciones ("no bicolor", "no plástica").
+- Muchos pedidos que no son de librería: harina, vinagre, sémola, papel aluminio, hisopos, lana, vasos y platos descartables, taza, toalla, delantal, revistas, cartillas, libros por editorial.
+
+### Hallazgo comercial: el catálogo online cubre la mitad de lo que vende un vendedor
+El presupuesto real que armó un vendedor para la lista "Sala de 5 D" usa 29 productos; **sólo 15 están publicados y con stock en la tienda online**. Faltan, entre otros: hojas A4 blancas x50, blocks Éxito N°5 (blanco/color), block El Nene kraft, témpera Tintoretto 250 g, marcador Faber 52 permanente, sacapuntas Ezco, lápices de colores Faber x12+3, tijera Impo 12 cm, plastilina Maxxum x10, tizas Koby x12, plástico para forrar. Tampoco hay online: pluma escolar (sólo Parker y Writech, aunque sí los cartuchos), cartulina flúo, cinta de raso, carátulas, láminas para plastificar en frío, block de papel madera.
+
+**Publicar esos productos es la mejora de conversión más directa disponible:** hoy el presupuestador los manda a "consultar" o a un sustituto, y la familia no los puede agregar al carrito. El panel de la Fase 3 ("productos que no encontramos") va a mostrar esta lista con volúmenes reales.

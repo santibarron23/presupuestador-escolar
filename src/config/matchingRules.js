@@ -27,6 +27,8 @@ const RULES = [
   { id: "goma-borrar", concept: "goma_borrar", when: { notMatch: /tinta|miga|moldeable|tecnica/ }, prefer: [{ sku: "110001" }] },
   { id: "sacapuntas", concept: "sacapuntas", when: { notMatch: /deposito|electric/ }, prefer: [{ sku: "330003" }, { sku: "330169" }] },
   { id: "resaltador", concept: "resaltador", prefer: [{ sku: "010173" }] },
+  // No hay pluma escolar económica online (sólo Parker): la Writech es la opción razonable. Ver docs/AUDITORIA.md (catálogo).
+  { id: "pluma-escolar", concept: "pluma", when: { notMatch: /parker/ }, prefer: [{ sku: null, name: /writech.*fountain/ }] },
 
   // ── Adhesivos ─────────────────────────────────────────────────────
   // Prioridad alta: en "plasticola o voligoma" gana la voligoma (criterio histórico de la librería).
@@ -113,7 +115,8 @@ const EXCLUDE_UNLESS_REQUESTED = [
   { product: /oxford/, request: /oxford/ },
   { product: /con folios/, request: /con folios/ },
   { product: /recargable|tinta de recarga/, request: /recarga/ },
-  { product: /\bdisney|marvel|stitch|harry potter|mickey|minnie|avengers|spiderman/, request: /disney|marvel|stitch|harry|mickey|minnie|avengers|spider/, soft: true },
+  { product: /\bdisney|marvel|stitch|harry potter|mickey|minnie|avengers|spiderman|sonic|garfield|inter miami|capybara|kuromi|pusheen|lotso|hello kitty|frozen|barbie|paw patrol|star ?wars|mandalorian|boca|river|afa/,
+    request: /disney|marvel|stitch|harry|mickey|minnie|avengers|spider|sonic|garfield|miami|capybara|kuromi|pusheen|lotso|kitty|frozen|barbie|paw|star|mandalorian|boca|river|afa/, soft: true },
 ];
 
 // Unidades por paquete cuando ni el nombre ni la variante lo dicen, por SKU: { "150019": 10 }.

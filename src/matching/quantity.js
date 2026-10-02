@@ -22,6 +22,8 @@ function rankVariants(product, req) {
   for (const [region, re] of Object.entries(REGIONS)) if (re.test(req.norm)) want.push(region, region);
   // Tamaño del envase: "plasticola x 250 gr", "silicona líquida 250 ml", "voligoma 50ml"
   const sizes = [...req.norm.matchAll(/(?:^|\s|x)(\d{2,4})\s?(ml|cc|gr|grs|g|kg)\b/g)].map((m) => m[1]);
+  if (/(½|1\/2|medio)\s*(kg|kilo)/i.test(req.raw)) sizes.push("500");
+  if (/\b1\s*(kg|kilo)\b/i.test(req.raw)) sizes.push("1000", "1");
   const num = req.norm.match(/\bn(\d{1,2})\b/);
   if (num) want.push("n" + num[1]);
 

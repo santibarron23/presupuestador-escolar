@@ -15,6 +15,10 @@
 //   - packUnit: el producto se vende en paquetes de N unidades de esto ("20 folios" → 2 paquetes x10).
 //   - outOfScope: no lo vendemos; se informa con este motivo y no se busca nada.
 //   - accepts: otros conceptos que también son válidos para este pedido.
+//   - reqFallback: patrones genéricos que sólo cuentan si ningún concepto específico matcheó ("hojas" a secas).
+//   - compat: pares de valores que no son conflicto para este concepto ({ formato: [["n3", "a4"]] }).
+//   - unitWords: palabras con las que se cuentan unidades sueltas ("12 fibrones" → fibra_color).
+//   - alwaysReview: el resultado siempre queda "para revisar" (pocas opciones online o muy caras).
 //
 // Las reglas comerciales (producto preferido, excluidos, marcas) van en config/matchingRules.js, no acá.
 
@@ -23,30 +27,33 @@ const PAPER = ["formato", "rayado", "hojas"];
 const CONCEPTS = [
   // ── Fuera de alcance (no se buscan) ───────────────────────────────
   { id: "higiene", label: "Higiene y limpieza", outOfScope: "Artículo de higiene o limpieza: consultá en la sucursal.",
-    req: [/papel higienico/, /\bjabon/, /alcohol( en gel)?\b/, /toallita/, /panuelo/, /servilleta/, /rollo (de )?cocina/,
+    req: [/papel higienico/, /\bjabon/, /alcohol( en gel)?\b/, /toallita/, /panuelo/, /servilleta/, /rollos? (de )?cocina/,
       /cepillo de dientes/, /pasta dental/, /\btoallas?\b/, /desinfectante/, /lavandina/, /\bbarbijo/, /papel de cocina/,
       /\bhisopos?\b/, /algodon/, /pano de limpieza/, /gel para (el )?cabello/, /\bpeine\b/] },
   { id: "libros", label: "Libros", outOfScope: "Los libros de texto no están en el catálogo online: consultá con un asesor.",
     req: [/\blibros?\b/, /\bbiblia/, /team together/, /\bmanual\b(?! de estilo)/, /\bcuentos?\b/, /\bnovela/, /\btexto\b/,
-      /\brevistas?\b/, /cuadernillo/, /\bcartillas?\b/, /bibliografia/, /student.?s book|pupil.?s book|activity book|workbook/, /\breaders?\b/] },
+      /\brevistas?\b/, /cuadernillo/, /\bcartillas?\b/, /bibliografia/, /student.?s book|pupil.?s book|activity book|workbook/, /\breaders?\b/,
+      /\bbook\b/, /\bed\.? (santillana|kapelusz|estrada|puerto de palos|tinta fresca|mandioca|sm|edelvives|oxford|pearson|macmillan|cambridge|longseller)/,
+      /santillana|kapelusz|editorial|edelvives|macmillan|pearson/, /\bestampa/] },
   { id: "educacion_fisica", label: "Educación física y uniforme", outOfScope: "Artículo deportivo o de uniforme: no está en el catálogo.",
     req: [/\bhockey\b/, /\bbocha\b/, /protector bucal/, /canillera/, /zapatilla/, /\bremera\b/, /\bjogging\b/, /\buniforme\b/,
-      /\bshort\b/, /\bmedias\b/, /\bpollera\b/, /delantal/, /guardapolvo/, /\bchomba\b/, /\bcamisa\b/, /\bgorra\b/, /\bbuzo\b/, /campera/] },
+      /\bshort\b/, /\bmedias\b/, /\bpollera\b/, /delantal/, /guardapolvo/, /\bchomba\b/, /\bjoggin/, /\bcamisa\b/, /\bgorra\b/, /\bbuzo\b/, /campera/] },
   { id: "uso_personal", label: "Elementos personales", outOfScope: "Elemento de uso personal: no está en el catálogo.",
     req: [/\btazas?\b/, /\bindividual\b/, /servilleta/, /\bbolsita/, /\bcuchar/, /\bplatos?\b/, /\bmantel/, /cuchillo/, /tenedor/,
       /bolsa de (lienzo|tela)/, /lienzo ecologico/, /\bvasos?\b/, /\bsorbetes?\b/, /alfiler/, /\bovillo\b/, /\blanas?\b/, /lanitas/,
-      /retazos/, /\bcorchos?\b/, /tapitas/, /papel de diario/, /palito de crochet/, /\blija\b/] },
+      /retazos/, /\bcorchos?\b/, /tapitas/, /papel de diario/, /palito de crochet/, /\blija\b/, /descartables?/,
+      /broches? de (madera|ropa)/, /ganchos? de ropa/, /recipiente/, /vasito/, /\belastico de \d/] },
   { id: "ciencias_cocina", label: "Ciencias y cocina", outOfScope: "Material de ciencias o cocina: no está en el catálogo.",
     req: [/bicarbonato/, /\bfecula/, /cremor tartaro/, /colorante/, /harina/, /semola/, /vinagre/, /\baceite\b/, /\bsal fina\b|paquete de sal/,
       /papel aluminio/, /\bazucar\b/, /espuma de afeitar/, /jeringa/, /gotero/, /rociador/,
       /pulverizador/, /\besponja/, /papel film/, /\bvasos? descartable/, /\bplatos? descartable/, /tenedor/,
-      /\bcuchara/, /\bservilletero/, /rodillo de pintura/, /\btaza\b/, /\bbotones\b/, /\btelas?\b/, /\blanillas?\b/, /\btablet\b/] },
+      /\bcuchara/, /\bservilletero/, /\brodillo/, /\btaza\b/, /\bbotones\b/, /\btelas?\b/, /\blanillas?\b/, /\btablet\b/] },
 
   // ── Escritura ──────────────────────────────────────────────────────
   { id: "corrector", label: "Corrector", req: [/corrector/, /liquid paper/, /cinta correctora/], prod: [/corrector/] },
   { id: "borratinta", label: "Borratinta", req: [/borra ?tinta/], prod: [/borratinta/] },
   { id: "cartucho_tinta", label: "Cartuchos de tinta", req: [/cartucho/], prod: [/cartucho/], packUnit: "cartucho" },
-  { id: "pluma", label: "Pluma estilográfica", req: [/\bpluma\b/, /lapicera (de )?pluma/, /lapicera (a|de) cartucho/], prod: [/\bpluma\b/, /fountain/, /\bfp\b/] },
+  { id: "pluma", label: "Pluma estilográfica", alwaysReview: true, req: [/lapiceras? (de )?tinta( azul)?( lavable)?/, /tinta (azul )?lavable/, /\bpluma\b/, /lapicera (de )?pluma/, /lapicera (a|de) cartucho/], prod: [/\bpluma\b/, /fountain/, /\bfp\b/] },
   { id: "boligrafo_borrable", label: "Bolígrafo borrable", req: [/(lapicera|boligrafo|birome|roller)s?\b.*(borrable|con borrador)/, /borrable/, /frixion/], prod: [/borrable/, /frixion/, /gelocity ilusion/] },
   { id: "adhesivo_barra", label: "Adhesivo en barra", req: [/plasticolas? (chica |mediana |grande |pequena )?en barra/, /(barra|barrita)s? de plasticola/, /lapiz adhesivo/, /barra adhesiva(?!.*silicona)/, /adhesivo en barra/, /\bpritt\b/, /\bstick\b/],
     prod: [/lapiz adhesivo/, /barra adhesiva(?!.*silicona)/, /adhesivo en barra/, /\badh barra/, /\bstick\b/] },
@@ -100,7 +107,7 @@ const CONCEPTS = [
   // ── Pintura y modelado ────────────────────────────────────────────
   { id: "tempera", label: "Témpera", dims: ["acabado"], req: [/tempera/], prod: [/tempera/] },
   { id: "acuarela", label: "Acuarela", req: [/acuarela/], prod: [/acuarela(?!ble)/] },
-  { id: "pintura_acrilica", label: "Pintura acrílica", req: [/acrilic/], prod: [/acrilic/], notProd: [/marcador/, /regla/, /atril/] },
+  { id: "pintura_acrilica", label: "Pintura acrílica", req: [/acrilic/], prod: [/acrilic/], notProd: [/marcador/, /regla/, /atril/, /impermeabiliz/, /barniz/] },
   { id: "pincel", label: "Pincel", req: [/pincel/], prod: [/pincel/] },
   { id: "plastilina", unitWords: ["plastilina", "barra", "barrita"], label: "Plastilina", packUnit: "plastilina", req: [/plastilina/], prod: [/plastilina/] },
   { id: "masa", label: "Masa para modelar", req: [/masa(s)? (para )?modelar/, /porcelana fria/, /\bmasas?\b/, /foamy moldeable/],
@@ -150,6 +157,8 @@ const CONCEPTS = [
     prod: [/\brepuestos?\b/, /hojas? (rayadas|cuadriculadas)/],
     notProd: [/parker/, /boligrafo/, /roller/, /rotring/, /locorrijo/, /calcar/, /dibujo/, /pentagram/, /ballpoint/, /faber magic/, /\bminas?\b/, /\bpunta\b/] },
   { id: "papel_carbonico", label: "Papel carbónico", req: [/carbonico/], prod: [/carbonico/] },
+  { id: "pentagramado", label: "Hojas pentagramadas", req: [/pentagram/], prod: [/pentagram/] },
+  { id: "papel_satinado", label: "Papel satinado", req: [/papel satinado/], prod: [/papel satinado/] },
   { id: "block_cartulina", label: "Block de cartulinas", dims: ["formato"], req: [/blocks?\b.*(cartulina|fantasia|entretenid)/, /cartulinas? (en )?block/],
     prod: [/block.*(cartulina|fantasia|entretenid)/] },
   { id: "block_afiche", label: "Block de afiches", dims: ["formato"], req: [/blocks? (de )?afiche/], prod: [/block.*afiche/] },
