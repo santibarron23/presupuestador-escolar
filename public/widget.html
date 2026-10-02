@@ -471,7 +471,9 @@
   }
 
   const visible = () => state.items.filter((i) => !i.removed && (!state.grade || !i.grade || i.grade === state.grade));
-  const included = (i) => INCLUDED.has(i.status) && i.product;
+  // Los opcionales (reutilizables, se compran en el colegio) no suman hasta que la familia los agrega.
+  const included = (i) => INCLUDED.has(i.status) && i.product && (!i.optional || i.optIn);
+  const isOptionalPending = (i) => i.optional && !i.optIn && INCLUDED.has(i.status) && i.product;
   const lineTotal = (i) => (included(i) ? i.product.unitPrice * i.quantity : 0);
 
   function totals() {
@@ -492,8 +494,9 @@
     const t = totals();
     const items = visible();
     const groups = {
-      attention: items.filter((i) => i.status === "review" || i.status === "suggested"),
-      ready: items.filter((i) => i.status === "matched"),
+      attention: items.filter((i) => (i.status === "review" || i.status === "suggested") && !isOptionalPending(i)),
+      ready: items.filter((i) => i.status === "matched" && !isOptionalPending(i)),
+      optional: items.filter(isOptionalPending),
       store: items.filter((i) => i.status === "in_store"),
       missing: items.filter((i) => ["not_sold", "not_found", "out_of_stock"].includes(i.status)),
     };
@@ -523,6 +526,7 @@
         <input id="add-input" placeholder="Agregar algo que falte (ej. 1 regla 30 cm)" maxlength="120" />
         <button class="btn btn-outline" id="add-btn">Agregar</button>
       </div>
+      ${groups.optional.length ? section("Opcionales o reutilizables", "optional", groups.optional, "La lista dice que son opcionales, que pueden ser del año anterior o que se compran en el colegio. No están en el total.") : ""}
       ${groups.store.length ? section("Sólo en la sucursal", "store", groups.store, "No se venden online. Consultá precio y disponibilidad en Belgrano 635 o por WhatsApp.") : ""}
       ${groups.missing.length ? section("Para consultar", "missing", groups.missing, "No los encontramos en la tienda online.") : ""}
 
@@ -589,7 +593,12 @@
             ${i.decidedBy === "manual" ? `<span class="badge badge-ok">Elegido por vos</span>` : ""}
           </div>
           ${i.quantityNote && selected ? `<div class="qnote">${esc(i.quantityNote)}</div>` : ""}
-          ${i.status === "suggested" ? `
+          ${i.note ? `<div class="meta" style="margin-top:2px">${esc(i.note)}</div>` : ""}
+          ${isOptionalPending(i) ? `
+            <div class="confirm-row">
+              <button class="btn btn-outline" data-act="opt-in" data-line="${i.lineId}">Sumar al presupuesto (${money(p.unitPrice * i.quantity)})</button>
+            </div>` : ""}
+          ${isOptionalPending(i) ? "" : i.status === "suggested" ? `
             <div class="confirm-row">
               <button class="btn btn-primary" data-act="accept" data-line="${i.lineId}">Sí, es este</button>
               <button class="btn btn-outline" data-act="change" data-line="${i.lineId}">Ver otras opciones</button>
@@ -646,6 +655,11 @@
     if (act === "plus" || act === "minus") {
       item.quantity = Math.max(1, Math.min(99, item.quantity + (act === "plus" ? 1 : -1)));
       track("quantity_changed", { concept: item.concept });
+      return render();
+    }
+    if (act === "opt-in") {
+      item.optIn = true;
+      track("optional_added", { concept: item.concept });
       return render();
     }
     if (act === "accept") {
@@ -754,7 +768,7 @@
   }
   function pendingLines() {
     // El texto pedido puede traer la cantidad adelante ("1 papel higiénico"): se muestra una sola vez.
-    return visible().filter((i) => !included(i)).map((i) => ({ requestedItem: i.status === "in_store" && i.inStore ? i.inStore.label : String(i.requestedItem).replace(/^s*d+s+/, ""), packs: i.requestedQuantity || i.quantity, note: i.status === "in_store" ? "sólo en sucursal" : null }));
+    return visible().filter((i) => !included(i) && !isOptionalPending(i)).map((i) => ({ requestedItem: i.status === "in_store" && i.inStore ? i.inStore.label : String(i.requestedItem).replace(/^s*d+s+/, ""), packs: i.requestedQuantity || i.quantity, note: i.status === "in_store" ? "sólo en sucursal" : null }));
   }
 
   async function onAction(action) {

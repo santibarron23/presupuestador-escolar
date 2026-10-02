@@ -8,7 +8,7 @@ const { evaluate } = require("./helpers/evaluate");
 store.loadFromDisk();
 const match = (t, o) => matchItem(t, store, o);
 
-for (const [label, file] of [["regresión", "matching-cases.json"], ["holdout", "holdout-cases.json"]]) {
+for (const [label, file] of [["regresión", "matching-cases.json"], ["holdout", "holdout-cases.json"], ["listas reales", "real-lists-cases.json"]]) {
   test(`dataset de ${label}: todos los casos y cero falsos positivos`, () => {
     const { results, metrics } = evaluate(require("./fixtures/" + file), (i) => match(i));
     const failures = results.filter((r) => !r.ok).map((r) => `${r.case.input}: ${r.errors.join("; ")}`);

@@ -247,6 +247,8 @@ function matchItem(text, store, opts = {}) {
     choice.quantityNote = null;
   }
   let confidence = forcedConfidence || confidenceFor(req, best, ranked[1]);
+  // Un sustituto (concepto aceptado, no el pedido) nunca se da por bueno solo: la familia lo confirma.
+  if (!forcedConfidence && req.accepted.includes(best.product.concept) && (confidence === "alta" || confidence === "muy_alta")) confidence = "media";
   // Si no podemos asegurar la cantidad, que la familia la revise.
   if (choice.quantityMode === "unknown-pack-size" && (confidence === "alta" || confidence === "muy_alta")) confidence = "media";
   const selected = productView(best.product, choice);

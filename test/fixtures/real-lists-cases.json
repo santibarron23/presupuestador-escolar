@@ -1,0 +1,1199 @@
+[
+  {
+    "input": "1 cuaderno de comunicaciones forrado de azul y rotulado",
+    "expect": {
+      "concept": "cuaderno_comunicaciones"
+    },
+    "source": "real: jardín"
+  },
+  {
+    "input": "1 cuaderno para comunicados de 24 hojas de tapas duras",
+    "expect": {
+      "concept": "cuaderno_comunicaciones"
+    },
+    "source": "real"
+  },
+  {
+    "input": "6 blocks canson N°5 blanco x 8 unidades",
+    "expect": {
+      "concept": [
+        "block_dibujo",
+        "repuesto_dibujo"
+      ],
+      "mustNot": "color|negro"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block canson negro N°5 x 8 unidades",
+    "expect": {
+      "concept": [
+        "block_dibujo",
+        "repuesto_dibujo"
+      ],
+      "nameMatch": "negr"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 blocks canson color N°5 x 8 unidades",
+    "expect": {
+      "concept": [
+        "block_dibujo",
+        "repuesto_dibujo"
+      ],
+      "mustNot": "blanco|negro"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block canson x 24 hojas blanco",
+    "expect": {
+      "concept": [
+        "block_dibujo",
+        "repuesto_dibujo"
+      ],
+      "mustNot": "color|negro"
+    },
+    "source": "real: vendedor eligió Block Éxito N5 blanco"
+  },
+  {
+    "input": "1 block cartulinas fantasía x 24 hojas",
+    "expect": {
+      "concept": "block_cartulina"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block de hojas de cartulina fantasía A4",
+    "expect": {
+      "concept": "block_cartulina"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block de cartulinas entretenidas x24",
+    "expect": {
+      "concept": "block_cartulina"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block papel madera o canson negro x 24 hojas",
+    "expect": {
+      "concept": [
+        "block_papel_madera",
+        "block_dibujo",
+        "repuesto_dibujo"
+      ],
+      "mustNot": "blanco|color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block de hojas de papel madera",
+    "expect": {
+      "concept": [
+        "block_papel_madera",
+        "papel_madera"
+      ],
+      "status": "review"
+    },
+    "source": "real: no hay block de papel madera online; se ofrece papel madera suelto como sustituto, para revisar"
+  },
+  {
+    "input": "1 repuesto papel madera",
+    "expect": {
+      "concept": [
+        "block_papel_madera",
+        "papel_madera"
+      ]
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block de afiches",
+    "expect": {
+      "concept": "block_afiche"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 block de hojas color negro A4 - 25 hojas",
+    "expect": {
+      "concept": "block_dibujo",
+      "nameMatch": "negr"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 repuesto canson Nº5 color x 8 hojas",
+    "expect": {
+      "concept": "repuesto_dibujo",
+      "mustNot": "blanco|negro"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 repuesto canson Nº5 blanco x 8 hojas",
+    "expect": {
+      "concept": "repuesto_dibujo",
+      "mustNot": "color|negro"
+    },
+    "source": "real"
+  },
+  {
+    "input": "30 hojas de maquina A4 de colores",
+    "expect": {
+      "sku": "080122"
+    },
+    "source": "real: vendedor eligió Resma A4 Luma color"
+  },
+  {
+    "input": "70 hojas de maquina A4 blancas",
+    "expect": {
+      "status": "in_store"
+    },
+    "source": "real: vendedor eligió Hoja A4 blanca x50 (no está online)"
+  },
+  {
+    "input": "80 hojas oficio blancas de 80 gr",
+    "expect": {
+      "status": "in_store"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 resma de hojas A4 (blancas)",
+    "expect": {
+      "status": "in_store"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 papel afiche o papel madera (doblado en 6 partes)",
+    "expect": {
+      "concept": [
+        "afiche",
+        "papel_madera"
+      ]
+    },
+    "source": "real"
+  },
+  {
+    "input": "5 papeles afiche de colores",
+    "expect": {
+      "sku": "160009",
+      "packs": 5
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 cartulinas flúo",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real: no hay cartulina flúo online"
+  },
+  {
+    "input": "1 cartulina fantasía (doblada en 4)",
+    "expect": {
+      "concept": "cartulina"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 papeles crepé (1 blanco y 1 celeste)",
+    "expect": {
+      "concept": "papel_crepe"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 paquete de papel glasé metalizado",
+    "expect": {
+      "sku": "310003"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 sobre de papel glasé lustre",
+    "expect": {
+      "sku": "310002"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 papeles madera",
+    "expect": {
+      "sku": "160118",
+      "packs": 3
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 rollo de 1 metro de papel contact",
+    "expect": {
+      "concept": "papel_contact"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 metro de contact transparente o de color",
+    "expect": {
+      "concept": "papel_contact"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 plancha para plastificar en frío",
+    "expect": {
+      "notSelected": true,
+      "mustNotConcept": "papel_contact"
+    },
+    "source": "real: no está online"
+  },
+  {
+    "input": "1 caja de fibras de colores gruesas",
+    "expect": {
+      "concept": "fibra_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 caja de fibras de punta gruesa x 12",
+    "expect": {
+      "concept": "fibra_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "12 fibras de colores punta gruesa",
+    "expect": {
+      "concept": "fibra_color",
+      "packs": 1
+    },
+    "source": "real: vendedor eligió Fibra color x12 Paper Mate"
+  },
+  {
+    "input": "1 caja de fibrones jumbo",
+    "expect": {
+      "concept": "fibra_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 fibrón flúo",
+    "expect": {
+      "concept": [
+        "fibra_color",
+        "resaltador"
+      ]
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 marca todo",
+    "expect": {
+      "concept": "fibra_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 fibrón negro indeleble punta redonda",
+    "expect": {
+      "concept": "marcador_permanente"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 marcadores indelebles de punta redonda grueso negro",
+    "expect": {
+      "concept": "marcador_permanente"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 fibrones negros permanente punta redonda",
+    "expect": {
+      "concept": "marcador_permanente",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 fibra para pizarra de color",
+    "expect": {
+      "concept": "marcador_pizarra"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 fibrón pizarrón color",
+    "expect": {
+      "concept": "marcador_pizarra"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 microfibra negra",
+    "expect": {
+      "concept": "fibra_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 caja de crayones gruesos flúo",
+    "expect": {
+      "concept": "crayon"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 paquetes crayones cremosos",
+    "expect": {
+      "concept": "crayon",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 caja de lápices de colores flúo",
+    "expect": {
+      "concept": "lapiz_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "12 lápices de colores",
+    "expect": {
+      "concept": "lapiz_color",
+      "packs": 1
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 caja de lápices de colores cortos",
+    "expect": {
+      "concept": "lapiz_color"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 lápiz negro triangular grueso",
+    "expect": {
+      "concept": "lapiz_grafito"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 lápices de grafito",
+    "expect": {
+      "concept": "lapiz_grafito"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 borrador de lápiz",
+    "expect": {
+      "sku": "110001"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 goma de borrar blanca",
+    "expect": {
+      "concept": "goma_borrar"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 lapicera de tinta azul lavable",
+    "expect": {
+      "concept": [
+        "pluma",
+        "boligrafo",
+        "cartucho_tinta"
+      ]
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 borra tinta",
+    "expect": {
+      "concept": "borratinta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "lapicera azul y roja borrables",
+    "expect": {
+      "concept": "boligrafo_borrable"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 lapicera roller con borrador",
+    "expect": {
+      "concept": [
+        "boligrafo_borrable",
+        "boligrafo"
+      ]
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 lapiceras de colores a elección",
+    "expect": {
+      "concept": "boligrafo"
+    },
+    "source": "real"
+  },
+  {
+    "input": "corrector en cinta",
+    "expect": {
+      "concept": "corrector"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 plasticola blanca x 250 gr",
+    "expect": {
+      "concept": "plasticola"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pote de ½ kg de plasticola",
+    "expect": {
+      "concept": "plasticola"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 plasticolas de colores",
+    "expect": {
+      "sku": "50082",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 plasticola con brillo pequeña",
+    "expect": {
+      "concept": "plasticola",
+      "nameMatch": "glitter|brill"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 plasticola en barra mediana",
+    "expect": {
+      "concept": "adhesivo_barra"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 plasticola chica en barra",
+    "expect": {
+      "concept": "adhesivo_barra"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 voligomas grandes",
+    "expect": {
+      "sku": "050019",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 silicona líquida 250 ml",
+    "expect": {
+      "concept": "silicona_liquida"
+    },
+    "source": "real"
+  },
+  {
+    "input": "5 barras de silicona fina",
+    "expect": {
+      "concept": "silicona_barra",
+      "packs": 5
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cinta papel ancha",
+    "expect": {
+      "sku": "300039"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cinta pack transparente",
+    "expect": {
+      "concept": "cinta_adhesiva"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cinta transparente ancha",
+    "expect": {
+      "concept": "cinta_adhesiva"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 metro de cinta de razo (bebé)",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real: no hay cinta de raso online"
+  },
+  {
+    "input": "1 pote de 250g de témpera negra",
+    "expect": {
+      "concept": "tempera",
+      "variant": "negro"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pote de témpera de 250 gr especial (metalizada o brillo)",
+    "expect": {
+      "concept": "tempera"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 témpera en barra",
+    "expect": {
+      "concept": "tempera_solida"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pote de 250g de acrílico blanco",
+    "expect": {
+      "concept": "pintura_acrilica"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 paleta de acuarelas",
+    "expect": {
+      "concept": "acuarela"
+    },
+    "source": "real"
+  },
+  {
+    "input": "acuarelas por 12 colores",
+    "expect": {
+      "concept": "acuarela"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pincel chato N° 12",
+    "expect": {
+      "concept": "pincel",
+      "variant": "n12"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pincel N° 8",
+    "expect": {
+      "concept": "pincel",
+      "variant": "n8"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 pinceles N° 10",
+    "expect": {
+      "concept": "pincel",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 caja de tizas de colores (x 12 unidades)",
+    "expect": {
+      "concept": "tiza",
+      "packs": 1
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 caja de plastilina x 6",
+    "expect": {
+      "concept": "plastilina",
+      "packs": 1
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 paquetes plastilina",
+    "expect": {
+      "concept": "plastilina",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 goma eva con brillo",
+    "expect": {
+      "sku": "990181"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 goma eva toalla",
+    "expect": {
+      "concept": "goma_eva"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 gomas eva (verde, amarilla, color claro)",
+    "expect": {
+      "concept": "goma_eva",
+      "packs": 3
+    },
+    "source": "real"
+  },
+  {
+    "input": "10 palitos de helado de madera",
+    "expect": {
+      "concept": "palitos"
+    },
+    "source": "real"
+  },
+  {
+    "input": "5 limpiapipas",
+    "expect": {
+      "concept": "limpiapipas"
+    },
+    "source": "real: el prompt viejo decía que no había"
+  },
+  {
+    "input": "5 globos",
+    "expect": {
+      "concept": "globos"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 plancha de ojalillos",
+    "expect": {
+      "sku": "170142"
+    },
+    "source": "real"
+  },
+  {
+    "input": "12 broches mariposa",
+    "expect": {
+      "concept": "broches_nepaco"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 aros metálicos de 70 mm",
+    "expect": {
+      "concept": "aros_carpeta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 sobre de tamaño carta",
+    "expect": {
+      "concept": "sobre"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 sobres tamaño oficio de papel madera",
+    "expect": {
+      "concept": "sobre"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 papel araña color",
+    "expect": {
+      "concept": "papel_arana"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 papel carbónico negro",
+    "expect": {
+      "concept": "papel_carbonico"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 sobre de papel de calcar",
+    "expect": {
+      "concept": "papel_calcar"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 papel celofán",
+    "expect": {
+      "concept": "papel_celofan"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 carpeta N°3 con hojas rayadas y cuadriculadas",
+    "expect": {
+      "concept": "carpeta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 carpeta Nº 3 de tres ganchos",
+    "expect": {
+      "concept": "carpeta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 carpeta N° 5 de dibujo con 2 anillos",
+    "expect": {
+      "concept": "carpeta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 carpeta oficio de 3 solapas con elástico",
+    "expect": {
+      "concept": "carpeta_solapas",
+      "variant": "oficio"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 carpeta plástica transparente A4 con nepaco",
+    "expect": {
+      "concept": "carpeta_cristal"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 bibliorato (A4) tapa gris",
+    "expect": {
+      "concept": "bibliorato"
+    },
+    "source": "real"
+  },
+  {
+    "input": "10 folios transparentes A4",
+    "expect": {
+      "sku": "150041",
+      "packs": 1
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 folios tamaño oficio",
+    "expect": {
+      "sku": "150016",
+      "packs": 1
+    },
+    "source": "real"
+  },
+  {
+    "input": "folios plásticos Nº3",
+    "expect": {
+      "sku": "150041"
+    },
+    "source": "real"
+  },
+  {
+    "input": "separadores",
+    "expect": {
+      "concept": "separadores"
+    },
+    "source": "real"
+  },
+  {
+    "input": "hojas rayadas para carpeta N°3",
+    "expect": {
+      "concept": "repuesto_hojas",
+      "mustNot": "cuadricul"
+    },
+    "source": "real"
+  },
+  {
+    "input": "10 hojas de color N°3",
+    "expect": {
+      "concept": "repuesto_dibujo",
+      "mustNot": "blanco|negro"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 cuadernos ABC Rivadavia espiralados 48 hojas rayadas",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "cuadricul|oxford"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 cuadernos espiralados de 100 hojas rayados ABC tapa dura tamaño A4",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "cuadricul|oxford"
+    },
+    "source": "real"
+  },
+  {
+    "input": "4 cuadernos 60 hojas cuadriculados",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "rayad",
+      "packs": 4
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cuaderno rayado de 48 hojas tapa dura",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "cuadricul"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cuaderno de caligrafía de 48 hojas",
+    "expect": {
+      "concept": "cuaderno_caligrafia"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 cuadernos anillados A4 de 100 hojas",
+    "expect": {
+      "concept": "cuaderno"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 libreta índice alfabético con hojas rayadas",
+    "expect": {
+      "concept": "libreta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "set de geometría (regla, escuadra, compás y transportador)",
+    "expect": {
+      "concept": "juego_geometria"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 regla flexible de 20 cm",
+    "expect": {
+      "concept": "regla",
+      "nameMatch": "flexible"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 regla dura 20 cm",
+    "expect": {
+      "concept": "regla",
+      "mustNot": "30"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 tijera con punta redonda de metal",
+    "expect": {
+      "concept": "tijera",
+      "mustNot": "zurd"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 tijerita de punta redonda (no plástica)",
+    "expect": {
+      "concept": "tijera",
+      "mustNot": "zurd"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 multibases",
+    "expect": {
+      "concept": "multibase",
+      "packs": 2
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 diccionario escolar",
+    "expect": {
+      "concept": "diccionario"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 planisferios políticos N°3",
+    "expect": {
+      "concept": "mapa",
+      "variant": "planisferio",
+      "nameMatch": "politico",
+      "packs": 3
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 mapas del continente americano político",
+    "expect": {
+      "concept": "mapa",
+      "variant": "continente americano",
+      "nameMatch": "politico"
+    },
+    "source": "real"
+  },
+  {
+    "input": "5 mapas físico-políticos de Salta",
+    "expect": {
+      "concept": "mapa",
+      "variant": "salta"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pendrive",
+    "expect": {
+      "concept": "pendrive"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cartuchera grande",
+    "expect": {
+      "concept": "cartuchera"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 taza plástica identificada",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 toalla de mano con nombre",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 cajas de pañuelos descartables",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 pote de alcohol en gel",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "toallitas húmedas",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cepillo de dientes",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "3 rollos de papel de cocina",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 kg de harina común",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 litro de vinagre",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 kg de sémola",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 rollo de papel aluminio",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 paquete de hisopos x 50u",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 paquete de algodón",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 ovillo de lana",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "10 sorbetes",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "20 vasos plásticos descartables",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 plato de cartón liso",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 cuchillo untador de plástico",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "5 alfileres de gancho",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "2 ganchos de ropa de madera",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 revista infantil para recortar",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 Biblia",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "Libro: English Code 2 Student's book",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "Cartilla de Formación Católica",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 juego de mesa con nombre",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 Tablet para trabajar en Matemática",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "Delantal reglamentario con escudo",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "Remera o camisa mangas largas",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "real"
+  },
+  {
+    "input": "1 bolsa de lienzo ecológico",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real"
+  },
+  {
+    "input": "carátulas para Matemática y Cs. Naturales",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "real"
+  }
+]

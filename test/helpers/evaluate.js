@@ -8,7 +8,7 @@ function checkCase(c, r) {
   const errors = [];
   const selected = SELECTED.has(r.status);
   const name = r.product ? normalize(r.product.name) : "";
-  const wantsSelection = Boolean(e.sku || e.nameMatch || e.concept || e.variant || e.packs) && !e.status;
+  const wantsSelection = Boolean(e.sku || e.nameMatch || e.concept || e.variant || e.packs) && (!e.status || ["review", "matched"].includes(e.status));
 
   if (e.status && r.status !== e.status) errors.push(`status ${r.status} ≠ ${e.status}`);
   if (e.notSelected && selected) errors.push(`seleccionó "${r.product.name}" y no debía`);
@@ -22,7 +22,9 @@ function checkCase(c, r) {
         errors.push(`sku ${r.product.productSku}/${r.product.sku} (${r.product.name}) ∉ [${skus}]`);
       }
     }
-    if (e.concept && r.product.concept !== e.concept) errors.push(`concepto ${r.product.concept} ≠ ${e.concept} (${r.product.name})`);
+    const concepts = e.concept ? (Array.isArray(e.concept) ? e.concept : [e.concept]) : null;
+    if (concepts && !concepts.includes(r.product.concept)) errors.push(`concepto ${r.product.concept} ∉ [${concepts}] (${r.product.name})`);
+    if (e.mustNotConcept && r.product.concept === e.mustNotConcept) errors.push(`concepto prohibido ${e.mustNotConcept} (${r.product.name})`);
     if (e.nameMatch && !new RegExp(e.nameMatch).test(name)) errors.push(`"${r.product.name}" no matchea /${e.nameMatch}/`);
     if (e.mustNot && new RegExp(e.mustNot).test(name)) errors.push(`"${r.product.name}" matchea lo prohibido /${e.mustNot}/`);
     if (e.packs !== undefined && r.packs !== e.packs) errors.push(`packs ${r.packs} ≠ ${e.packs}`);

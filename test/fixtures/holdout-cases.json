@@ -1,52 +1,372 @@
 [
-  { "input": "1 cartuchera completa", "expect": { "concept": "cartuchera" }, "source": "holdout" },
-  { "input": "2 lápices negros N°2", "expect": { "concept": "lapiz_grafito", "mustNot": "color|lapicera" }, "source": "holdout" },
-  { "input": "1 caja de lápices de colores largos", "expect": { "concept": "lapiz_color", "packs": 1 }, "source": "holdout" },
-  { "input": "1 caja de fibras x 12", "expect": { "concept": "fibra_color", "packs": 1, "mustNot": "pizarra|permanente|resaltador" }, "source": "holdout" },
-  { "input": "1 caja de crayones gruesos", "expect": { "concept": "crayon" }, "source": "holdout" },
-  { "input": "1 voligoma grande", "expect": { "sku": "050019" }, "source": "holdout" },
-  { "input": "1 adhesivo vinílico de 250 grs", "expect": { "concept": "plasticola" }, "source": "holdout" },
-  { "input": "1 tijera de punta redonda con nombre", "expect": { "concept": "tijera", "mustNot": "zurd" }, "source": "holdout" },
-  { "input": "1 regla de 20 cm", "expect": { "concept": "regla", "mustNot": "30" }, "source": "holdout" },
-  { "input": "1 carpeta N°3 con 3 ganchos", "expect": { "concept": "carpeta" }, "source": "holdout" },
-  { "input": "1 paquete de hojas rayadas N°3", "expect": { "concept": "repuesto_hojas", "mustNot": "cuadricul" }, "source": "holdout" },
-  { "input": "1 paquete de hojas cuadriculadas N°3", "expect": { "concept": "repuesto_hojas", "mustNot": "rayad" }, "source": "holdout" },
-  { "input": "1 cuaderno tapa dura 50 hojas rayado (forrado de rojo)", "expect": { "concept": "cuaderno", "mustNot": "cuadricul" }, "source": "holdout" },
-  { "input": "1 cuaderno de 48 hojas cuadriculado", "expect": { "concept": "cuaderno", "mustNot": "rayad" }, "source": "holdout" },
-  { "input": "1 block El Nene N°5 blanco", "expect": { "concept": "block_dibujo", "mustNot": "color|negro" }, "source": "holdout" },
-  { "input": "1 block El Nene N°5 de color", "expect": { "concept": "block_dibujo", "mustNot": "blanco|negro" }, "source": "holdout" },
-  { "input": "1 block de hojas negras N°5", "expect": { "concept": "block_dibujo", "nameMatch": "negro" }, "source": "holdout" },
-  { "input": "3 sobres de papel glasé", "expect": { "concept": "papel_glase", "packs": 3 }, "source": "holdout" },
-  { "input": "1 papel crepé", "expect": { "concept": "papel_crepe" }, "source": "holdout" },
-  { "input": "2 papeles afiche (1 claro y 1 oscuro)", "expect": { "concept": "afiche" }, "source": "holdout" },
-  { "input": "1 témpera de 250 cc", "expect": { "concept": "tempera" }, "source": "holdout" },
-  { "input": "1 pincel chato N°8", "expect": { "concept": "pincel", "variant": "n8" }, "source": "holdout" },
-  { "input": "1 rollo de cinta scotch", "expect": { "concept": "cinta_adhesiva", "mustNot": "papel" }, "source": "holdout" },
-  { "input": "1 cinta de papel ancha", "expect": { "concept": "cinta_papel" }, "source": "holdout" },
-  { "input": "1 goma de borrar blanca", "expect": { "concept": "goma_borrar", "mustNot": "eva" }, "source": "holdout" },
-  { "input": "1 sacapuntas con depósito", "expect": { "concept": "sacapuntas" }, "source": "holdout" },
-  { "input": "1 birome azul y 1 roja", "expect": { "concept": "boligrafo" }, "source": "holdout" },
-  { "input": "1 marcador indeleble negro", "expect": { "concept": "marcador_permanente" }, "source": "holdout" },
-  { "input": "1 resaltador amarillo", "expect": { "concept": "resaltador", "variant": "amarillo" }, "source": "holdout" },
-  { "input": "1 compás con portaminas", "expect": { "concept": "compas" }, "source": "holdout" },
-  { "input": "1 transportador", "expect": { "concept": "transportador" }, "source": "holdout" },
-  { "input": "1 escuadra", "expect": { "concept": "escuadra" }, "source": "holdout" },
-  { "input": "1 calculadora científica", "expect": { "concept": "calculadora" }, "source": "holdout" },
-  { "input": "1 diccionario escolar", "expect": { "concept": "diccionario" }, "source": "holdout" },
-  { "input": "1 mochila", "expect": { "concept": "mochila" }, "source": "holdout" },
-  { "input": "10 folios N°3 reforzados", "expect": { "concept": "folio", "packs": 1 }, "source": "holdout" },
-  { "input": "1 bibliorato A4", "expect": { "concept": "bibliorato", "mustNot": "oficio" }, "source": "holdout" },
-  { "input": "1 abrochadora chica", "expect": { "concept": "abrochadora" }, "source": "holdout" },
-  { "input": "1 caja de broches N°10", "expect": { "concept": "broches_abrochadora" }, "source": "holdout" },
-  { "input": "1 cuaderno de caligrafía", "expect": { "concept": "cuaderno" }, "source": "holdout" },
-  { "input": "1 toalla con nombre", "expect": { "status": "not_sold" }, "source": "holdout" },
-  { "input": "1 vaso plástico con nombre", "expect": { "notSelected": true }, "source": "holdout" },
-  { "input": "1 guardapolvo blanco", "expect": { "notSelected": true }, "source": "holdout" },
-  { "input": "1 bolsita de tela para el desayuno", "expect": { "notSelected": true }, "source": "holdout" },
-  { "input": "1 cepillo de dientes", "expect": { "status": "not_sold" }, "source": "holdout" },
-  { "input": "1 rompecabezas de 24 piezas", "expect": { "status": "not_sold" }, "source": "holdout" },
-  { "input": "1 cuento infantil", "expect": { "status": "not_sold" }, "source": "holdout" },
-  { "input": "Lista 2° grado - Turno mañana", "expect": { "notSelected": true }, "source": "holdout: encabezado" },
-  { "input": "TODO CON NOMBRE Y APELLIDO", "expect": { "notSelected": true }, "source": "holdout: indicación" },
-  { "input": "1 pendrive de 16 gb", "expect": { "concept": "pendrive" }, "source": "holdout" }
+  {
+    "input": "1 cartuchera completa",
+    "expect": {
+      "concept": "cartuchera"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "2 lápices negros N°2",
+    "expect": {
+      "concept": "lapiz_grafito",
+      "mustNot": "color|lapicera"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 caja de lápices de colores largos",
+    "expect": {
+      "concept": "lapiz_color",
+      "packs": 1
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 caja de fibras x 12",
+    "expect": {
+      "concept": "fibra_color",
+      "packs": 1,
+      "mustNot": "pizarra|permanente|resaltador"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 caja de crayones gruesos",
+    "expect": {
+      "concept": "crayon"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 voligoma grande",
+    "expect": {
+      "sku": "050019"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 adhesivo vinílico de 250 grs",
+    "expect": {
+      "concept": "plasticola"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 tijera de punta redonda con nombre",
+    "expect": {
+      "concept": "tijera",
+      "mustNot": "zurd"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 regla de 20 cm",
+    "expect": {
+      "concept": "regla",
+      "mustNot": "30"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 carpeta N°3 con 3 ganchos",
+    "expect": {
+      "concept": "carpeta"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 paquete de hojas rayadas N°3",
+    "expect": {
+      "concept": "repuesto_hojas",
+      "mustNot": "cuadricul"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 paquete de hojas cuadriculadas N°3",
+    "expect": {
+      "concept": "repuesto_hojas",
+      "mustNot": "rayad"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 cuaderno tapa dura 50 hojas rayado (forrado de rojo)",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "cuadricul"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 cuaderno de 48 hojas cuadriculado",
+    "expect": {
+      "concept": "cuaderno",
+      "mustNot": "rayad"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 block El Nene N°5 blanco",
+    "expect": {
+      "concept": "block_dibujo",
+      "mustNot": "color|negro"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 block El Nene N°5 de color",
+    "expect": {
+      "concept": "block_dibujo",
+      "mustNot": "blanco|negro"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 block de hojas negras N°5",
+    "expect": {
+      "concept": "block_dibujo",
+      "nameMatch": "negro"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "3 sobres de papel glasé",
+    "expect": {
+      "concept": "papel_glase",
+      "packs": 3
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 papel crepé",
+    "expect": {
+      "concept": "papel_crepe"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "2 papeles afiche (1 claro y 1 oscuro)",
+    "expect": {
+      "concept": "afiche"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 témpera de 250 cc",
+    "expect": {
+      "concept": "tempera"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 pincel chato N°8",
+    "expect": {
+      "concept": "pincel",
+      "variant": "n8"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 rollo de cinta scotch",
+    "expect": {
+      "concept": "cinta_adhesiva",
+      "mustNot": "papel"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 cinta de papel ancha",
+    "expect": {
+      "concept": "cinta_papel"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 goma de borrar blanca",
+    "expect": {
+      "concept": "goma_borrar",
+      "mustNot": "eva"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 sacapuntas con depósito",
+    "expect": {
+      "concept": "sacapuntas"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 birome azul y 1 roja",
+    "expect": {
+      "concept": "boligrafo"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 marcador indeleble negro",
+    "expect": {
+      "concept": "marcador_permanente"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 resaltador amarillo",
+    "expect": {
+      "concept": "resaltador",
+      "variant": "amarillo"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 compás con portaminas",
+    "expect": {
+      "concept": "compas"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 transportador",
+    "expect": {
+      "concept": "transportador"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 escuadra",
+    "expect": {
+      "concept": "escuadra"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 calculadora científica",
+    "expect": {
+      "concept": "calculadora"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 diccionario escolar",
+    "expect": {
+      "concept": "diccionario"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 mochila",
+    "expect": {
+      "concept": "mochila"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "10 folios N°3 reforzados",
+    "expect": {
+      "concept": "folio",
+      "packs": 1
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 bibliorato A4",
+    "expect": {
+      "concept": "bibliorato",
+      "mustNot": "oficio"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 abrochadora chica",
+    "expect": {
+      "concept": "abrochadora"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 caja de broches N°10",
+    "expect": {
+      "concept": "broches_abrochadora"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 cuaderno de caligrafía",
+    "expect": {
+      "concept": "cuaderno_caligrafia"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 toalla con nombre",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 vaso plástico con nombre",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 guardapolvo blanco",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 bolsita de tela para el desayuno",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 cepillo de dientes",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 rompecabezas de 24 piezas",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "1 cuento infantil",
+    "expect": {
+      "status": "not_sold"
+    },
+    "source": "holdout"
+  },
+  {
+    "input": "Lista 2° grado - Turno mañana",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "holdout: encabezado"
+  },
+  {
+    "input": "TODO CON NOMBRE Y APELLIDO",
+    "expect": {
+      "notSelected": true
+    },
+    "source": "holdout: indicación"
+  },
+  {
+    "input": "1 pendrive de 16 gb",
+    "expect": {
+      "concept": "pendrive"
+    },
+    "source": "holdout"
+  }
 ]

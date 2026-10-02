@@ -15,6 +15,13 @@ function rankVariants(product, req) {
   if (req.attrs.mina) want.push(req.attrs.mina);
   if (req.attrs.rayado) want.push(req.attrs.rayado);
   if (req.attrs.tipoMapa) want.push(req.attrs.tipoMapa);
+  // Mapas: la región es la variante (Planisferio, Continente americano, Salta…)
+  const REGIONS = { planisferio: /planisferio/, "continente americano": /continente americano|\bamerica\b(?! del)/, "america del norte": /america del norte/,
+    "america del sur": /america del sur|sudamerica/, oceania: /oceania/, asia: /\basia\b/, europa: /europa/, africa: /africa/,
+    salta: /\bsalta\b/, "republica argentina": /argentina/ };
+  for (const [region, re] of Object.entries(REGIONS)) if (re.test(req.norm)) want.push(region, region);
+  // Tamaño del envase: "plasticola x 250 gr", "silicona líquida 250 ml", "voligoma 50ml"
+  const sizes = [...req.norm.matchAll(/(?:^|\s|x)(\d{2,4})\s?(ml|cc|gr|grs|g|kg)\b/g)].map((m) => m[1]);
   const num = req.norm.match(/\bn(\d{1,2})\b/);
   if (num) want.push("n" + num[1]);
 
@@ -26,6 +33,7 @@ function rankVariants(product, req) {
         const have = detectColors(v.optionsNorm);
         fit += wantColors.filter((c) => have.includes(c)).length;
       }
+      for (const n of sizes) if (new RegExp(`\\b${n}\\s?(ml|cc|gr|grs|g)?\\b`).test(v.optionsNorm)) fit += 2;
       for (const w of want) {
         const safe = String(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         if (w && new RegExp(`\\b${safe}(e?s|as|os)?\\b`).test(v.optionsNorm)) fit++;

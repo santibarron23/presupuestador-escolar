@@ -14,7 +14,7 @@ const all = process.argv.includes("--all");
 const pct = (x) => (x * 100).toFixed(1) + "%";
 let failed = 0;
 
-for (const [label, file] of [["Regresión", "matching-cases.json"], ["Holdout", "holdout-cases.json"]]) {
+for (const [label, file] of [["Regresión", "matching-cases.json"], ["Holdout", "holdout-cases.json"], ["Listas reales", "real-lists-cases.json"]]) {
   const cases = require("../test/fixtures/" + file);
   const started = process.hrtime.bigint();
   const { results, metrics } = evaluate(cases, (input) => matchItem(input, store));

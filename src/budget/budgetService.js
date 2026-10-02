@@ -26,7 +26,7 @@ class BudgetError extends Error {
 const newId = () => crypto.randomBytes(5).toString("base64url").toUpperCase().replace(/[-_]/g, "X");
 
 // Ítem del motor → ítem de respuesta. Incluye los campos que espera el widget anterior (matched, catalogName…).
-function toResponseItem(m, lineId, grade) {
+function toResponseItem(m, lineId, grade, extra = {}) {
   const selected = AUTO_SELECTED.has(m.status);
   const p = m.product;
   const unitPrice = selected && p ? p.unitPrice : 0;
@@ -46,6 +46,9 @@ function toResponseItem(m, lineId, grade) {
     inStore: m.inStore || null,
     alternatives: m.alternatives || [],
     concept: m.concept,
+    // Opcional / reutilizable / se compra en el colegio: se muestra pero no suma al total salvo que la familia lo agregue.
+    optional: Boolean(extra.optional),
+    note: extra.note || null,
     // ── compatibilidad con el widget v1 ──
     quantity: packs,
     matched: selected || m.status === "in_store",
@@ -64,7 +67,7 @@ function summarize(items) {
   const sellable = items.filter((i) => i.status !== "not_sold");
   const found = count((i) => AUTO_SELECTED.has(i.status));
   const inStore = count((i) => i.status === "in_store");
-  const total = items.reduce((s, i) => s + (AUTO_SELECTED.has(i.status) ? i.subtotal : 0), 0);
+  const total = items.reduce((s, i) => s + (AUTO_SELECTED.has(i.status) && !i.optional ? i.subtotal : 0), 0);
   return {
     totalItems: items.length,
     foundItems: found,
@@ -167,7 +170,7 @@ async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
   timer.stage("rerank");
   onStage("pricing");
 
-  const items = results.map((m, i) => toResponseItem(m, i + 1, extraction.items[i].grade));
+  const items = results.map((m, i) => toResponseItem(m, i + 1, extraction.items[i].grade, extraction.items[i]));
   const grades = [...new Set(items.map((i) => i.grade).filter(Boolean))];
   const summary = summarize(items);
   const timings = timer.done();
@@ -207,7 +210,7 @@ function matchLines(lines) {
       decidedBy: l.productId ? "manual" : undefined,
       forcedConfidence: l.productId ? "alta" : undefined,
     });
-    return toResponseItem(m, l.lineId ?? i + 1, l.grade);
+    return toResponseItem(m, l.lineId ?? i + 1, l.grade, { optional: l.optional, note: l.note ? String(l.note).slice(0, 120) : null });
   });
   return { items, summary: summarize(items) };
 }

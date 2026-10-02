@@ -23,12 +23,12 @@ ai.setClient({
         : {
             readable: true,
             items: [
-              { item: "lápices negros", quantity: 2, grade: null },
-              { item: "birome roja", quantity: 1, grade: null },
-              { item: "folios A4", quantity: 20, grade: null },
-              { item: "papel higiénico", quantity: 1, grade: null },
-              { item: "cortante de masa", quantity: 1, grade: null },
-              { item: "<img src=x onerror=alert(1)>", quantity: 1, grade: null },
+              { item: "lápices negros", quantity: 2, grade: null, optional: false, note: null },
+              { item: "birome roja", quantity: 1, grade: null, optional: false, note: null },
+              { item: "folios A4", quantity: 20, grade: null, optional: false, note: null },
+              { item: "papel higiénico", quantity: 1, grade: null, optional: false, note: null },
+              { item: "cortante de masa", quantity: 1, grade: null, optional: false, note: null },
+              { item: "<img src=x onerror=alert(1)>", quantity: 1, grade: null, optional: false, note: null },
             ],
           };
       return { stop_reason: "end_turn", parsed_output: parsed, usage: { input_tokens: 10, output_tokens: 10 } };

@@ -48,7 +48,8 @@ function detectFormato(t) {
   const n = t.match(/\bn([1-9])\b/);
   if (n) return "n" + n[1];
   // "block número 5", "block 5" (sólo para blocks/repuestos se pide el número suelto)
-  const nb = t.match(/\b(block|repuesto|carpeta|mapa)s?\b(?: de dibujo)?\s+([356])\b/);
+  // "carpeta 3 solapas" / "carpeta de 3 anillos" no son N°3
+  const nb = t.match(/\b(block|repuesto|carpeta|mapa)s?\b(?: de dibujo)?\s+([356])\b(?!\s*(solapa|anillo|gancho|tapa|hoja|unidad|cm|mm))/);
   if (nb) return "n" + nb[2];
   return null;
 }
@@ -67,7 +68,7 @@ function detectAcabado(t) {
   if (/\bpastel\b/.test(t)) return "pastel";
   if (/lustre|\bmate\b|opaco/.test(t)) return "lustre";
   if (/\blis[ao]s?\b/.test(t)) return "liso";
-  if (/\bnegr[ao]s?\b/.test(t) && /\b(hoja|repuesto|block|cartulina|canson)/.test(t)) return "negro";
+  if (/\bnegr[ao]s?\b|\bnoir\b/.test(t) && /\b(hoja|repuesto|block|cartulina|canson)/.test(t)) return "negro";
   if (/\bcolou?r(es)?\b/.test(t) && /\b(hoja|repuesto|block|canson|resma)/.test(t)) return "color";
   if (/\bblanc[ao]s?\b/.test(t) && /\b(hoja|repuesto|block|canson|resma)/.test(t)) return "blanco";
   return null;
@@ -117,7 +118,7 @@ function extractAttributes(normText) {
     zurdo: /zurd/.test(t) ? "zurdo" : null,
     medida: detectMedida(t),
     dureza: (t.match(/\b([2-6]?b|hb|2h)\b/) || [])[1] || null,
-    tipoMapa: /politic/.test(t) ? "politico" : /fisic/.test(t) ? "fisico" : null,
+    tipoMapa: /fisic\w*\W+politic|politic\w*\W+fisic/.test(t) ? null : /politic/.test(t) ? "politico" : /fisic/.test(t) ? "fisico" : null,
     grosor: /\bgruesa?s?\b|\b11\s?mm\b/.test(t) ? "gruesa" : /\bfinas?\b|\b7\s?mm\b/.test(t) ? "fina" : null,
     largo: /\blargo/.test(t) ? "largo" : /\bcorto/.test(t) ? "corto" : null,
     brand: detectBrand(t),
