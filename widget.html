@@ -802,6 +802,11 @@
 
   let selectedFile = null;
 
+  // Todo texto que viene de la lista subida o de la IA se escapa antes de ir a innerHTML.
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
   function reportHeight(expanded) {
     const height = expanded ? document.body.scrollHeight : getCompactHeight();
     window.parent.postMessage({ height }, "*");
@@ -823,7 +828,7 @@
 
   const ro = new ResizeObserver(() => {
     const hasResults = document.getElementById("results")?.classList.contains("show");
-    const isLoading = document.getElementById("loading")?.style.display === "flex";
+    const isLoading = document.getElementById("loading")?.classList.contains("show");
     if (hasResults || isLoading) reportHeight(true);
     else reportHeight(false);
   });
@@ -965,12 +970,12 @@
           ${found.map((item, idx) => `
             <div class="item-row clickable" onclick="openModal(${idx})">
               <div class="item-left">
-                <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
-                <div class="item-matched">${item.catalogName}</div>
-                ${item.catalogSku ? `<span class="item-sku">SKU: ${item.catalogSku}</span>` : ""}
+                <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
+                <div class="item-matched">${esc(item.catalogName)}</div>
+                ${item.catalogSku ? `<span class="item-sku">SKU: ${esc(item.catalogSku)}</span>` : ""}
                 <div class="item-view-hint">👁 Ver producto →</div>
               </div>
-              <span class="item-qty">x${item.quantity}</span>
+              <span class="item-qty">x${esc(item.quantity)}</span>
               <div class="item-price">
                 ${fmt(item.subtotal)}
                 <small>${fmt(item.unitPrice)} c/u</small>
@@ -989,14 +994,14 @@
           ${inStore.map((item, idx) => `
             <div class="item-row clickable instore-row" onclick="openModal(${found.length + idx})">
               <div class="item-left">
-                <div class="item-requested">Solicitado: "${item.requestedItem}"</div>
+                <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
                 <div class="item-matched">
-                  ${item.catalogName}
+                  ${esc(item.catalogName)}
                   <span class="instore-badge">🏪 Solo sucursal</span>
                 </div>
                 <div class="instore-note">No se vende online · Consultá en nuestras sucursales o por WhatsApp</div>
               </div>
-              <span class="item-qty">x${item.quantity}</span>
+              <span class="item-qty">x${esc(item.quantity)}</span>
               <div class="item-price" style="color:var(--amber)">
                 Consultar
                 <small style="color:var(--text-muted)">en sucursal</small>
@@ -1015,10 +1020,10 @@
           ${notFound.map(item => `
             <div class="item-row not-found-row">
               <div class="item-left">
-                <div class="item-matched">${item.requestedItem} <span class="not-found-badge">Sin stock</span></div>
+                <div class="item-matched">${esc(item.requestedItem)} <span class="not-found-badge">No disponible</span></div>
                 <div class="item-requested">Consultá disponibilidad con un asesor</div>
               </div>
-              <span class="item-qty">x${item.quantity}</span>
+              <span class="item-qty">x${esc(item.quantity)}</span>
               <div class="item-price" style="color:var(--text-muted)">—</div>
             </div>
           `).join("")}
@@ -1067,8 +1072,8 @@
     const foundRows = found.map((item, i) => `
       <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
         <td>${item.quantity || 1}</td>
-        <td style="color:#888;font-size:0.8em">${item.catalogSku || item.catalogId || '-'}</td>
-        <td>${item.catalogName || item.requestedItem || ''}</td>
+        <td style="color:#888;font-size:0.8em">${esc(item.catalogSku || item.catalogId || '-')}</td>
+        <td>${esc(item.catalogName || item.requestedItem || '')}</td>
         <td style="text-align:right;color:#555">${fmt(item.unitPrice || 0)}</td>
         <td style="text-align:right;font-weight:700;color:#2d7a3a">${fmt(item.subtotal || 0)}</td>
       </tr>`).join('');
@@ -1077,7 +1082,7 @@
       <tr style="background:${i%2===0?'#fffbeb':'#fefce8'}">
         <td>${item.quantity || 1}</td>
         <td style="color:#888;font-size:0.8em">—</td>
-        <td>${item.catalogName || item.requestedItem || ''}</td>
+        <td>${esc(item.catalogName || item.requestedItem || '')}</td>
         <td style="text-align:right;color:#d97706">Consultar</td>
         <td style="text-align:right;color:#d97706;font-weight:700">En sucursal</td>
       </tr>`).join('');
@@ -1085,7 +1090,7 @@
     const notFoundRows = notFound.map((item, i) => `
       <tr style="background:${i%2===0?'#fff8f8':'#fff'}">
         <td>${item.quantity || 1}</td>
-        <td colspan="4" style="color:#c0392b">${item.requestedItem || ''}</td>
+        <td colspan="4" style="color:#c0392b">${esc(item.requestedItem || '')}</td>
       </tr>`).join('');
 
     const html = `<!DOCTYPE html>
@@ -1227,10 +1232,10 @@
       // NUEVO: modal especial para productos solo en sucursal
       document.getElementById("modalBody").innerHTML = `
         <div class="modal-requested">Solicitado en la lista:</div>
-        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
-        <div class="modal-product-name">${item.catalogName}</div>
+        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${esc(item.requestedItem)}"</div>
+        <div class="modal-product-name">${esc(item.catalogName)}</div>
         <div class="modal-meta">
-          <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
+          <span class="modal-tag">Cant. solicitada: ${esc(item.quantity)}</span>
         </div>
         <div class="modal-instore-notice">
           <strong>🏪 Disponible solo en sucursal</strong>
@@ -1244,11 +1249,11 @@
     } else {
       document.getElementById("modalBody").innerHTML = `
         <div class="modal-requested">Solicitado en la lista:</div>
-        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${item.requestedItem}"</div>
-        <div class="modal-product-name">${item.catalogName}</div>
+        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${esc(item.requestedItem)}"</div>
+        <div class="modal-product-name">${esc(item.catalogName)}</div>
         <div class="modal-meta">
-          ${item.catalogSku ? `<span class="modal-tag sku">SKU ${item.catalogSku}</span>` : ""}
-          <span class="modal-tag">Cant. solicitada: ${item.quantity}</span>
+          ${item.catalogSku ? `<span class="modal-tag sku">SKU ${esc(item.catalogSku)}</span>` : ""}
+          <span class="modal-tag">Cant. solicitada: ${esc(item.quantity)}</span>
         </div>
         <div class="modal-price-row">
           <div>
@@ -1256,7 +1261,7 @@
             <div class="modal-price-val">${fmt(item.unitPrice)}</div>
           </div>
           <div class="modal-qty-info">
-            <div class="modal-qty-label">Subtotal (x${item.quantity})</div>
+            <div class="modal-qty-label">Subtotal (x${esc(item.quantity)})</div>
             <div class="modal-subtotal">${fmt(item.subtotal)}</div>
           </div>
         </div>
@@ -1310,8 +1315,8 @@
                       border:1px solid ${item.inStoreOnly ? '#fcd34d' : 'var(--border)'};transition:background 0.15s"
                onmouseover="this.style.background='${item.inStoreOnly ? '#fef9ec' : 'var(--accent-light)'}'"
                onmouseout="this.style.background='${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'}'">
-              <span style="font-size:0.85rem;flex:1">${item.catalogName}${item.inStoreOnly ? ' <span style="font-size:0.7em;color:#d97706">(sucursal)</span>' : ''}</span>
-              <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;border-radius:2rem;margin:0 0.5rem">x${item.quantity}</span>
+              <span style="font-size:0.85rem;flex:1">${esc(item.catalogName)}${item.inStoreOnly ? ' <span style="font-size:0.7em;color:#d97706">(sucursal)</span>' : ''}</span>
+              <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;border-radius:2rem;margin:0 0.5rem">x${esc(item.quantity)}</span>
               <span style="font-size:0.8rem;font-weight:600;color:${item.inStoreOnly ? '#d97706' : 'var(--accent)'}">
                 ${item.inStoreOnly ? 'Consultar' : fmt(item.unitPrice * item.quantity)}
               </span>

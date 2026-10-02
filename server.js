@@ -7,14 +7,33 @@ const path = require("path");
 const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
 
+const rateLimit = require("express-rate-limit");
+
+// ─── CONFIGURACIÓN ────────────────────────────────────────────────
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const AI_MODEL = process.env.AI_MODEL || "claude-opus-5-5";
+const AI_EFFORT = process.env.AI_EFFORT || "low";
+const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 90000);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ||
+  "https://librerialerma.com.ar,https://www.librerialerma.com.ar,https://presupuestador-escolar.onrender.com")
+  .split(",").map(s => s.trim()).filter(Boolean);
+
 const app = express();
-app.use(cors());
+app.disable("x-powered-by");
+app.set("trust proxy", 1); // Render pone un proxy delante: la IP real viene en X-Forwarded-For
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin)) }));
 app.use(express.json());
 
 const upload = multer({ dest: "uploads/", limits: { fileSize: 10 * 1024 * 1024 } });
 
-// ─── CONFIGURACIÓN ────────────────────────────────────────────────
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+// El endpoint de presupuesto llama a la IA: limitar por IP para que nadie pueda gastar la cuenta.
+const presupuestoLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_PER_10MIN || 15),
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Hiciste muchas consultas seguidas. Esperá unos minutos e intentá de nuevo." },
+});
 
 // ─── CATÁLOGO DESDE ARCHIVO ───────────────────────────────────────
 const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, "catalog.json"), "utf8"));
@@ -243,28 +262,32 @@ function buildDummyItems(rawText) {
 }
 
 // ─── LLAMADA ANTHROPIC GENÉRICA ───────────────────────────────────────
-async function callAnthropic(messages, maxTokens = 4000, attempt = 1) {
-  const MAX_ATTEMPTS = 4;
-  const RETRY_DELAYS = [0, 3000, 8000, 15000];
+async function callAnthropic(messages, maxTokens = 16000, attempt = 1) {
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAYS = [0, 2000, 5000];
   try {
     const response = await axios.post(
-      "https://api.anthropic.com/v1/messages",
-      { model: "claude-sonnet-4-20250514", max_tokens: maxTokens, messages },
-      { headers: {
+      (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com") + "/v1/messages",
+      { model: AI_MODEL, max_tokens: maxTokens, output_config: { effort: AI_EFFORT }, messages },
+      { timeout: AI_TIMEOUT_MS,
+        headers: {
           "x-api-key": ANTHROPIC_API_KEY,
           "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
       }}
     );
-    return response.data.content[0].text.trim();
+    // Los modelos actuales devuelven bloques de thinking antes del texto: tomar sólo los bloques de texto.
+    const text = (response.data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
+    if (!text) throw new Error("Respuesta vacía de la IA (stop_reason: " + response.data.stop_reason + ")");
+    return text;
   } catch (err) {
     const status = err && err.response && err.response.status;
     const isOverloaded = status === 529 || status === 503 || status === 502;
     const isRateLimit  = status === 429;
     if ((isOverloaded || isRateLimit) && attempt < MAX_ATTEMPTS) {
-      const delay = isRateLimit
-        ? (parseInt((err.response.headers && err.response.headers["retry-after"]) || "20") * 1000)
-        : RETRY_DELAYS[attempt];
+      // Nunca esperar más de 10 s: el usuario está mirando un spinner.
+      const retryAfter = parseInt((err.response.headers && err.response.headers["retry-after"]) || "5", 10);
+      const delay = isRateLimit ? Math.min(retryAfter * 1000, 10000) : RETRY_DELAYS[attempt];
       console.log("API " + status + " — reintento " + attempt + "/" + (MAX_ATTEMPTS-1) + " en " + (delay/1000) + "s");
       await new Promise(r => setTimeout(r, delay));
       return callAnthropic(messages, maxTokens, attempt + 1);
@@ -912,7 +935,7 @@ const HARDCODED_RULES = [
   {
     // birome / lapicera / boligrafo → SIEMPRE Bic 0,7 Punta Fina Cristal
     // No matchea si ya fue capturado por la regla de voligoma/boligoma
-    test: (item) => /\b(birome|lapicera|boligrafo)\b/i.test(item.requestedItem) &&
+    test: (item) => /\b(biromes?|lapiceras?|bol[ií]grafos?)\b/i.test(item.requestedItem) &&
                     !/frixion|borrable|cartucho|tinta\s+borrable/i.test(item.requestedItem),
     override: {
       matched: true,
@@ -972,8 +995,7 @@ const HARDCODED_RULES = [
   {
     // resaltador / marcador resaltador → SIEMPRE Resaltador Faber 48
     test: (item) => /resaltador/i.test(item.requestedItem) ||
-                    (/marcador/i.test(item.requestedItem) &&
-                     /amarill|fluo|color|resalt|naranj/i.test(item.requestedItem)),
+                    (/marcador/i.test(item.requestedItem) && /fluo|fl[uú]or|resalt/i.test(item.requestedItem)),
     override: {
       matched: true,
       catalogName: "Resaltador Faber 48",
@@ -1013,9 +1035,9 @@ const HARDCODED_RULES = [
   {
     // bolígrafo azul/rojo/negro/color sin marca → Boligrafo Bic 0,7 Punta Fina Cristal
     // Excluye: si ya tiene marca específica (bic, faber, pelikan, paper mate, etc.)
-    test: (item) => /bол[ií]grafo|boligrafo/i.test(item.requestedItem) &&
+    test: (item) => /bol[ií]grafo/i.test(item.requestedItem) &&
                     /azul|rojo|negro|color/i.test(item.requestedItem) &&
-                    !/bic|faber|pelikan|papers*mate|filgo|wero|writech|deli|ezco|parker|lamy|simball/i.test(item.requestedItem),
+                    !/bic|faber|pelikan|paper\s*mate|filgo|wero|writech|deli|ezco|parker|lamy|simball/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Boligrafo Bic 0,7 Punta Fina Cristal",
@@ -1024,7 +1046,7 @@ const HARDCODED_RULES = [
   },
   {
     // corrector / liquido corrector / liquid paper → Liquido Corrector PIZZINI
-    test: (item) => /corrector|liquid[o]?s*paper/i.test(item.requestedItem),
+    test: (item) => /corrector|l[ií]quido\s*paper/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Liquido Corrector PIZZINI",
@@ -1033,7 +1055,7 @@ const HARDCODED_RULES = [
   },
   {
     // cinta de papel → Cinta de Papel Auca
-    test: (item) => /cintas+des+papel/i.test(item.requestedItem),
+    test: (item) => /cinta\s+de\s+papel/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Cinta de Papel Auca",
@@ -1042,7 +1064,7 @@ const HARDCODED_RULES = [
   },
   {
     // cinta de embalar / cinta scotch / cinta adhesiva → Cintas Adhesivas AUCA 48x50
-    test: (item) => /cintas+des+embalar|cintas+embalar|cintas+scotch/i.test(item.requestedItem),
+    test: (item) => /cinta\s+(de\s+)?embalar|cinta\s+scotch/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Cintas Adhesivas AUCA 48x50",
@@ -1054,7 +1076,7 @@ const HARDCODED_RULES = [
     // EXCLUYE "colores" porque "hojas A4 de colores" es otro producto (resma de color)
     // quantity se fuerza a 1 porque 1 resma (100 hojas) ya cubre cualquier pedido de hojas sueltas
     test: (item) => /resma|hoja.*a4|a4.*hoja|papel.*a4|a4.*papel/i.test(item.requestedItem) &&
-                    !/oficio|legal|color(es)?/i.test(item.requestedItem),
+                    !/oficio|legal|color(es)?|rayad|cuadricul|carpeta|repuesto|canson|dibujo/i.test(item.requestedItem),
     override: {
       matched: true,
       inStoreOnly: true,
@@ -1075,10 +1097,11 @@ const HARDCODED_RULES = [
   },
   {
     // block canson / hojas de colores N5 → Block De Dibujo N° 5 Color El Nene
-    test: (item) => /(block|hojas?).*(color|colores).*(n[°o]?s*5|5)|canson.*colores?.*5|colores?.*canson.*5/i.test(item.requestedItem),
+    test: (item) => /(block|hojas?).*(color|colores).*(n[°o]?\s*5|5)|canson.*colores?.*5|colores?.*canson.*5/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Block De Dibujo N° 5 Color El Nene",
+      catalogSku: "120003",
       catalogSlug: "block-de-dibujo-n-5-color-el-nene",
     }
   },
@@ -1120,7 +1143,7 @@ const HARDCODED_RULES = [
   },
   {
     // cartulina / cartulina de color → Cartulina Lisa Varios Colores (excluye metalizada)
-    test: (item) => /cartulina/i.test(item.requestedItem) && !/metaliz/i.test(item.requestedItem),
+    test: (item) => /cartulina/i.test(item.requestedItem) && !/metaliz|block/i.test(item.requestedItem),
     override: {
       matched: true,
       catalogName: "Cartulina Lisa Varios Colores",
@@ -1189,13 +1212,17 @@ function applyHardcodedRules(matchedItems, catalogByName) {
   matchedItems.forEach(item => {
     for (const rule of HARDCODED_RULES) {
       if (rule.test(item)) {
-        const prod = findProductByName(catalogByName, rule.override.catalogName);
-        const unitPrice = prod ? prod.price : (item.unitPrice || 0);
+        const bySku = rule.override.catalogSku && CATALOG.find(p => String(p.sku).trim() === rule.override.catalogSku);
+        const prod = bySku || findProductByName(catalogByName, rule.override.catalogName);
+        // Si el producto de la regla ya no existe en el catálogo, no forzar nada: queda lo que eligió la IA.
+        if (!prod) continue;
+        const unitPrice = prod.price;
         // forceQuantity: cuando 1 unidad del producto ya cubre la cantidad pedida (ej: resma)
         const qty = rule.override.forceQuantity || item.quantity || 1;
         Object.assign(item, rule.override, {
-          catalogId: prod ? prod.id : item.catalogId,
-          catalogSku: prod ? prod.sku : item.catalogSku,
+          catalogName: prod.name,
+          catalogId: prod.id,
+          catalogSku: prod.sku,
           unitPrice,
           quantity: qty,
           subtotal: unitPrice * qty,
@@ -1209,7 +1236,19 @@ function applyHardcodedRules(matchedItems, catalogByName) {
 }
 
 // ─── ENDPOINT PRINCIPAL ────────────────────────────────────────────
-app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
+// Mensaje para el usuario según el tipo de falla. Nunca exponer detalles internos.
+function friendlyError(err) {
+  const status = err && err.response && err.response.status;
+  if (status === 429 || status === 529 || status === 503 || status === 502) {
+    return { http: 503, error: "Estamos con mucha demanda en este momento. Esperá un minuto e intentá de nuevo." };
+  }
+  if (err && (err.code === "ECONNABORTED" || err.code === "ETIMEDOUT")) {
+    return { http: 504, error: "La lista tardó demasiado en procesarse. Probá con una foto más nítida o dividila en partes." };
+  }
+  return { http: 500, error: "No pudimos procesar la lista. Intentá de nuevo o escribinos por WhatsApp." };
+}
+
+app.post("/api/presupuestar", presupuestoLimiter, upload.single("lista"), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: "No se recibió ningún archivo" });
 
@@ -1257,6 +1296,12 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
     const catalogByName = {};
     CATALOG.forEach(p => { catalogByName[p.name.toLowerCase().trim()] = p; });
 
+    if (!Array.isArray(matchedItems)) throw new Error("La IA no devolvió una lista");
+    // Descartar entradas mal formadas antes de aplicar reglas
+    matchedItems = matchedItems
+      .filter(i => i && typeof i.requestedItem === "string" && i.requestedItem.trim())
+      .map(i => ({ ...i, quantity: Math.max(1, Math.min(999, parseInt(i.quantity, 10) || 1)) }));
+
     // ⚡ Aplicar reglas hardcodeadas ANTES de enriquecer slugs
     // Estas reglas son inviolables — corrigen cualquier error de la IA
     applyHardcodedRules(matchedItems, catalogByName);
@@ -1278,14 +1323,25 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
         prod = CATALOG.find(p => p.id === item.catalogId);
       }
 
-      if (prod) item.catalogSlug = prod.slug || null;
+      // El precio SIEMPRE sale del catálogo, nunca de la IA. Si el producto no existe (o tiene un precio
+      // de relleno como $1), no se presupuesta.
+      if (!prod || !(prod.price > 1)) {
+        Object.assign(item, { matched: false, catalogId: null, catalogName: null, catalogSku: null, unitPrice: 0, subtotal: 0 });
+        return;
+      }
+      item.catalogId = prod.id;
+      item.catalogName = prod.name;
+      item.catalogSku = prod.sku;
+      item.catalogSlug = prod.slug || null;
+      item.unitPrice = prod.price;
+      item.subtotal = prod.price * item.quantity;
     });
 
     const found = matchedItems.filter((i) => i.matched && !i.inStoreOnly);
     const inStore = matchedItems.filter((i) => i.matched && i.inStoreOnly);
     const notFound = matchedItems.filter((i) => !i.matched);
     const total = found.reduce((sum, i) => sum + i.subtotal, 0);
-    const coverage = Math.round(((found.length + inStore.length) / matchedItems.length) * 100);
+    const coverage = matchedItems.length ? Math.round(((found.length + inStore.length) / matchedItems.length) * 100) : 0;
 
     res.json({
       success: true,
@@ -1301,25 +1357,38 @@ app.post("/api/presupuestar", upload.single("lista"), async (req, res) => {
       rawText: "",
     });
   } catch (err) {
-    console.error("Error:", err.message);
-    res.status(500).json({ error: "Error procesando la lista: " + err.message });
+    const status = err && err.response && err.response.status;
+    console.error("Error presupuestar:", status || "", err.message);
+    const { http, error } = friendlyError(err);
+    res.status(http).json({ error });
   } finally {
     if (file) fs.unlink(file.path, () => {});
   }
 });
 
 // ─── GENERAR PDF DE PRESUPUESTO ──────────────────────────────────────
-git add .
-git commit -m "fix: presupuesto-pdf recalcula precios desde catalogo, no confia en el body"
-git push", express.json({ limit: "2mb" }), (req, res) => {
-  const { items, summary, schoolName } = req.body;
-  if (!items || !summary) {
+app.post("/api/presupuesto-pdf", express.json({ limit: "200kb" }), (req, res) => {
+  const { items: rawItems } = req.body || {};
+  const schoolName = typeof req.body?.schoolName === "string" ? req.body.schoolName.slice(0, 120) : "";
+  if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 300) {
     return res.status(400).json({ error: "Faltan datos del presupuesto" });
   }
 
+  // Precios recalculados desde el catálogo: nunca se confía en precios/subtotales del navegador.
+  const bySku = new Map(CATALOG.filter(p => p.sku).map(p => [String(p.sku).trim(), p]));
+  const items = rawItems.map(i => {
+    const quantity = Math.max(1, Math.min(999, parseInt(i && i.quantity, 10) || 1));
+    const requestedItem = String((i && i.requestedItem) || "").slice(0, 200);
+    const prod = (i && i.catalogSku && bySku.get(String(i.catalogSku).trim())) ||
+                 (i && i.catalogId != null && CATALOG.find(p => p.id === i.catalogId)) || null;
+    if (!i || !i.matched || !prod || !(prod.price > 1)) return { requestedItem, quantity, matched: false };
+    return { requestedItem, quantity, matched: true, catalogSku: prod.sku, catalogName: prod.name,
+             unitPrice: prod.price, subtotal: prod.price * quantity };
+  });
+
   const found    = items.filter(i => i.matched);
   const notFound = items.filter(i => !i.matched);
-  const total    = summary.estimatedTotal || found.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const total    = found.reduce((s, i) => s + i.subtotal, 0);
 
   // ── Helpers de formato ──────────────────────────────────────────
   const fmt = (n) => "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2 });
@@ -1403,7 +1472,7 @@ git push", express.json({ limit: "2mb" }), (req, res) => {
   if (found.length > 0) {
     // Título sección
     doc.fillColor(GREEN).fontSize(12).font("Helvetica-Bold")
-       .text("✓ Artículos disponibles", ML, y);
+       .text("Artículos disponibles", ML, y);
     y += 18;
 
     // Cabecera tabla
@@ -1464,7 +1533,7 @@ git push", express.json({ limit: "2mb" }), (req, res) => {
     checkPage(40);
     y += 12;
     doc.fillColor(RED).fontSize(12).font("Helvetica-Bold")
-       .text("⚠ Artículos no disponibles en catálogo", ML, y);
+       .text("Artículos no disponibles en catálogo", ML, y);
     doc.fontSize(8).font("Helvetica").fillColor(DGRAY)
        .text("Consultá disponibilidad con un asesor en la tienda o por WhatsApp.", ML, y + 16);
     y += 32;
