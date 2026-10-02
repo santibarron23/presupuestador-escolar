@@ -15,14 +15,17 @@ Producción caída (modelo retirado + `server.js` con comandos de git pegados). 
 
 **Pendiente de verificar con credenciales reales:** una corrida con `ANTHROPIC_API_KEY` sobre fotos reales (`npm test` usa una IA simulada).
 
-## Fase 2 — Experiencia (siguiente)
-1. Widget nuevo mobile-first: Subir / Sacar foto (`capture`) / Pegar lista; varias fotos por lista.
-2. Progreso real por etapas (respuesta en streaming desde `createBudget`, que ya mide etapas).
-3. Resultados editables: cantidad, cambiar por alternativa (Recomendado / Más económico / Otra), quitar, buscar y agregar, corregir el texto leído (`/api/match`); imágenes reales; totales instantáneos y revalidados (`/api/presupuesto/validar`).
-4. **Carrito real**: el carrito de Tiendanube vive en la cookie de `librerialerma.com.ar`, así que el iframe no puede escribirlo. El widget manda por `postMessage` la lista `{productId, variantId, cantidad}` a la página padre; un script pegado en la página de Tiendanube (mismo origen) llama a `POST /comprar/` (el mismo formulario de cada producto: `add_to_cart`, `variation[]`, `quantity`) uno por uno y redirige al carrito. **Requiere probarlo en la tienda real** antes de publicarlo.
-5. WhatsApp: mensaje corto con total, cantidad de artículos, pendientes y link.
-6. PDF nuevo (logo ya incluido, id, vigencia) + QR al presupuesto (con Fase 3).
-7. Modos Económico / Recomendado / Premium sólo si ≥60 % de los ítems tienen alternativas reales.
+## Fase 2 — Experiencia ✅ (salvo el paso manual del carrito)
+- Widget nuevo mobile-first con la identidad de la tienda (verde #0D6E45, Montserrat, botones píldora): Archivo / Foto (`capture`) / Pegar; varias fotos por lista; fotos achicadas en el navegador.
+- Progreso real por etapas (`/api/presupuestar?stream=1`, Server-Sent Events): leyendo → identificando → buscando → calculando. Sin timers falsos.
+- Resultados editables: cantidad, "Está bien", cambiar por alternativa (Más económico / Otra opción) o buscar en la tienda, quitar con deshacer, corregir el texto leído y re-buscar sin IA, agregar a mano; imágenes reales; filtro por grado si la lista trae varios; totales instantáneos.
+- Secciones: "Revisá estos", "En tu presupuesto", "Sólo en la sucursal", "Para consultar".
+- WhatsApp (total, cantidad, pendientes, link), PDF nuevo (logo, N°, vigencia, pendientes), eventos de analítica vía `postMessage`.
+- Versión anterior disponible en `/widget/v1` para volver atrás.
+
+**Paso manual pendiente — carrito real:** pegar `docs/tiendanube-snippet.html` en la página de Tiendanube (reemplaza el iframe actual). Ese script agrega los productos al carrito con el mismo pedido que el botón de cada producto (`POST /comprar/`) y abre el carrito. Hasta que esté pegado, "Agregar al carrito" muestra la lista de productos con links (como antes). Probarlo con 2–3 productos después de pegarlo.
+
+**Queda para Fase 3:** QR y link al presupuesto (necesitan persistencia); modos Económico / Recomendado / Premium (sólo si ≥60 % de los ítems tienen alternativas reales).
 
 ## Fase 3 — Datos y negocio
 - Presupuestos persistentes `/presupuesto/:id` (sólo ítems, cantidades y productos; nunca el documento). Render no tiene disco persistente en el plan gratuito: usar Postgres administrado (Render Postgres o Supabase).

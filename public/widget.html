@@ -1,1380 +1,856 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Presupuestador de Lista Escolar</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --ink: #1a1a2e;
-      --paper: #faf7f2;
-      --cream: #f0ebe0;
-      --accent: #e85d26;
-      --accent-light: #fde8dc;
-      --green: #2d6a4f;
-      --green-light: #d8f3dc;
-      --yellow: #f4a261;
-      --border: #d4c9b8;
-      --text-muted: #7a7060;
-      /* ── NUEVO: colores para "solo en sucursal" ── */
-      --amber: #d97706;
-      --amber-light: #fffbeb;
-      --amber-border: #fcd34d;
-    }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--paper);
-      color: var(--ink);
-      min-height: unset;
-      padding: 1.5rem 1rem;
-      overflow-x: hidden;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* Cuando se embebe en iframe, eliminar padding y fondo propio */
-    html.in-iframe body {
-      padding: 0;
-      background: transparent;
-      min-height: unset;
-    }
-
-    .widget {
-      max-width: 780px;
-      margin: 0 auto;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* ── HEADER ── */
-    .header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-      animation: fadeUp 0.6s ease both;
-    }
-
-    .header-badge {
-      display: inline-block;
-      background: var(--accent);
-      color: white;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 0.3rem 0.9rem;
-      border-radius: 2rem;
-      margin-bottom: 1rem;
-    }
-
-    .header h1 {
-      font-family: 'Fraunces', serif;
-      font-size: clamp(2rem, 5vw, 3rem);
-      line-height: 1.1;
-      margin-bottom: 0.5rem;
-      color: var(--ink);
-    }
-
-    .header h1 em {
-      font-style: italic;
-      color: var(--accent);
-    }
-
-    .header p {
-      color: var(--text-muted);
-      font-size: 1rem;
-      font-weight: 300;
-    }
-
-    /* ── UPLOAD ZONE ── */
-    .upload-card {
-      background: white;
-      border: 2px dashed var(--border);
-      border-radius: 1.5rem;
-      padding: 3rem 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      position: relative;
-      animation: fadeUp 0.6s 0.1s ease both;
-    }
-
-    .upload-card:hover, .upload-card.drag-over {
-      border-color: var(--accent);
-      background: var(--accent-light);
-      transform: translateY(-2px);
-    }
-
-    .upload-icon {
-      width: 64px;
-      height: 64px;
-      background: var(--cream);
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1.25rem;
-      font-size: 1.8rem;
-      transition: transform 0.3s ease;
-    }
-
-    .upload-card:hover .upload-icon {
-      transform: scale(1.1) rotate(-5deg);
-    }
-
-    .upload-card h2 {
-      font-family: 'Fraunces', serif;
-      font-size: 1.4rem;
-      margin-bottom: 0.4rem;
-    }
-
-    .upload-card p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .upload-types {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .type-tag {
-      background: var(--cream);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.25rem 0.7rem;
-      border-radius: 2rem;
-    }
-
-    #fileInput { display: none; }
-
-    /* ── FILE SELECTED ── */
-    .file-selected {
-      display: none;
-      align-items: center;
-      gap: 1rem;
-      background: var(--green-light);
-      border: 2px solid var(--green);
-      border-radius: 1rem;
-      padding: 1rem 1.5rem;
-      margin-top: 1rem;
-      animation: fadeUp 0.3s ease both;
-    }
-
-    .file-selected.show { display: flex; }
-
-    .file-icon { font-size: 1.5rem; }
-
-    .file-info { flex: 1; text-align: left; }
-    .file-name { font-weight: 600; font-size: 0.95rem; color: var(--green); }
-    .file-size { font-size: 0.8rem; color: var(--text-muted); }
-
-    /* ── BUTTON ── */
-    .btn-presupuestar {
-      display: block;
-      width: 100%;
-      margin-top: 1.25rem;
-      padding: 1rem;
-      background: var(--ink);
-      color: white;
-      border: none;
-      border-radius: 0.75rem;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      animation: fadeUp 0.6s 0.2s ease both;
-    }
-
-    .btn-presupuestar:hover:not(:disabled) {
-      background: var(--accent);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(232, 93, 38, 0.35);
-    }
-
-    .btn-presupuestar:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    /* ── LOADING ── */
-    .loading {
-      display: none;
-      text-align: center;
-      padding: 3rem;
-      animation: fadeUp 0.3s ease both;
-    }
-
-    .loading.show { display: block; }
-
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 3px solid var(--cream);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 1.25rem;
-    }
-
-    .loading h3 {
-      font-family: 'Fraunces', serif;
-      font-size: 1.3rem;
-      margin-bottom: 0.4rem;
-    }
-
-    .loading-steps {
-      display: flex;
-      justify-content: center;
-      gap: 2rem;
-      margin-top: 1.5rem;
-    }
-
-    .step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.4rem;
-      opacity: 0.3;
-      transition: opacity 0.5s ease;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .step.active { opacity: 1; }
-    .step-dot {
-      width: 10px;
-      height: 10px;
-      background: var(--accent);
-      border-radius: 50%;
-    }
-
-    /* ── RESULTS ── */
-    .results { display: none; animation: fadeUp 0.4s ease both; }
-    .results.show { display: block; }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .summary-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.25rem;
-      text-align: center;
-    }
-
-    .summary-card.highlight {
-      background: var(--ink);
-      border-color: var(--ink);
-      color: white;
-    }
-
-    .summary-label {
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      opacity: 0.6;
-      margin-bottom: 0.4rem;
-    }
-
-    .summary-value {
-      font-family: 'Fraunces', serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-    }
-
-    .summary-sub {
-      font-size: 0.78rem;
-      opacity: 0.6;
-      margin-top: 0.2rem;
-    }
-
-    /* ── ITEMS LIST ── */
-    .items-section {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 1.25rem;
-      overflow: hidden;
-      margin-bottom: 1.5rem;
-    }
-
-    .items-header {
-      padding: 1rem 1.5rem;
-      background: var(--cream);
-      border-bottom: 1px solid var(--border);
-      font-weight: 600;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    /* ── NUEVO: sección solo en sucursal ── */
-    .items-section.instore-section {
-      border-color: var(--amber-border);
-    }
-    .items-header.instore-header {
-      background: var(--amber-light);
-      border-bottom-color: var(--amber-border);
-      color: var(--amber);
-    }
-    .instore-row {
-      background: var(--amber-light);
-    }
-    .instore-row:hover {
-      background: #fef9ec !important;
-    }
-    .instore-badge {
-      font-size: 0.68rem;
-      background: #fef3c7;
-      color: #92400e;
-      border: 1px solid var(--amber-border);
-      padding: 0.12rem 0.45rem;
-      border-radius: 0.3rem;
-      margin-left: 0.35rem;
-      white-space: nowrap;
-    }
-    .instore-note {
-      font-size: 0.75rem;
-      color: #92400e;
-      margin-top: 0.25rem;
-    }
-
-    .item-row {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      align-items: start;
-      gap: 1rem;
-      padding: 0.9rem 1.5rem;
-      border-bottom: 1px solid var(--cream);
-      transition: background 0.15s ease;
-    }
-
-    .item-row:last-child { border-bottom: none; }
-    .item-row:hover { background: var(--paper); }
-
-    .item-left { min-width: 0; }
-
-    .item-requested {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      margin-bottom: 0.2rem;
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    .item-matched {
-      font-weight: 500;
-      font-size: 0.95rem;
-      white-space: normal;
-      word-break: break-word;
-      margin-bottom: 0.2rem;
-    }
-
-    /* SKU visible */
-    .item-sku {
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      font-family: monospace;
-      background: var(--cream);
-      padding: 0.1rem 0.4rem;
-      border-radius: 0.25rem;
-      display: inline-block;
-      margin-top: 0.15rem;
-    }
-
-    .item-qty {
-      font-size: 0.8rem;
-      background: var(--cream);
-      padding: 0.2rem 0.6rem;
-      border-radius: 2rem;
-      white-space: nowrap;
-      align-self: start;
-      margin-top: 0.15rem;
-    }
-
-    .item-price {
-      font-weight: 600;
-      text-align: right;
-      white-space: nowrap;
-      align-self: start;
-      margin-top: 0.1rem;
-    }
-
-    .item-price small {
-      display: block;
-      font-weight: 400;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    .review-badge {
-      font-size: 0.68rem;
-      background: #fef3c7;
-      color: #92400e;
-      padding: 0.1rem 0.45rem;
-      border-radius: 0.3rem;
-      margin-left: 0.35rem;
-      white-space: nowrap;
-    }
-    .item-variant { font-weight: 400; color: var(--text-muted); font-size: 0.85rem; }
-    .item-note { font-size: 0.75rem; color: var(--green); margin-bottom: 0.2rem; }
-
-    .not-found-row {
-      background: #fff8f6;
-    }
-
-    .not-found-badge {
-      font-size: 0.7rem;
-      background: #fee;
-      color: #c44;
-      padding: 0.15rem 0.5rem;
-      border-radius: 0.3rem;
-      margin-left: 0.5rem;
-    }
-
-    /* ── TOTAL BAR ── */
-    .total-bar {
-      background: var(--ink);
-      color: white;
-      border-radius: 1rem;
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .total-label {
-      font-size: 0.85rem;
-      opacity: 0.7;
-    }
-
-    .total-amount {
-      font-family: 'Fraunces', serif;
-      font-size: 2rem;
-    }
-
-    /* ── ACTIONS ── */
-    .actions {
-      display: flex;
-      gap: 0.75rem;
-    }
-
-    .btn-secondary {
-      flex: 1;
-      padding: 0.85rem;
-      background: white;
-      border: 1.5px solid var(--border);
-      border-radius: 0.75rem;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-secondary:hover {
-      border-color: var(--ink);
-      background: var(--cream);
-    }
-
-    .btn-primary {
-      flex: 2;
-      padding: 0.85rem;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 0.75rem;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-primary:hover {
-      background: #c94a1a;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(232, 93, 38, 0.3);
-    }
-
-    /* ── COVERAGE BAR ── */
-    .coverage-bar {
-      height: 6px;
-      background: var(--cream);
-      border-radius: 3px;
-      overflow: hidden;
-      margin: 0.4rem 0 0.2rem;
-    }
-
-    .coverage-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--green), var(--yellow));
-      border-radius: 3px;
-      transition: width 1s ease;
-    }
-
-    /* ── ERROR ── */
-    .error-box {
-      display: none;
-      background: #fff0ed;
-      border: 1.5px solid #f4a49a;
-      border-radius: 1rem;
-      padding: 1.25rem 1.5rem;
-      color: #c0392b;
-      margin-top: 1rem;
-      text-align: center;
-    }
-    .error-box.show { display: block; }
-
-
-    /* ── PRODUCT MODAL ── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(26, 26, 46, 0.55);
-      backdrop-filter: blur(4px);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-    .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease both; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-    .modal {
-      background: white;
-      border-radius: 1.5rem;
-      max-width: 440px;
-      width: 100%;
-      overflow: hidden;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
-      animation: slideUp 0.25s ease both;
-    }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .modal-header {
-      background: var(--cream);
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-    }
-    .modal-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-    }
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      cursor: pointer;
-      opacity: 0.45;
-      padding: 0.1rem 0.3rem;
-      border-radius: 0.4rem;
-      transition: opacity 0.15s, background 0.15s;
-    }
-    .modal-close:hover { opacity: 1; background: var(--border); }
-    .modal-body { padding: 1.5rem; }
-    .modal-requested {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 0.35rem;
-    }
-    .modal-product-name {
-      font-family: 'Fraunces', serif;
-      font-size: 1.3rem;
-      line-height: 1.25;
-      margin-bottom: 1rem;
-      color: var(--ink);
-    }
-    .modal-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 1.25rem;
-    }
-    .modal-tag {
-      font-size: 0.78rem;
-      padding: 0.3rem 0.7rem;
-      border-radius: 2rem;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      background: var(--paper);
-    }
-    .modal-tag.sku { font-family: monospace; background: var(--cream); }
-    .modal-price-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--cream);
-      border-radius: 0.85rem;
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.25rem;
-    }
-    .modal-price-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.1rem; }
-    .modal-price-val {
-      font-family: 'Fraunces', serif;
-      font-size: 1.6rem;
-      color: var(--ink);
-    }
-    .modal-qty-info { text-align: right; }
-    .modal-qty-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.1rem; }
-    .modal-subtotal { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
-    .modal-btn-ver {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      width: 100%;
-      padding: 0.85rem;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 0.7rem;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .modal-btn-ver:hover {
-      background: #c94a1a;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(232,93,38,0.3);
-    }
-    /* NUEVO: modal notice sucursal */
-    .modal-instore-notice {
-      background: var(--amber-light);
-      border: 1.5px solid var(--amber-border);
-      border-radius: 0.75rem;
-      padding: 0.85rem 1rem;
-      margin-bottom: 1.25rem;
-      font-size: 0.85rem;
-      color: #92400e;
-      line-height: 1.5;
-    }
-    .modal-instore-notice strong {
-      display: block;
-      margin-bottom: 0.25rem;
-    }
-
-    /* Clickeable rows */
-    .item-row.clickable { cursor: pointer; }
-    .item-row.clickable:hover { background: var(--accent-light); }
-    .item-row.clickable:hover .item-matched { color: var(--accent); }
-    .item-view-hint {
-      font-size: 0.7rem;
-      color: var(--accent);
-      margin-top: 0.15rem;
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-    .item-row.clickable:hover .item-view-hint { opacity: 1; }
-
-    /* ── ANIMATIONS ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @media (max-width: 500px) {
-      .actions { flex-direction: column; }
-      .item-row { grid-template-columns: 1fr auto; }
-      .loading-steps { gap: 1rem; }
-    }
-  
-    .btn-pdf {
-      flex: 1.5;
-      padding: 0.85rem;
-      background: white;
-      color: #c0392b;
-      border: 1.5px solid #c0392b;
-      border-radius: 0.75rem;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-    .btn-pdf:hover { background: #fff5f5; transform: translateY(-1px); }
-    .btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Presupuestá tu lista escolar · Librería Lerma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --brand: #0d6e45;          /* verde Lerma (header y botones de la tienda) */
+    --brand-dark: #0a5636;
+    --brand-soft: #e8f3ee;
+    --lime: #afcb21;           /* verde lima del logo */
+    --ink: #17231d;
+    --muted: #5f6b65;
+    --line: #e3e8e5;
+    --bg: #ffffff;
+    --surface: #f6f8f7;
+    --warn: #8a5300;
+    --warn-soft: #fff6e5;
+    --danger: #a3261f;
+    --danger-soft: #fdf0ef;
+    --radius: 14px;
+    --pill: 40px;
+    --shadow: 0 1px 2px rgba(16, 24, 20, .06), 0 6px 18px rgba(16, 24, 20, .06);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: Montserrat, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; border-radius: 8px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 96px; }
+  [hidden] { display: none !important; }
+
+  /* ── Botones ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: var(--pill); border: 1.5px solid transparent; font-weight: 600; font-size: 15px; text-decoration: none; transition: background .15s, border-color .15s, transform .1s; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: var(--brand-dark); }
+  .btn-primary:disabled { background: #9db8ab; cursor: not-allowed; }
+  .btn-outline { background: #fff; border-color: var(--line); color: var(--ink); }
+  .btn-outline:hover { border-color: var(--brand); color: var(--brand); }
+  .btn-ghost { background: none; border: none; color: var(--brand); padding: 0 10px; min-height: 40px; font-weight: 600; }
+  .btn-block { width: 100%; }
+  .btn-whatsapp { background: #fff; border-color: #25d366; color: #128c4b; }
+  .icon { width: 20px; height: 20px; flex: none; }
+
+  /* ── Encabezado ── */
+  .hero { text-align: center; padding: 8px 0 18px; }
+  .hero h1 { font-size: clamp(22px, 5.5vw, 30px); margin: 0 0 6px; color: var(--brand); font-weight: 700; letter-spacing: -.01em; }
+  .hero p { margin: 0; color: var(--muted); }
+
+  /* ── Entrada ── */
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--surface); padding: 5px; border-radius: var(--pill); margin-bottom: 14px; }
+  .tab { min-height: 42px; border: 0; border-radius: var(--pill); background: none; font-weight: 600; font-size: 14px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .tab[aria-selected="true"] { background: #fff; color: var(--brand); box-shadow: var(--shadow); }
+  .drop { border: 2px dashed #c9d6cf; border-radius: var(--radius); padding: 28px 18px; text-align: center; background: var(--surface); transition: border-color .15s, background .15s; }
+  .drop.over { border-color: var(--brand); background: var(--brand-soft); }
+  .drop h2 { font-size: 17px; margin: 10px 0 4px; }
+  .drop p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  .drop .formats { font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+  .files { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .files li { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .files img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; background: var(--surface); }
+  .files .fname { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .fsize { font-size: 12px; color: var(--muted); }
+  .icon-btn { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; border-radius: 50%; color: var(--muted); }
+  .icon-btn:hover { background: var(--surface); color: var(--ink); }
+  textarea.paste { width: 100%; min-height: 220px; border: 1.5px solid var(--line); border-radius: var(--radius); padding: 14px; resize: vertical; line-height: 1.5; }
+  textarea.paste:focus { border-color: var(--brand); outline: none; }
+  .hint { font-size: 13px; color: var(--muted); margin: 8px 2px 0; }
+  .submit-row { margin-top: 16px; }
+  .trust { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+  .trust span { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* ── Mensajes ── */
+  .alert { border-radius: 12px; padding: 12px 14px; margin-top: 14px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-error { background: var(--danger-soft); color: var(--danger); }
+  .alert-warn { background: var(--warn-soft); color: var(--warn); }
+
+  /* ── Progreso ── */
+  .progress { padding: 26px 4px; }
+  .progress h2 { text-align: center; font-size: 19px; margin: 0 0 4px; }
+  .progress .sub { text-align: center; color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+  .steps { list-style: none; padding: 0; margin: 0 auto; max-width: 340px; display: grid; gap: 14px; }
+  .steps li { display: flex; align-items: center; gap: 12px; color: var(--muted); font-weight: 500; }
+  .steps .dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: inline-flex; align-items: center; justify-content: center; flex: none; background: #fff; }
+  .steps li.active { color: var(--ink); }
+  .steps li.active .dot { border-color: var(--brand); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .steps li.done { color: var(--ink); }
+  .steps li.done .dot { background: var(--brand); border-color: var(--brand); color: #fff; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .steps li.active .dot { animation: none; border-top-color: var(--brand); } }
+
+  /* ── Resumen ── */
+  .summary { background: var(--brand); color: #fff; border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; }
+  .summary .label { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .85; font-weight: 600; }
+  .summary .total { font-size: 32px; font-weight: 700; line-height: 1.1; letter-spacing: -.01em; }
+  .summary .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: var(--pill); font-size: 13px; font-weight: 600; background: rgba(255,255,255,.14); }
+  .bar { height: 6px; background: rgba(255,255,255,.22); border-radius: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--lime); border-radius: 6px; transition: width .4s; }
+  .note-catalog { font-size: 12px; color: var(--muted); margin: 8px 2px 0; }
+  .grades { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  .grade { min-height: 38px; padding: 0 14px; border-radius: var(--pill); border: 1.5px solid var(--line); background: #fff; font-weight: 600; font-size: 13.5px; }
+  .grade[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+
+  /* ── Secciones e ítems ── */
+  .section { margin-top: 22px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 2px 10px; }
+  .section-head h3 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .section-head .count { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .section-desc { font-size: 13.5px; color: var(--muted); margin: -4px 2px 10px; }
+  .items { display: grid; gap: 10px; }
+  .item { border: 1px solid var(--line); border-radius: var(--radius); background: #fff; padding: 12px; display: grid; grid-template-columns: 64px 1fr; gap: 12px; }
+  .item.attention { border-color: #f1d49a; background: #fffdf7; }
+  .thumb { width: 64px; height: 64px; border-radius: 10px; background: var(--surface); object-fit: contain; }
+  .thumb.empty { display: flex; align-items: center; justify-content: center; color: #b8c4be; }
+  .item-body { min-width: 0; }
+  .asked { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .asked q { font-style: normal; }
+  .asked button { border: 0; background: none; color: var(--brand); font-size: 12.5px; font-weight: 600; padding: 2px 4px; text-decoration: underline; text-underline-offset: 2px; }
+  .pname { font-weight: 600; font-size: 14.5px; margin: 2px 0 2px; overflow-wrap: anywhere; }
+  .pname a { color: inherit; text-decoration: none; }
+  .pname a:hover { color: var(--brand); text-decoration: underline; }
+  .meta { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px 10px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: var(--pill); }
+  .badge-warn { background: #fdecc8; color: #7a4a00; }
+  .badge-ok { background: var(--brand-soft); color: var(--brand); }
+  .badge-muted { background: var(--surface); color: var(--muted); }
+  .qnote { font-size: 12.5px; color: var(--brand); margin-top: 2px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: var(--pill); }
+  .stepper button { width: 40px; height: 38px; border: 0; background: none; font-size: 18px; font-weight: 600; color: var(--brand); border-radius: var(--pill); }
+  .stepper button:disabled { color: #b8c4be; cursor: default; }
+  .stepper output { min-width: 28px; text-align: center; font-weight: 700; }
+  .price { text-align: right; }
+  .price b { display: block; font-size: 16px; }
+  .price small { color: var(--muted); font-size: 12px; }
+  .actions { display: flex; gap: 2px; margin: 6px -8px -4px; flex-wrap: wrap; }
+  .actions .btn-ghost { font-size: 13.5px; min-height: 36px; }
+  .actions .danger { color: var(--muted); }
+  .confirm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .confirm-row .btn { min-height: 40px; font-size: 14px; padding: 0 16px; }
+  .edit-row { display: flex; gap: 8px; margin-top: 6px; }
+  .edit-row input { flex: 1; min-width: 0; min-height: 42px; border: 1.5px solid var(--brand); border-radius: 10px; padding: 0 12px; }
+  .simple { grid-template-columns: 1fr auto; align-items: center; }
+  .simple .reason { font-size: 13px; color: var(--muted); }
+  .add-item { display: flex; gap: 8px; margin-top: 12px; }
+  .add-item input { flex: 1; min-width: 0; min-height: 46px; border: 1.5px solid var(--line); border-radius: var(--pill); padding: 0 16px; }
+  .add-item input:focus { border-color: var(--brand); outline: none; }
+
+  /* ── Cierre ── */
+  .closing { margin-top: 26px; display: grid; gap: 10px; }
+  .closing .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fineprint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+  .sticky { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; box-shadow: 0 -6px 18px rgba(16,24,20,.08); z-index: 20; }
+  .sticky .t { flex: 1; min-width: 0; }
+  .sticky .t small { display: block; color: var(--muted); font-size: 12px; }
+  .sticky .t b { font-size: 19px; }
+  /* Dentro del iframe el alto crece con el contenido y la página que scrollea es la de la tienda: sin barra fija. */
+  html.embedded .sticky { display: none; }
+  html.embedded .wrap { padding-bottom: 24px; }
+
+  /* ── Panel (cambiar producto) ── */
+  .sheet-backdrop { position: fixed; inset: 0; background: rgba(15, 25, 20, .45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: #fff; width: 100%; max-width: 620px; max-height: 88vh; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; }
+  @media (min-width: 700px) { .sheet-backdrop { align-items: center; } .sheet { border-radius: 18px; } }
+  .sheet header { padding: 14px 8px 8px 18px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
+  .sheet header h3 { flex: 1; margin: 0; font-size: 16px; }
+  .sheet .body { padding: 12px 16px 18px; overflow-y: auto; }
+  .sheet .asked-big { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+  .search { display: flex; gap: 8px; margin: 4px 0 12px; }
+  .search input { flex: 1; min-height: 46px; border: 1.5px solid var(--line); border-radius: var(--pill); padding: 0 16px; }
+  .search input:focus { border-color: var(--brand); outline: none; }
+  .options { display: grid; gap: 8px; }
+  .option { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; text-align: left; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; padding: 8px 10px; }
+  .option:hover { border-color: var(--brand); }
+  .option.current { border-color: var(--brand); background: var(--brand-soft); }
+  .option img, .option .thumb { width: 52px; height: 52px; }
+  .option .n { font-size: 14px; font-weight: 600; }
+  .option .p { font-weight: 700; white-space: nowrap; }
+  .tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--brand); }
+
+  /* ── Toast ── */
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 14px 10px 18px; border-radius: var(--pill); display: flex; align-items: center; gap: 10px; font-size: 14px; z-index: 60; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+  .toast button { background: none; border: 0; color: var(--lime); font-weight: 700; min-height: 36px; }
+
+  @media (max-width: 420px) {
+    .closing .two { grid-template-columns: 1fr; }
+    .summary .total { font-size: 28px; }
+    .item { grid-template-columns: 52px 1fr; }
+    .thumb { width: 52px; height: 52px; }
+  }
+</style>
 </head>
 <body>
+<div class="wrap" id="app">
 
-<div class="widget">
-
-  <!-- HEADER -->
-  <div class="header">
-    <div class="header-badge">✨ Nuevo</div>
-    <h1>Presupuestá tu<br><em>lista escolar</em></h1>
-    <p>Subí la lista de útiles y calculamos el precio al instante</p>
-  </div>
-
-  <!-- UPLOAD -->
-  <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
-    <div class="upload-icon">📄</div>
-    <h2>Subí la lista de útiles</h2>
-    <p>PDF, Word, foto de la lista escrita a mano, o texto</p>
-    <div class="upload-types">
-      <span class="type-tag">PDF</span>
-      <span class="type-tag">Word (.docx)</span>
-      <span class="type-tag">Foto (.jpg / .png)</span>
-      <span class="type-tag">Texto (.txt)</span>
+  <!-- ENTRADA -->
+  <section id="view-input" aria-labelledby="title">
+    <div class="hero">
+      <h1 id="title">Presupuestá tu lista escolar</h1>
+      <p>Subí la lista y te armamos el presupuesto con precios y stock de la tienda.</p>
     </div>
-    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp" />
-  </div>
 
-  <!-- FILE SELECTED -->
-  <div class="file-selected" id="fileSelected">
-    <span class="file-icon">📎</span>
-    <div class="file-info">
-      <div class="file-name" id="fileName">—</div>
-      <div class="file-size" id="fileSize">—</div>
+    <div class="tabs" role="tablist" aria-label="Cómo cargar la lista">
+      <button class="tab" role="tab" id="tab-file" aria-selected="true" aria-controls="panel-file" data-tab="file">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Archivo</button>
+      <button class="tab" role="tab" id="tab-photo" aria-selected="false" aria-controls="panel-file" data-tab="photo">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto</button>
+      <button class="tab" role="tab" id="tab-paste" aria-selected="false" aria-controls="panel-paste" data-tab="paste">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 4h8v3H8z"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/><path d="M9 12h6M9 16h4"/></svg>Pegar</button>
     </div>
-    <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;opacity:0.5">✕</button>
-  </div>
 
-  <!-- ERROR -->
-  <div class="error-box" id="errorBox">
-    <strong>¡Ups!</strong> <span id="errorMsg"></span>
-  </div>
-
-  <!-- BUTTON -->
-  <button class="btn-presupuestar" id="btnPresupuestar" disabled onclick="presupuestar()">
-    Calcular presupuesto →
-  </button>
-
-  <!-- LOADING -->
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <h3>Analizando la lista…</h3>
-    <p style="color:var(--text-muted);font-size:0.9rem">La IA está leyendo y comparando con nuestros precios</p>
-    <div class="loading-steps">
-      <div class="step" id="step1"><div class="step-dot"></div>Leyendo</div>
-      <div class="step" id="step2"><div class="step-dot"></div>Interpretando</div>
-      <div class="step" id="step3"><div class="step-dot"></div>Comparando</div>
-      <div class="step" id="step4"><div class="step-dot"></div>Listo</div>
-    </div>
-  </div>
-
-  <!-- RESULTS -->
-  <div class="results" id="results"></div>
-
-
-  <!-- PRODUCT MODAL -->
-  <div class="modal-overlay" id="productModal" onclick="closeModal(event)">
-    <div class="modal" id="modalBox">
-      <div class="modal-header">
-        <span class="modal-title">Detalle del producto</span>
-        <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div id="panel-file" role="tabpanel">
+      <div class="drop" id="drop">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0d6e45" stroke-width="1.6" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        <h2 id="drop-title">Subí la lista de útiles</h2>
+        <p id="drop-text">Foto, captura, PDF o Word. Si son varias páginas, subilas juntas.</p>
+        <button class="btn btn-primary" id="pick">Elegir archivos</button>
+        <input type="file" id="file-input" accept="image/*,.pdf,.docx,.txt" multiple hidden />
+        <input type="file" id="camera-input" accept="image/*" capture="environment" hidden />
+        <div class="formats">JPG · PNG · PDF · DOCX · TXT — hasta 5 archivos</div>
       </div>
-      <div class="modal-body" id="modalBody"></div>
+      <ul class="files" id="file-list" aria-label="Archivos elegidos"></ul>
     </div>
-  </div>
 
+    <div id="panel-paste" role="tabpanel" hidden>
+      <label for="paste" class="sr-only">Pegá o escribí la lista</label>
+      <textarea id="paste" class="paste" placeholder="Pegá la lista o escribí lo que necesitás, un producto por línea:&#10;2 lápices negros&#10;1 goma de borrar&#10;1 cuaderno A4 rayado 100 hojas&#10;10 folios N°3"></textarea>
+      <p class="hint">Un producto por línea, con la cantidad adelante.</p>
+    </div>
+
+    <div class="alert alert-error" id="input-error" role="alert" hidden></div>
+
+    <div class="submit-row">
+      <button class="btn btn-primary btn-block" id="submit" disabled>Armar presupuesto</button>
+    </div>
+    <div class="trust">
+      <span>✓ Precios y stock de la tienda</span><span>✓ Podés corregir todo</span><span>✓ No guardamos tu lista</span>
+    </div>
+  </section>
+
+  <!-- PROGRESO (etapas reales que informa el servidor) -->
+  <section id="view-progress" class="progress" hidden aria-live="polite">
+    <h2>Armando tu presupuesto…</h2>
+    <p class="sub">Suele tardar unos segundos.</p>
+    <ol class="steps" id="steps">
+      <li data-stage="reading"><span class="dot"></span>Leyendo tu lista</li>
+      <li data-stage="extracting"><span class="dot"></span>Identificando los útiles</li>
+      <li data-stage="matching"><span class="dot"></span>Buscando productos</li>
+      <li data-stage="pricing"><span class="dot"></span>Calculando tu presupuesto</li>
+    </ol>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section id="view-results" hidden aria-labelledby="results-title">
+    <h2 id="results-title" class="sr-only">Tu presupuesto</h2>
+    <div id="results"></div>
+  </section>
 </div>
 
+<div id="sheet-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+
 <script>
-  const API_URL = "/api/presupuestar"; // mismo servidor que sirve el widget
+(() => {
+  "use strict";
 
-  let selectedFile = null;
+  // ─── Utilidades ───────────────────────────────────────────────
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (n) => "$" + Math.round(n || 0).toLocaleString("es-AR");
+  const embedded = window.parent !== window;
+  if (embedded) document.documentElement.classList.add("embedded");
+  const IMG_PLACEHOLDER = '<div class="thumb empty" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg></div>';
 
-  // Todo texto que viene de la lista subida o de la IA se escapa antes de ir a innerHTML.
-  function esc(v) {
-    return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  let config = { whatsapp: "", storeUrl: "https://www.librerialerma.com.ar", validityDays: 7, maxFiles: 5 };
+  fetch("/api/widget-config").then((r) => r.json()).then((c) => (config = { ...config, ...c })).catch(() => {});
+
+  // Eventos de analítica: los reenvía a GA4/Meta la página de la tienda (ver docs/tiendanube-snippet.html).
+  function track(event, params = {}) {
+    if (embedded) window.parent.postMessage({ type: "lerma-presupuestador:event", event, params }, "*");
   }
 
-  function reportHeight(expanded) {
-    const height = expanded ? document.body.scrollHeight : getCompactHeight();
-    window.parent.postMessage({ height }, "*");
+  // Alto del iframe (la tienda ya escucha { height }).
+  function reportHeight() {
+    if (embedded) window.parent.postMessage({ height: document.documentElement.scrollHeight }, "*");
+  }
+  new ResizeObserver(reportHeight).observe(document.body);
+
+  function toast(message, action) {
+    const root = $("#toast-root");
+    root.innerHTML = `<div class="toast" role="status"><span>${esc(message)}</span>${action ? `<button type="button">${esc(action.label)}</button>` : ""}</div>`;
+    if (action) $("button", root).onclick = () => { root.innerHTML = ""; action.run(); };
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => (root.innerHTML = ""), action ? 6000 : 3500);
   }
 
-  function getCompactHeight() {
-    const btn = document.getElementById("btnPresupuestar");
-    if (!btn) return 600;
-    const rect = btn.getBoundingClientRect();
-    const h = window.scrollY + rect.bottom + 180;
-    return h > 100 ? h : document.body.scrollHeight;
+  async function api(path, body) {
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) throw new Error((data && data.error) || "No pudimos completar la acción. Probá de nuevo.");
+    return data;
   }
 
-  function reportCompactWithRetry(attempts) {
-    reportHeight(false);
-    if (attempts > 0) setTimeout(() => reportCompactWithRetry(attempts - 1), 300);
+  // ─── Estado ──────────────────────────────────────────────────
+  const state = { tab: "file", files: [], budget: null, items: [], grade: null, startedAt: 0 };
+
+  // ─── Entrada ─────────────────────────────────────────────────
+  const fileInput = $("#file-input");
+  const cameraInput = $("#camera-input");
+
+  function setTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === tab)));
+    $("#panel-file").hidden = tab === "paste";
+    $("#panel-paste").hidden = tab !== "paste";
+    const photo = tab === "photo";
+    $("#drop-title").textContent = photo ? "Sacale una foto a la lista" : "Subí la lista de útiles";
+    $("#drop-text").textContent = photo ? "Con buena luz y la hoja derecha. Podés sacar varias si son varias páginas." : "Foto, captura, PDF o Word. Si son varias páginas, subilas juntas.";
+    $("#pick").textContent = photo ? "Abrir cámara" : "Elegir archivos";
+    if (tab === "paste") $("#paste").focus();
+    updateSubmit();
   }
-  window.addEventListener("load", () => reportCompactWithRetry(3));
+  document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => setTab(t.dataset.tab)));
+  $("#pick").onclick = () => (state.tab === "photo" ? cameraInput : fileInput).click();
+  fileInput.onchange = () => { addFiles(fileInput.files); fileInput.value = ""; };
+  cameraInput.onchange = () => { addFiles(cameraInput.files); cameraInput.value = ""; };
 
-  const ro = new ResizeObserver(() => {
-    const hasResults = document.getElementById("results")?.classList.contains("show");
-    const isLoading = document.getElementById("loading")?.classList.contains("show");
-    if (hasResults || isLoading) reportHeight(true);
-    else reportHeight(false);
-  });
-  ro.observe(document.body);
+  const drop = $("#drop");
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
+  $("#paste").addEventListener("input", updateSubmit);
 
-  // ─── DRAG & DROP ──────────────────────────────────────────────
-  const dropZone = document.getElementById("dropZone");
-  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
-  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
-  dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("drag-over");
-    const file = e.dataTransfer.files[0];
-    if (file) setFile(file);
-  });
-
-  document.getElementById("fileInput").addEventListener("change", (e) => {
-    if (e.target.files[0]) setFile(e.target.files[0]);
-  });
-
-  function setFile(file) {
-    selectedFile = file;
-    document.getElementById("fileName").textContent = file.name;
-    document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " KB";
-    document.getElementById("fileSelected").classList.add("show");
-    document.getElementById("btnPresupuestar").disabled = false;
-    document.getElementById("errorBox").classList.remove("show");
-    document.getElementById("results").classList.remove("show");
-  }
-
-  function clearFile() {
-    selectedFile = null;
-    document.getElementById("fileInput").value = "";
-    document.getElementById("fileSelected").classList.remove("show");
-    document.getElementById("btnPresupuestar").disabled = true;
+  function addFiles(list) {
+    hideInputError();
+    for (const f of list) {
+      if (state.files.length >= (config.maxFiles || 5)) { showInputError(`Podés subir hasta ${config.maxFiles || 5} archivos.`); break; }
+      state.files.push(f);
+    }
+    if (list.length) track("file_uploaded", { files: state.files.length });
+    renderFiles();
   }
 
-  // ─── LOADING STEPS ────────────────────────────────────────────
-  let stepInterval = null;
-  function startSteps() {
-    let current = 1;
-    stepInterval = setInterval(() => {
-      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-      if (current <= 4) {
-        document.getElementById("step" + current).classList.add("active");
-        current++;
-      }
-    }, 1200);
+  function renderFiles() {
+    const ul = $("#file-list");
+    ul.innerHTML = state.files.map((f, i) => `
+      <li>
+        ${/^image\//.test(f.type) ? `<img alt="" src="${URL.createObjectURL(f)}">` : `<div class="thumb empty" style="width:40px;height:40px">📄</div>`}
+        <div class="fname">${esc(f.name)}<div class="fsize">${(f.size / 1024 / 1024).toFixed(1)} MB</div></div>
+        <button class="icon-btn" data-remove="${i}" aria-label="Quitar ${esc(f.name)}">✕</button>
+      </li>`).join("");
+    ul.querySelectorAll("[data-remove]").forEach((b) => (b.onclick = () => { state.files.splice(Number(b.dataset.remove), 1); renderFiles(); }));
+    updateSubmit();
   }
 
-  function stopSteps() {
-    clearInterval(stepInterval);
-    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  function updateSubmit() {
+    const ready = state.tab === "paste" ? $("#paste").value.trim().length > 2 : state.files.length > 0;
+    $("#submit").disabled = !ready;
   }
+  function showInputError(msg) { const e = $("#input-error"); e.textContent = msg; e.hidden = false; }
+  function hideInputError() { $("#input-error").hidden = true; }
 
-  // Las fotos de celular suelen pesar más de 5 MB (límite para leerlas): se achican a 2000 px en JPEG.
-  async function shrinkImage(file) {
+  // Las fotos de celular suelen superar el límite: se achican a 2000 px en JPEG antes de subir.
+  async function shrink(file) {
     if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1.5 * 1024 * 1024) return file;
     try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
-      return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }) : file;
-    } catch (e) {
-      return file;
-    }
+      const bmp = await createImageBitmap(file);
+      const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
+      return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }) : file;
+    } catch { return file; }
   }
 
-  // ─── PRESUPUESTAR ─────────────────────────────────────────────
-  async function presupuestar() {
-    if (!selectedFile) return;
+  // ─── Envío y progreso real (Server-Sent Events) ──────────────
+  $("#submit").onclick = submit;
 
-    document.getElementById("btnPresupuestar").disabled = true;
-    document.getElementById("loading").classList.add("show");
-    document.getElementById("results").classList.remove("show");
-    document.getElementById("errorBox").classList.remove("show");
-    startSteps();
-
+  async function submit() {
+    hideInputError();
+    const fd = new FormData();
+    if (state.tab === "paste") fd.append("texto", $("#paste").value);
+    else for (const f of state.files) fd.append("lista", await shrink(f), f.name);
+    state.startedAt = Date.now();
+    track("budget_started", { source: state.tab, files: state.files.length });
+    show("progress");
+    setStage("reading");
     try {
-      const formData = new FormData();
-      formData.append("lista", await shrinkImage(selectedFile), selectedFile.name);
+      const budget = await postBudget(fd);
+      track("budget_completed", { items: budget.summary.totalItems, coverage: budget.summary.coveragePercent, total: Math.round(budget.summary.estimatedTotal), seconds: Math.round((Date.now() - state.startedAt) / 1000) });
+      loadBudget(budget);
+    } catch (e) {
+      track("budget_failed", { message: String(e.message).slice(0, 80) });
+      show("input");
+      showInputError(e.message || "No pudimos procesar la lista. Probá de nuevo.");
+    }
+  }
 
-      let res;
-      try {
-        res = await fetch(API_URL, { method: "POST", body: formData });
-      } catch (netErr) {
-        throw new Error("Error de conexión. Verificá tu internet e intentá de nuevo.");
+  async function postBudget(fd) {
+    let res;
+    try { res = await fetch("/api/presupuestar?stream=1", { method: "POST", body: fd }); }
+    catch { throw new Error("No hay conexión. Revisá tu internet e intentá de nuevo."); }
+    const type = res.headers.get("content-type") || "";
+    if (!type.includes("text/event-stream")) {
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.success) throw new Error((data && data.error) || "No pudimos procesar la lista. Probá de nuevo.");
+      return data;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const ev = (chunk.match(/^event: (.*)$/m) || [])[1];
+        const data = JSON.parse((chunk.match(/^data: (.*)$/m) || [])[1] || "null");
+        if (ev === "stage") setStage(data.stage);
+        if (ev === "result") return data;
+        if (ev === "error") throw new Error(data.error);
       }
-      let data = null;
-      try { data = await res.json(); } catch (e) { /* respuesta no JSON */ }
-      // El servidor ya devuelve mensajes pensados para la familia.
-      if (!res.ok || !data || !data.success) throw new Error((data && data.error) || "Ocurrió un error al procesar la lista. Intentá de nuevo en unos segundos.");
-
-      renderResults(data);
-    } catch (err) {
-      document.getElementById("errorMsg").textContent = err.message;
-      document.getElementById("errorBox").classList.add("show");
-      document.getElementById("btnPresupuestar").disabled = false;
-    } finally {
-      stopSteps();
-      document.getElementById("loading").classList.remove("show");
     }
+    throw new Error("Se cortó la conexión. Probá de nuevo.");
   }
 
-  // ─── RENDER RESULTS ───────────────────────────────────────────
-  // CAMBIO: separamos found / inStore / notFound
-  let _allClickableItems = [];
-
-  function renderResults(data) {
-    const { summary, items } = data;
-
-    const found    = items.filter(i => i.matched && !i.inStoreOnly);
-    const inStore  = items.filter(i => i.matched && i.inStoreOnly);
-    const notFound = items.filter(i => !i.matched);
-
-    // índice global para el modal: found primero, luego inStore
-    _allClickableItems = [...found, ...inStore];
-
-    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
-
-    let html = `
-      <div class="summary-grid">
-        <div class="summary-card highlight">
-          <div class="summary-label">Total estimado</div>
-          <div class="summary-value">${fmt(summary.estimatedTotal)}</div>
-          <div class="summary-sub">productos con precio online</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-label">Ítems en lista</div>
-          <div class="summary-value">${summary.totalItems}</div>
-          <div class="summary-sub">productos solicitados</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-label">Cobertura</div>
-          <div class="summary-value">${summary.coveragePercent}%</div>
-          <div class="coverage-bar"><div class="coverage-fill" style="width:${summary.coveragePercent}%"></div></div>
-          <div class="summary-sub">${found.length + inStore.length} de ${summary.totalItems} encontrados</div>
-        </div>
-      </div>
-    `;
-
-    // ── Sección 1: disponibles online ──
-    if (found.length > 0) {
-      html += `
-        <div class="items-section">
-          <div class="items-header">✅ Productos disponibles en nuestra tienda</div>
-          ${found.map((item, idx) => `
-            <div class="item-row clickable" onclick="openModal(${idx})">
-              <div class="item-left">
-                <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
-                <div class="item-matched">${esc(item.catalogName)}${item.product && item.product.variantLabel ? ` <span class="item-variant">· ${esc(item.product.variantLabel)}</span>` : ""}${item.status === "review" ? ` <span class="review-badge" title="Encontramos varias opciones: revisá que sea el que pide la lista">Revisá</span>` : ""}</div>
-                ${item.quantityNote ? `<div class="item-note">${esc(item.quantityNote)}</div>` : ""}
-                ${item.catalogSku ? `<span class="item-sku">SKU: ${esc(item.catalogSku)}</span>` : ""}
-                <div class="item-view-hint">👁 Ver producto →</div>
-              </div>
-              <span class="item-qty">x${esc(item.quantity)}</span>
-              <div class="item-price">
-                ${fmt(item.subtotal)}
-                <small>${fmt(item.unitPrice)} c/u</small>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      `;
-    }
-
-    // ── Sección 2: solo en sucursal (NUEVO) ──
-    if (inStore.length > 0) {
-      html += `
-        <div class="items-section instore-section">
-          <div class="items-header instore-header">🏪 Disponible solo en sucursal</div>
-          ${inStore.map((item, idx) => `
-            <div class="item-row clickable instore-row" onclick="openModal(${found.length + idx})">
-              <div class="item-left">
-                <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
-                <div class="item-matched">
-                  ${esc(item.catalogName)}
-                  <span class="instore-badge">🏪 Solo sucursal</span>
-                </div>
-                <div class="instore-note">No se vende online · Consultá en nuestras sucursales o por WhatsApp</div>
-              </div>
-              <span class="item-qty">x${esc(item.quantity)}</span>
-              <div class="item-price" style="color:var(--amber)">
-                Consultar
-                <small style="color:var(--text-muted)">en sucursal</small>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      `;
-    }
-
-    // ── Sección 3: no encontrados ──
-    if (notFound.length > 0) {
-      html += `
-        <div class="items-section">
-          <div class="items-header" style="background:#fff8f6;color:#c44">⚠️ Productos no encontrados en catálogo</div>
-          ${notFound.map(item => `
-            <div class="item-row not-found-row">
-              <div class="item-left">
-                <div class="item-matched">${esc(item.requestedItem)} <span class="not-found-badge">${item.status === "suggested" ? "Sin confirmar" : "No disponible"}</span></div>
-                <div class="item-requested">${item.status === "suggested" ? "No pudimos confirmar cuál es: consultalo con un asesor." : esc(item.reason || "Consultá disponibilidad con un asesor")}</div>
-              </div>
-              <span class="item-qty">x${esc(item.quantity)}</span>
-              <div class="item-price" style="color:var(--text-muted)">—</div>
-            </div>
-          `).join("")}
-        </div>
-      `;
-    }
-
-    // Guardar datos para PDF
-    window._presupuestoData = { items, summary, found, inStore, notFound };
-
-    html += `
-      <div class="total-bar">
-        <div>
-          <div class="total-label">Total estimado de tu lista</div>
-          <div style="font-size:0.75rem;opacity:0.5;margin-top:0.2rem">*Precios pueden variar según stock · Resmas disponibles solo en sucursal</div>
-        </div>
-        <div class="total-amount">${fmt(summary.estimatedTotal)}</div>
-      </div>
-
-      <div class="actions">
-        <button class="btn-secondary" onclick="location.reload()">↺ Nueva lista</button>
-        <button class="btn-pdf" onclick="descargarPDF()" id="btn-pdf">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
-          Descargar presupuesto PDF
-        </button>
-        <button class="btn-primary" onclick="comprar()">Agregar todo al carrito →</button>
-      </div>
-    `;
-
-    const container = document.getElementById("results");
-    container.innerHTML = html;
-    container.classList.add("show");
-    container.scrollIntoView({ behavior: "smooth", block: "start" });
-    setTimeout(() => reportHeight(true), 100);
+  const STAGES = ["reading", "extracting", "matching", "pricing"];
+  function setStage(stage) {
+    const i = STAGES.indexOf(stage === "checking" ? "matching" : stage);
+    document.querySelectorAll("#steps li").forEach((li, j) => {
+      li.className = j < i ? "done" : j === i ? "active" : "";
+      li.querySelector(".dot").textContent = j < i ? "✓" : "";
+    });
   }
 
-
-  // ─── DESCARGAR PDF ───────────────────────────────────────────
-  function descargarPDF() {
-    if (!window._presupuestoData) return;
-    const { items, summary, found, inStore, notFound } = window._presupuestoData;
-    const total = summary.estimatedTotal || 0;
-    const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
-    const date = new Date().toLocaleDateString("es-AR");
-
-    const foundRows = found.map((item, i) => `
-      <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
-        <td>${item.quantity || 1}</td>
-        <td style="color:#888;font-size:0.8em">${esc(item.catalogSku || item.catalogId || '-')}</td>
-        <td>${esc(item.catalogName || item.requestedItem || '')}</td>
-        <td style="text-align:right;color:#555">${fmt(item.unitPrice || 0)}</td>
-        <td style="text-align:right;font-weight:700;color:#2d7a3a">${fmt(item.subtotal || 0)}</td>
-      </tr>`).join('');
-
-    const inStoreRows = inStore.map((item, i) => `
-      <tr style="background:${i%2===0?'#fffbeb':'#fefce8'}">
-        <td>${item.quantity || 1}</td>
-        <td style="color:#888;font-size:0.8em">—</td>
-        <td>${esc(item.catalogName || item.requestedItem || '')}</td>
-        <td style="text-align:right;color:#d97706">Consultar</td>
-        <td style="text-align:right;color:#d97706;font-weight:700">En sucursal</td>
-      </tr>`).join('');
-
-    const notFoundRows = notFound.map((item, i) => `
-      <tr style="background:${i%2===0?'#fff8f8':'#fff'}">
-        <td>${item.quantity || 1}</td>
-        <td colspan="4" style="color:#c0392b">${esc(item.requestedItem || '')}</td>
-      </tr>`).join('');
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Presupuesto Librería Lerma</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #222; }
-    .header { background: #2d7a3a; color: white; padding: 20px 30px; display:flex; justify-content:space-between; align-items:center; }
-    .header h1 { font-size: 22px; }
-    .header p { font-size: 11px; opacity: 0.85; margin-top: 4px; }
-    .header .date { font-size: 11px; opacity: 0.8; }
-    .summary { background: #f5f5f5; border: 1px solid #ddd; margin: 20px 30px; padding: 14px 20px; border-radius: 6px; display:flex; justify-content:space-between; align-items:center; }
-    .summary .total-val { font-size: 22px; font-weight: 700; color: #2d7a3a; }
-    .summary .total-lbl { font-size: 10px; color: #888; }
-    .summary .meta { font-size: 11px; color: #666; }
-    .section { margin: 0 30px 20px; }
-    .section-title { font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; }
-    .title-green  { background: #2d7a3a; color: white; }
-    .title-amber  { background: #d97706; color: white; }
-    .title-red    { background: #c0392b; color: white; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #2d7a3a; color: white; padding: 7px 10px; text-align: left; font-size: 11px; }
-    th.right, td.right { text-align: right; }
-    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
-    .total-row { background: #2d7a3a !important; color: white; }
-    .total-row td { color: white; font-weight: 700; font-size: 14px; border:none; }
-    table.amber-tbl th { background: #d97706; }
-    table.not-found th { background: #c0392b; }
-    .footer { background: #2d7a3a; color: white; text-align: center; padding: 12px; font-size: 10px; margin-top: 30px; }
-    .note { font-size: 10px; color: #999; margin: 8px 30px; }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <h1>Librería Lerma</h1>
-      <p>Presupuesto Escolar 2026</p>
-    </div>
-    <div class="date">${date}</div>
-  </div>
-
-  <div class="summary">
-    <div class="meta">
-      Artículos con precio online: <strong>${found.length}</strong><br>
-      Solo en sucursal: <strong>${inStore.length}</strong><br>
-      No disponibles: <strong>${notFound.length}</strong>
-    </div>
-    <div style="text-align:right">
-      <div class="total-lbl">TOTAL ESTIMADO (online)</div>
-      <div class="total-val">${fmt(total)}</div>
-    </div>
-  </div>
-
-  ${found.length > 0 ? `
-  <div class="section">
-    <div class="section-title title-green">✓ Artículos disponibles en tienda online</div>
-    <table>
-      <thead>
-        <tr>
-          <th style="width:50px">CANT.</th>
-          <th style="width:80px">SKU</th>
-          <th>PRODUCTO</th>
-          <th class="right" style="width:100px">P. UNIT.</th>
-          <th class="right" style="width:110px">SUBTOTAL</th>
-        </tr>
-      </thead>
-      <tbody>${foundRows}</tbody>
-      <tfoot>
-        <tr class="total-row">
-          <td colspan="4">TOTAL ESTIMADO</td>
-          <td style="text-align:right">${fmt(total)}</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>` : ''}
-
-  ${inStore.length > 0 ? `
-  <div class="section">
-    <div class="section-title title-amber">🏪 Solo disponible en sucursal — Consultá disponibilidad y precio</div>
-    <table class="amber-tbl">
-      <thead>
-        <tr>
-          <th style="width:50px">CANT.</th>
-          <th style="width:80px">SKU</th>
-          <th>PRODUCTO</th>
-          <th class="right" style="width:100px">P. UNIT.</th>
-          <th class="right" style="width:110px">SUBTOTAL</th>
-        </tr>
-      </thead>
-      <tbody>${inStoreRows}</tbody>
-    </table>
-  </div>
-  <p class="note">* Estos productos no se venden online. Consultá precio y disponibilidad en cualquiera de nuestras sucursales o por WhatsApp.</p>` : ''}
-
-  ${notFound.length > 0 ? `
-  <div class="section">
-    <div class="section-title title-red">⚠ Artículos no disponibles — Consultá con un asesor</div>
-    <table class="not-found">
-      <thead>
-        <tr>
-          <th style="width:50px">CANT.</th>
-          <th>ARTÍCULO SOLICITADO</th>
-        </tr>
-      </thead>
-      <tbody>${notFoundRows}</tbody>
-    </table>
-  </div>
-  <p class="note">* Estos artículos no están disponibles en el catálogo online. Consultá en la tienda o por WhatsApp.</p>` : ''}
-
-  <div class="footer">
-    Librería Lerma &nbsp;|&nbsp; Belgrano 635, Salta &nbsp;|&nbsp; Tel: 0387-4314736 &nbsp;|&nbsp; librerialerma.com.ar
-  </div>
-
-  <script>window.onload = function() { window.print(); }<\/script>
-</body>
-</html>`;
-
-    const win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
+  function show(view) {
+    $("#view-input").hidden = view !== "input";
+    $("#view-progress").hidden = view !== "progress";
+    $("#view-results").hidden = view !== "results";
+    window.scrollTo({ top: 0 });
+    reportHeight();
   }
 
-  // ─── PRODUCT MODAL ────────────────────────────────────────────
-  function openModal(idx) {
-    const item = _allClickableItems[idx];
-    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+  // ─── Resultados ──────────────────────────────────────────────
+  const INCLUDED = new Set(["matched", "review"]);
 
-    const productUrl = item.product && item.product.url ? item.product.url
-      : item.catalogSlug ? `https://www.librerialerma.com.ar/productos/${encodeURIComponent(item.catalogSlug)}/`
-      : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
+  function loadBudget(budget) {
+    state.budget = budget;
+    state.items = budget.items.map((it) => ({ ...it, removed: false, editing: false }));
+    state.grade = budget.grades && budget.grades.length > 1 ? budget.grades[0] : null;
+    show("results");
+    render();
+  }
 
-    if (item.inStoreOnly) {
-      // NUEVO: modal especial para productos solo en sucursal
-      document.getElementById("modalBody").innerHTML = `
-        <div class="modal-requested">Solicitado en la lista:</div>
-        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${esc(item.requestedItem)}"</div>
-        <div class="modal-product-name">${esc(item.catalogName)}</div>
-        <div class="modal-meta">
-          <span class="modal-tag">Cant. solicitada: ${esc(item.quantity)}</span>
+  const visible = () => state.items.filter((i) => !i.removed && (!state.grade || !i.grade || i.grade === state.grade));
+  const included = (i) => INCLUDED.has(i.status) && i.product;
+  const lineTotal = (i) => (included(i) ? i.product.unitPrice * i.quantity : 0);
+
+  function totals() {
+    const items = visible();
+    const sellable = items.filter((i) => i.status !== "not_sold");
+    const found = items.filter((i) => included(i) || i.status === "in_store").length;
+    return {
+      total: items.reduce((s, i) => s + lineTotal(i), 0),
+      count: items.filter(included).reduce((s, i) => s + i.quantity, 0),
+      found, of: sellable.length,
+      attention: items.filter((i) => i.status === "review" || i.status === "suggested").length,
+      pending: items.filter((i) => !included(i)).length,
+      coverage: sellable.length ? Math.round((found / sellable.length) * 100) : 0,
+    };
+  }
+
+  function render() {
+    const t = totals();
+    const items = visible();
+    const groups = {
+      attention: items.filter((i) => i.status === "review" || i.status === "suggested"),
+      ready: items.filter((i) => i.status === "matched"),
+      store: items.filter((i) => i.status === "in_store"),
+      missing: items.filter((i) => ["not_sold", "not_found", "out_of_stock"].includes(i.status)),
+    };
+    const synced = state.budget.catalog && state.budget.catalog.syncedAt ? new Date(state.budget.catalog.syncedAt).toLocaleDateString("es-AR") : null;
+
+    $("#results").innerHTML = `
+      <div class="summary">
+        <div><div class="label">Total estimado</div><div class="total" id="total">${money(t.total)}</div></div>
+        <div class="bar" aria-hidden="true"><i style="width:${t.coverage}%"></i></div>
+        <div class="stats">
+          <span class="chip">${t.found} de ${t.of} encontrados</span>
+          ${t.attention ? `<span class="chip">${t.attention} para revisar</span>` : ""}
+          ${groups.store.length + groups.missing.length ? `<span class="chip">${groups.store.length + groups.missing.length} para consultar</span>` : ""}
         </div>
-        <div class="modal-instore-notice">
-          <strong>🏪 Disponible solo en sucursal</strong>
-          Este producto no se vende por nuestra tienda online. Podés consultarlo en cualquiera de nuestras sucursales o por WhatsApp para conocer disponibilidad y precio.
+      </div>
+      ${synced ? `<p class="note-catalog">Precios y stock de la tienda online al ${esc(synced)}. Pueden variar.</p>` : ""}
+      ${(state.budget.warnings || []).map((w) => `<div class="alert alert-warn">${esc(w)}</div>`).join("")}
+      ${state.budget.grades && state.budget.grades.length > 1 ? `
+        <div class="grades" role="group" aria-label="Elegí el grado">
+          ${state.budget.grades.map((g) => `<button class="grade" aria-pressed="${g === state.grade}" data-grade="${esc(g)}">${esc(g)}</button>`).join("")}
+        </div>` : ""}
+
+      ${groups.attention.length ? section("Revisá estos", "attention", groups.attention, "Encontramos más de una opción o no estamos seguros. Elegí la correcta.") : ""}
+      ${section("En tu presupuesto", "ready", groups.ready)}
+      <div class="add-item">
+        <label class="sr-only" for="add-input">Agregar un producto</label>
+        <input id="add-input" placeholder="Agregar algo que falte (ej. 1 regla 30 cm)" maxlength="120" />
+        <button class="btn btn-outline" id="add-btn">Agregar</button>
+      </div>
+      ${groups.store.length ? section("Sólo en la sucursal", "store", groups.store, "No se venden online. Consultá precio y disponibilidad en Belgrano 635 o por WhatsApp.") : ""}
+      ${groups.missing.length ? section("Para consultar", "missing", groups.missing, "No los encontramos en la tienda online.") : ""}
+
+      <div class="closing">
+        <button class="btn btn-primary btn-block" data-action="cart" ${t.count ? "" : "disabled"}>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
+          Agregar ${t.count} ${t.count === 1 ? "producto" : "productos"} al carrito</button>
+        <div class="two">
+          <button class="btn btn-whatsapp" data-action="whatsapp">
+            <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.5-.3z"/></svg>
+            Enviar por WhatsApp</button>
+          <button class="btn btn-outline" data-action="pdf">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/></svg>
+            Descargar PDF</button>
         </div>
-        <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener"
-           style="background:var(--amber)">
-          Ver producto →
-        </a>
-      `;
-    } else {
-      document.getElementById("modalBody").innerHTML = `
-        <div class="modal-requested">Solicitado en la lista:</div>
-        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${esc(item.requestedItem)}"</div>
-        <div class="modal-product-name">${esc(item.catalogName)}</div>
-        <div class="modal-meta">
-          ${item.catalogSku ? `<span class="modal-tag sku">SKU ${esc(item.catalogSku)}</span>` : ""}
-          <span class="modal-tag">Cant. solicitada: ${esc(item.quantity)}</span>
-        </div>
-        <div class="modal-price-row">
-          <div>
-            <div class="modal-price-label">Precio unitario</div>
-            <div class="modal-price-val">${fmt(item.unitPrice)}</div>
+        <button class="btn btn-ghost" data-action="restart">Presupuestar otra lista</button>
+        <p class="fineprint">Precios estimados de la tienda online, sujetos a stock. El total final lo ves en el carrito.</p>
+      </div>
+
+      <div class="sticky" aria-hidden="true">
+        <div class="t"><small>${t.found} de ${t.of} encontrados</small><b>${money(t.total)}</b></div>
+        <button class="btn btn-primary" data-action="cart" tabindex="-1" ${t.count ? "" : "disabled"}>Agregar al carrito</button>
+      </div>`;
+    bind();
+    reportHeight();
+  }
+
+  function section(title, kind, items, desc) {
+    if (!items.length) return "";
+    return `
+      <div class="section">
+        <div class="section-head"><h3>${esc(title)}</h3><span class="count">${items.length} ${items.length === 1 ? "ítem" : "ítems"}</span></div>
+        ${desc ? `<p class="section-desc">${esc(desc)}</p>` : ""}
+        <div class="items">${items.map((i) => (kind === "store" || kind === "missing" ? simpleCard(i, kind) : card(i))).join("")}</div>
+      </div>`;
+  }
+
+  function askedLine(i) {
+    if (i.editing) {
+      return `<div class="edit-row">
+        <label class="sr-only" for="edit-${i.lineId}">Corregir lo que pide la lista</label>
+        <input id="edit-${i.lineId}" value="${esc(i.requestedItem)}" maxlength="120">
+        <button class="btn btn-primary" data-act="save-edit" data-line="${i.lineId}">Buscar</button></div>`;
+    }
+    return `<div class="asked">Pediste: <q>${esc(i.requestedItem)}</q>
+      <button data-act="edit" data-line="${i.lineId}" aria-label="Corregir lo que pide la lista">corregir</button></div>`;
+  }
+
+  function card(i) {
+    const p = i.product;
+    const attention = i.status === "review" || i.status === "suggested";
+    if (!p) return simpleCard(i, "missing");
+    const selected = INCLUDED.has(i.status);
+    return `
+      <article class="item ${attention ? "attention" : ""}" data-line="${i.lineId}">
+        ${p.imageUrl ? `<img class="thumb" src="${esc(p.imageUrl)}" alt="" loading="lazy" width="64" height="64">` : IMG_PLACEHOLDER}
+        <div class="item-body">
+          ${askedLine(i)}
+          <div class="pname">${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name)}</div>
+          <div class="meta">
+            ${p.variantLabel ? `<span>${esc(p.variantLabel)}</span>` : ""}
+            ${i.status === "review" ? `<span class="badge badge-warn">Revisá</span>` : ""}
+            ${i.status === "suggested" ? `<span class="badge badge-warn">¿Es este?</span>` : ""}
+            ${i.decidedBy === "manual" ? `<span class="badge badge-ok">Elegido por vos</span>` : ""}
           </div>
-          <div class="modal-qty-info">
-            <div class="modal-qty-label">Subtotal (x${esc(item.quantity)})</div>
-            <div class="modal-subtotal">${fmt(item.subtotal)}</div>
+          ${i.quantityNote && selected ? `<div class="qnote">${esc(i.quantityNote)}</div>` : ""}
+          ${i.status === "suggested" ? `
+            <div class="confirm-row">
+              <button class="btn btn-primary" data-act="accept" data-line="${i.lineId}">Sí, es este</button>
+              <button class="btn btn-outline" data-act="change" data-line="${i.lineId}">Ver otras opciones</button>
+            </div>` : `
+            <div class="row">
+              <div class="stepper" role="group" aria-label="Cantidad">
+                <button data-act="minus" data-line="${i.lineId}" aria-label="Uno menos" ${i.quantity <= 1 ? "disabled" : ""}>−</button>
+                <output aria-live="polite">${i.quantity}</output>
+                <button data-act="plus" data-line="${i.lineId}" aria-label="Uno más">+</button>
+              </div>
+              <div class="price"><b>${money(p.unitPrice * i.quantity)}</b><small>${money(p.unitPrice)} c/u</small></div>
+            </div>
+            <div class="actions">
+              ${i.status === "review" ? `<button class="btn-ghost" data-act="accept" data-line="${i.lineId}">Está bien</button>` : ""}
+              <button class="btn-ghost" data-act="change" data-line="${i.lineId}">${i.alternatives && i.alternatives.length ? `Cambiar (${i.alternatives.length} opciones)` : "Cambiar"}</button>
+              <button class="btn-ghost danger" data-act="remove" data-line="${i.lineId}">Quitar</button>
+            </div>`}
+        </div>
+      </article>`;
+  }
+
+  function simpleCard(i, kind) {
+    const reason = kind === "store" ? (i.inStore && i.inStore.note) || "Se vende sólo en la sucursal." : i.reason || "No lo encontramos en la tienda online.";
+    return `
+      <article class="item simple" data-line="${i.lineId}">
+        <div class="item-body">
+          ${askedLine(i)}
+          <div class="pname">${esc(kind === "store" && i.inStore ? i.inStore.label : i.requestedItem)} <span class="badge badge-muted">x${i.requestedQuantity || i.quantity}</span></div>
+          <div class="reason">${esc(reason)}</div>
+        </div>
+        <button class="icon-btn" data-act="remove" data-line="${i.lineId}" aria-label="Quitar de la lista">✕</button>
+      </article>`;
+  }
+
+  // ─── Acciones sobre ítems ────────────────────────────────────
+  const byLine = (id) => state.items.find((i) => String(i.lineId) === String(id));
+
+  function bind() {
+    const root = $("#results");
+    root.querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => onItemAction(b.dataset.act, byLine(b.dataset.line))));
+    root.querySelectorAll("[data-action]").forEach((b) => (b.onclick = () => onAction(b.dataset.action)));
+    root.querySelectorAll("[data-grade]").forEach((b) => (b.onclick = () => { state.grade = b.dataset.grade; render(); }));
+    const addInput = $("#add-input");
+    $("#add-btn").onclick = () => addItem(addInput.value);
+    addInput.onkeydown = (e) => { if (e.key === "Enter") addItem(addInput.value); };
+    root.querySelectorAll(".edit-row input").forEach((inp) => {
+      inp.focus();
+      inp.onkeydown = (e) => { if (e.key === "Enter") onItemAction("save-edit", byLine(inp.id.replace("edit-", ""))); if (e.key === "Escape") { byLine(inp.id.replace("edit-", "")).editing = false; render(); } };
+    });
+  }
+
+  function onItemAction(act, item) {
+    if (!item) return;
+    if (act === "plus" || act === "minus") {
+      item.quantity = Math.max(1, Math.min(99, item.quantity + (act === "plus" ? 1 : -1)));
+      track("quantity_changed", { concept: item.concept });
+      return render();
+    }
+    if (act === "accept") {
+      item.status = "matched";
+      track("match_confirmed", { concept: item.concept });
+      return render();
+    }
+    if (act === "remove") {
+      item.removed = true;
+      track("product_removed", { concept: item.concept, status: item.status });
+      render();
+      return toast("Quitaste un ítem", { label: "Deshacer", run: () => { item.removed = false; render(); } });
+    }
+    if (act === "edit") { item.editing = true; return render(); }
+    if (act === "save-edit") {
+      const text = $(`#edit-${item.lineId}`).value.trim();
+      if (!text) return;
+      track("item_text_corrected", { concept: item.concept });
+      return rematch(item, { text, quantity: item.requestedQuantity });
+    }
+    if (act === "change") return openSheet(item);
+  }
+
+  // Re-match en el servidor (sin IA): corrección de texto o elección de otro producto.
+  async function rematch(item, line) {
+    try {
+      const { items } = await api("/api/match", { lines: [{ lineId: item.lineId, grade: item.grade, ...line }] });
+      Object.assign(item, items[0], { removed: false, editing: false });
+      render();
+    } catch (e) { toast(e.message); }
+  }
+
+  async function addItem(text) {
+    text = String(text || "").trim();
+    if (!text) return;
+    const lineId = Math.max(0, ...state.items.map((i) => Number(i.lineId) || 0)) + 1;
+    try {
+      const { items } = await api("/api/match", { lines: [{ lineId, text, grade: state.grade }] });
+      state.items.push({ ...items[0], removed: false, editing: false });
+      track("product_added_manually", { concept: items[0].concept, status: items[0].status });
+      render();
+      toast(INCLUDED.has(items[0].status) ? "Agregado al presupuesto" : "Lo agregamos para consultar");
+    } catch (e) { toast(e.message); }
+  }
+
+  // ─── Panel de alternativas y búsqueda ─────────────────────────
+  function openSheet(item) {
+    const opener = document.activeElement;
+    const root = $("#sheet-root");
+    const current = item.product ? [{ ...item.product, price: item.product.unitPrice, tag: "actual" }] : [];
+    const alts = (item.alternatives || []).map((a) => ({ ...a, tag: a.tag === "economico" ? "Más económico" : "Otra opción" }));
+    root.innerHTML = `
+      <div class="sheet-backdrop" data-close>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+          <header><h3 id="sheet-title">Elegí el producto</h3><button class="icon-btn" data-close aria-label="Cerrar">✕</button></header>
+          <div class="body">
+            <p class="asked-big">La lista pide: <strong>${esc(item.requestedItem)}</strong></p>
+            <div class="search">
+              <label class="sr-only" for="sheet-search">Buscar otro producto</label>
+              <input id="sheet-search" placeholder="Buscar en la tienda…" value="">
+            </div>
+            <div class="options" id="sheet-options">${optionsHtml([...current, ...alts], item)}</div>
           </div>
         </div>
-        <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener">
-          🔍 Ver en la tienda →
-        </a>
-      `;
+      </div>`;
+    const close = () => { root.innerHTML = ""; if (opener) opener.focus(); };
+    root.querySelectorAll("[data-close]").forEach((el) => (el.onclick = (e) => { if (e.target === el) close(); }));
+    root.onkeydown = (e) => { if (e.key === "Escape") close(); };
+    const input = $("#sheet-search");
+    input.focus();
+    let timer;
+    input.oninput = () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const q = input.value.trim();
+        if (q.length < 2) return ($("#sheet-options").innerHTML = optionsHtml([...current, ...alts], item), bindOptions());
+        const res = await fetch("/api/productos/buscar?q=" + encodeURIComponent(q)).then((r) => r.json()).catch(() => ({ results: [] }));
+        $("#sheet-options").innerHTML = res.results.length ? optionsHtml(res.results.map((r) => ({ ...r, tag: "" })), item) : `<p class="hint">No encontramos productos para “${esc(q)}”.</p>`;
+        bindOptions();
+      }, 250);
+    };
+    function bindOptions() {
+      root.querySelectorAll("[data-pick]").forEach((b) => (b.onclick = async () => {
+        const productId = b.dataset.pick;
+        track(item.product && productId === item.product.id ? "match_confirmed" : "alternative_selected", { concept: item.concept, from: item.product && item.product.sku, to: b.dataset.sku });
+        close();
+        await rematch(item, { text: item.requestedItem, quantity: item.requestedQuantity, productId });
+      }));
     }
-
-    document.getElementById("productModal").classList.add("show");
-    document.body.style.overflow = "hidden";
+    bindOptions();
   }
 
-  function closeModal(e) {
-    if (e.target === document.getElementById("productModal")) closeModalDirect();
+  function optionsHtml(options, item) {
+    if (!options.length) return `<p class="hint">No hay otras opciones compatibles. Buscá en la tienda arriba.</p>`;
+    return options.map((o) => `
+      <button class="option ${item.product && o.id === item.product.id ? "current" : ""}" data-pick="${esc(o.id)}" data-sku="${esc(o.sku || "")}">
+        ${o.imageUrl ? `<img class="thumb" src="${esc(o.imageUrl)}" alt="" loading="lazy" width="52" height="52">` : IMG_PLACEHOLDER}
+        <span>${o.tag ? `<span class="tag">${esc(o.tag === "actual" ? "Elegido" : o.tag)}</span><br>` : ""}<span class="n">${esc(o.name)}</span></span>
+        <span class="p">${money(o.price)}</span>
+      </button>`).join("");
   }
 
-  function closeModalDirect() {
-    document.getElementById("productModal").classList.remove("show");
-    document.body.style.overflow = "";
+  // ─── Acciones de cierre ───────────────────────────────────────
+  function selectionLines() {
+    return visible().filter(included).map((i) => ({ productId: i.product.id, variantId: i.product.variantId, packs: i.quantity, requestedItem: i.requestedItem }));
+  }
+  function pendingLines() {
+    // El texto pedido puede traer la cantidad adelante ("1 papel higiénico"): se muestra una sola vez.
+    return visible().filter((i) => !included(i)).map((i) => ({ requestedItem: i.status === "in_store" && i.inStore ? i.inStore.label : String(i.requestedItem).replace(/^s*d+s+/, ""), packs: i.requestedQuantity || i.quantity, note: i.status === "in_store" ? "sólo en sucursal" : null }));
   }
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModalDirect();
+  async function onAction(action) {
+    if (action === "restart") {
+      track("budget_restarted");
+      state.files = []; renderFiles(); $("#paste").value = ""; updateSubmit();
+      return show("input");
+    }
+    if (action === "pdf") return downloadPdf();
+    if (action === "whatsapp") return shareWhatsapp();
+    if (action === "cart") return addToCart();
+  }
+
+  async function downloadPdf() {
+    track("pdf_downloaded", { items: selectionLines().length });
+    try {
+      const res = await fetch("/api/presupuesto-pdf", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ budgetId: state.budget.id, lines: selectionLines(), pending: pendingLines() }) });
+      if (!res.ok) throw new Error();
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url; a.download = `presupuesto-lerma-${state.budget.id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch { toast("No pudimos generar el PDF. Probá de nuevo."); }
+  }
+
+  function shareWhatsapp() {
+    const t = totals();
+    const pend = pendingLines();
+    const lines = [
+      `*Presupuesto de lista escolar — Librería Lerma*`,
+      `${t.count} productos · Total estimado: *${money(t.total)}*`,
+      pend.length ? `\nPara consultar (${pend.length}):\n${pend.slice(0, 12).map((p) => `• ${p.packs} × ${p.requestedItem}`).join("\n")}${pend.length > 12 ? "\n…" : ""}` : "",
+      `\nArmalo en ${config.storeUrl.replace(/^https?:\/\/(www\.)?/, "")}/presupuesta-tu-lista-escolar/`,
+    ].filter(Boolean).join("\n");
+    track("whatsapp_clicked", { items: t.count, pending: pend.length });
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, "_blank", "noopener");
+  }
+
+  // Carrito real: el carrito de Tiendanube vive en la sesión de librerialerma.com.ar, así que lo agrega la
+  // página de la tienda (mismo origen) con el script de docs/tiendanube-snippet.html. Si ese script no
+  // está, se ofrece la lista de productos con links.
+  async function addToCart() {
+    let validated;
+    try { validated = await api("/api/presupuesto/validar", { lines: selectionLines() }); }
+    catch (e) { return toast(e.message); }
+    const lines = validated.lines.filter((l) => l.available && l.storeProductId);
+    track("add_to_cart_clicked", { items: lines.length, total: Math.round(validated.total) });
+    if (!lines.length) return toast("No hay productos disponibles para agregar.");
+    const payload = lines.map((l) => ({ productId: l.storeProductId, variantId: l.variantId, options: l.variantOptions || [], quantity: l.packs, name: l.name }));
+
+    if (embedded) {
+      const ok = await new Promise((resolve) => {
+        const timer = setTimeout(() => { window.removeEventListener("message", onMsg); resolve(null); }, 2500);
+        function onMsg(e) {
+          if (!/librerialerma\.com\.ar$/.test(new URL(e.origin).hostname)) return;
+          if (e.data && e.data.type === "lerma-presupuestador:cart-ack") { clearTimeout(timer); window.removeEventListener("message", onMsg); resolve(true); }
+        }
+        window.addEventListener("message", onMsg);
+        window.parent.postMessage({ type: "lerma-presupuestador:add-to-cart", lines: payload }, "*");
+      });
+      if (ok) { track("purchase_flow_started", { items: lines.length }); return toast("Agregando al carrito…"); }
+    }
+    openCartFallback(validated);
+  }
+
+  function openCartFallback(validated) {
+    const root = $("#sheet-root");
+    const avail = validated.lines.filter((l) => l.available);
+    root.innerHTML = `
+      <div class="sheet-backdrop" data-close>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+          <header><h3 id="cart-title">Tus productos en la tienda</h3><button class="icon-btn" data-close aria-label="Cerrar">✕</button></header>
+          <div class="body">
+            <p class="asked-big">Abrí cada producto y agregalo al carrito con la cantidad indicada.</p>
+            <div class="options">${avail.map((l) => `
+              <a class="option" href="${esc(l.url)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">
+                ${l.imageUrl ? `<img class="thumb" src="${esc(l.imageUrl)}" alt="" loading="lazy" width="52" height="52">` : IMG_PLACEHOLDER}
+                <span><span class="tag">Cantidad: ${l.packs}${l.variantLabel ? " · " + esc(l.variantLabel) : ""}</span><br><span class="n">${esc(l.name)}</span></span>
+                <span class="p">${money(l.subtotal)}</span>
+              </a>`).join("")}</div>
+            <p class="fineprint">Total estimado: <strong>${money(validated.total)}</strong></p>
+          </div>
+        </div>
+      </div>`;
+    root.querySelectorAll("[data-close]").forEach((el) => (el.onclick = (e) => { if (e.target === el) root.innerHTML = ""; }));
+  }
+
+  // Respuesta del carrito desde la tienda
+  window.addEventListener("message", (e) => {
+    let host = "";
+    try { host = new URL(e.origin).hostname; } catch { return; }
+    if (!/librerialerma\.com\.ar$/.test(host) || !e.data) return;
+    if (e.data.type === "lerma-presupuestador:cart-result") {
+      const { added = 0, failed = [] } = e.data;
+      track("cart_result", { added, failed: failed.length });
+      if (failed.length) toast(`Agregamos ${added}. ${failed.length} sin stock suficiente.`);
+    }
   });
 
-  async function comprar() {
-    const btn = document.querySelector('.btn-primary');
-    if (!btn || _allClickableItems.length === 0) return;
-
-    btn.disabled = true;
-    btn.textContent = "Agregando al carrito…";
-
-    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
-    const total = _allClickableItems.filter(i => !i.inStoreOnly).reduce((s, i) => s + i.subtotal, 0);
-
-    const cartHtml = `
-      <div class="modal-requested" style="margin-bottom:1rem">
-        Abrí cada producto para agregarlo al carrito de la tienda:
-      </div>
-      <div style="max-height:280px;overflow-y:auto;margin-bottom:1.25rem">
-        ${_allClickableItems.map((item) => {
-          const url = item.catalogSlug
-            ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
-            : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
-          return `
-            <a href="${url}" target="_blank" rel="noopener"
-               style="display:flex;align-items:center;justify-content:space-between;
-                      padding:0.6rem 0.75rem;border-radius:0.6rem;margin-bottom:0.4rem;
-                      background:${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'};text-decoration:none;color:var(--ink);
-                      border:1px solid ${item.inStoreOnly ? '#fcd34d' : 'var(--border)'};transition:background 0.15s"
-               onmouseover="this.style.background='${item.inStoreOnly ? '#fef9ec' : 'var(--accent-light)'}'"
-               onmouseout="this.style.background='${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'}'">
-              <span style="font-size:0.85rem;flex:1">${esc(item.catalogName)}${item.inStoreOnly ? ' <span style="font-size:0.7em;color:#d97706">(sucursal)</span>' : ''}</span>
-              <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;border-radius:2rem;margin:0 0.5rem">x${esc(item.quantity)}</span>
-              <span style="font-size:0.8rem;font-weight:600;color:${item.inStoreOnly ? '#d97706' : 'var(--accent)'}">
-                ${item.inStoreOnly ? 'Consultar' : fmt(item.unitPrice * item.quantity)}
-              </span>
-              <span style="margin-left:0.5rem;font-size:0.8rem">→</span>
-            </a>`;
-        }).join("")}
-      </div>
-      <div style="background:var(--ink);color:white;border-radius:0.75rem;
-                  padding:0.85rem 1.25rem;display:flex;justify-content:space-between;
-                  align-items:center;margin-bottom:1rem">
-        <span style="font-size:0.85rem;opacity:0.7">Total estimado (online)</span>
-        <span style="font-family:'Fraunces',serif;font-size:1.4rem">${fmt(total)}</span>
-      </div>
-      <a href="https://www.librerialerma.com.ar" target="_blank" rel="noopener"
-         style="display:flex;align-items:center;justify-content:center;gap:0.4rem;
-                width:100%;padding:0.85rem;background:var(--accent);color:white;
-                border:none;border-radius:0.7rem;font-family:'DM Sans',sans-serif;
-                font-size:0.95rem;font-weight:600;text-decoration:none;transition:all 0.2s"
-         onmouseover="this.style.background='#c94a1a'"
-         onmouseout="this.style.background='var(--accent)'">
-        🛒 Ir a la tienda →
-      </a>
-    `;
-
-    document.getElementById("modalBody").innerHTML = cartHtml;
-    document.getElementById("productModal").classList.add("show");
-    document.body.style.overflow = "hidden";
-    document.getElementById("modalBox").querySelector(".modal-title").textContent =
-      `${_allClickableItems.length} productos encontrados`;
-
-    btn.disabled = false;
-    btn.textContent = "Agregar todo al carrito →";
-  }
+  setTab("file");
+})();
 </script>
 </body>
 </html>

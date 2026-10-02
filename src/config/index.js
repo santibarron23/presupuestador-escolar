@@ -54,7 +54,7 @@ module.exports = {
     name: "Librería Lerma",
     address: process.env.STORE_ADDRESS || "Belgrano 635, Salta",
     phone: process.env.STORE_PHONE || "0387-4314736",
-    whatsapp: process.env.STORE_WHATSAPP || "",
+    whatsapp: process.env.STORE_WHATSAPP || "5493874576331",
     website: "librerialerma.com.ar",
     budgetValidityDays: num(process.env.BUDGET_VALIDITY_DAYS, 7),
   },

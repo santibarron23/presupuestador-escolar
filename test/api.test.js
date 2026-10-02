@@ -152,6 +152,45 @@ test("CORS sólo para la tienda", async () => {
   assert.equal(ok.headers.get("access-control-allow-origin"), "https://www.librerialerma.com.ar");
 });
 
+test("progreso real: ?stream=1 emite etapas y el resultado final", async () => {
+  fake.mode = "ok";
+  const fd = new FormData();
+  fd.append("texto", "2 lápices negros\n1 goma de borrar");
+  const res = await fetch(base + "/api/presupuestar?stream=1", { method: "POST", body: fd });
+  assert.match(res.headers.get("content-type"), /text\/event-stream/);
+  const body = await res.text();
+  const stages = [...body.matchAll(/event: stage\ndata: (.*)/g)].map((m) => JSON.parse(m[1]).stage);
+  assert.deepEqual(stages.filter((s) => s !== "checking"), ["reading", "extracting", "matching", "pricing"]);
+  const result = JSON.parse(body.match(/event: result\ndata: (.*)/)[1]);
+  assert.equal(result.success, true);
+});
+
+test("progreso real: los errores llegan como evento, sin detalles internos", async () => {
+  fake.mode = "overloaded";
+  const fd = new FormData();
+  fd.append("lista", new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10])], { type: "image/jpeg" }), "f.jpg");
+  const body = await (await fetch(base + "/api/presupuestar?stream=1", { method: "POST", body: fd })).text();
+  const err = JSON.parse(body.match(/event: error\ndata: (.*)/)[1]);
+  assert.equal(err.status, 503);
+  assert.doesNotMatch(err.error, /529|overload/i);
+  fake.mode = "ok";
+});
+
+test("validar devuelve lo necesario para el carrito real", async () => {
+  const p = store.products.find((x) => x.sellable && x.productId && x.variants.length > 1);
+  const v = p.variants.find((x) => x.sellable);
+  const b = await (await fetch(base + "/api/presupuesto/validar", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ lines: [{ productId: p.id, variantId: v.id, packs: 1 }] }) })).json();
+  assert.equal(b.lines[0].storeProductId, p.productId);
+  assert.deepEqual(b.lines[0].variantOptions, v.options);
+});
+
+test("config del widget y versión anterior disponible", async () => {
+  const c = await (await fetch(base + "/api/widget-config")).json();
+  assert.match(c.whatsapp, /^549/);
+  assert.equal((await fetch(base + "/widget/v1")).status, 200);
+});
+
 test("widget sólo embebible desde la tienda", async () => {
   const res = await fetch(base + "/widget");
   assert.equal(res.status, 200);

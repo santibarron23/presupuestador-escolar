@@ -1,0 +1,88 @@
+<!--
+  Código para la página "Presupuestá tu lista escolar" de Tiendanube
+  (Administrador → Mi tienda → Páginas → editar la página → modo HTML).
+  Reemplaza al <iframe> + <script> actuales.
+
+  Qué hace:
+  1. Muestra el presupuestador y ajusta el alto del iframe (igual que antes).
+  2. Carrito real: el presupuestador le pasa los productos elegidos y este script los agrega al carrito de la
+     tienda con el mismo pedido que usa el botón "Agregar al carrito" de cada producto (POST /comprar/).
+     Corre en librerialerma.com.ar, así que usa la sesión normal del cliente. Al terminar abre el carrito.
+  3. Reenvía los eventos del presupuestador a Google Analytics (gtag) y Meta (fbq) si ya están en la tienda.
+     No agrega trackers nuevos.
+
+  Seguridad: sólo acepta mensajes del dominio del presupuestador y sólo agrega productos (nunca compra,
+  nunca toca datos del cliente). Cantidades limitadas a 1–99 y como máximo 120 productos por pedido.
+-->
+<iframe class="presupuestador-iframe" title="Presupuestá tu lista escolar"
+        src="https://presupuestador-escolar.onrender.com/widget" loading="lazy"
+        style="width:100%;min-height:560px;border:0;display:block"></iframe>
+<script>
+(function () {
+  var ORIGIN = "https://presupuestador-escolar.onrender.com";
+  var iframe = document.querySelector(".presupuestador-iframe");
+
+  function reply(msg) { iframe.contentWindow.postMessage(msg, ORIGIN); }
+
+  // Agrega un producto con el mismo formulario que usa la ficha de producto de Tiendanube.
+  function addOne(line) {
+    var body = new FormData();
+    body.append("add_to_cart", String(line.productId));
+    body.append("quantity", String(line.quantity));
+    (line.options || []).forEach(function (opt, i) { body.append("variation[" + i + "]", opt); });
+    return fetch("/comprar/", { method: "POST", body: body, credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res && res.success) return res;
+        // Sin stock suficiente: la tienda informa cuánto hay; se agrega eso (igual que hace el tema).
+        var stock = res && res.errors && res.errors[0] && res.errors[0].stock;
+        if (typeof stock === "number" && stock > 0 && stock < line.quantity) {
+          return addOne({ productId: line.productId, options: line.options, quantity: stock });
+        }
+        throw new Error("sin stock");
+      });
+  }
+
+  function openCart(cart) {
+    try { if (window.LS && LS.updateCart && cart) LS.updateCart(cart); } catch (e) {}
+    var toggle = document.querySelector(".js-toggle-cart");
+    if (toggle) toggle.click(); else window.location.href = "/comprar/";
+  }
+
+  window.addEventListener("message", function (e) {
+    if (e.origin !== ORIGIN || !e.data) return;
+
+    // 1. Alto del iframe
+    if (e.data.height) { iframe.style.height = (e.data.height + 24) + "px"; return; }
+
+    // 2. Eventos de analítica
+    if (e.data.type === "lerma-presupuestador:event") {
+      var params = e.data.params || {};
+      if (typeof window.gtag === "function") window.gtag("event", "presupuestador_" + e.data.event, params);
+      if (typeof window.fbq === "function" && e.data.event === "add_to_cart_clicked") window.fbq("track", "AddToCart", { value: params.total, currency: "ARS" });
+      return;
+    }
+
+    // 3. Carrito
+    if (e.data.type === "lerma-presupuestador:add-to-cart" && Array.isArray(e.data.lines)) {
+      reply({ type: "lerma-presupuestador:cart-ack" });
+      var lines = e.data.lines.slice(0, 120).filter(function (l) { return l && /^\d+$/.test(String(l.productId)); }).map(function (l) {
+        return { productId: l.productId, options: Array.isArray(l.options) ? l.options.slice(0, 3).map(String) : [],
+                 quantity: Math.max(1, Math.min(99, parseInt(l.quantity, 10) || 1)), name: String(l.name || "") };
+      });
+      var added = 0, failed = [], lastCart = null;
+      // De a uno: el carrito de Tiendanube no acepta escrituras en paralelo.
+      lines.reduce(function (p, line) {
+        return p.then(function () {
+          return addOne(line).then(function (res) { added++; lastCart = res.cart || lastCart; })
+            .catch(function () { failed.push(line.name); });
+        });
+      }, Promise.resolve()).then(function () {
+        reply({ type: "lerma-presupuestador:cart-result", added: added, failed: failed });
+        if (added) openCart(lastCart);
+      });
+    }
+  });
+})();
+</script>

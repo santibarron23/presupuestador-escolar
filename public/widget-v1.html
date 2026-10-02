@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presupuestador de Lista Escolar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #1a1a2e;
+      --paper: #faf7f2;
+      --cream: #f0ebe0;
+      --accent: #e85d26;
+      --accent-light: #fde8dc;
+      --green: #2d6a4f;
+      --green-light: #d8f3dc;
+      --yellow: #f4a261;
+      --border: #d4c9b8;
+      --text-muted: #7a7060;
+      /* ── NUEVO: colores para "solo en sucursal" ── */
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --amber-border: #fcd34d;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: unset;
+      padding: 1.5rem 1rem;
+      overflow-x: hidden;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Cuando se embebe en iframe, eliminar padding y fondo propio */
+    html.in-iframe body {
+      padding: 0;
+      background: transparent;
+      min-height: unset;
+    }
+
+    .widget {
+      max-width: 780px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.9rem;
+      border-radius: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .header h1 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+      color: var(--ink);
+    }
+
+    .header h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 300;
+    }
+
+    /* ── UPLOAD ZONE ── */
+    .upload-card {
+      background: white;
+      border: 2px dashed var(--border);
+      border-radius: 1.5rem;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .upload-card:hover, .upload-card.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      transform: translateY(-2px);
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--cream);
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 1.8rem;
+      transition: transform 0.3s ease;
+    }
+
+    .upload-card:hover .upload-icon {
+      transform: scale(1.1) rotate(-5deg);
+    }
+
+    .upload-card h2 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.4rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .upload-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-types {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .type-tag {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.25rem 0.7rem;
+      border-radius: 2rem;
+    }
+
+    #fileInput { display: none; }
+
+    /* ── FILE SELECTED ── */
+    .file-selected {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      background: var(--green-light);
+      border: 2px solid var(--green);
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      margin-top: 1rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .file-selected.show { display: flex; }
+
+    .file-icon { font-size: 1.5rem; }
+
+    .file-info { flex: 1; text-align: left; }
+    .file-name { font-weight: 600; font-size: 0.95rem; color: var(--green); }
+    .file-size { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ── BUTTON ── */
+    .btn-presupuestar {
+      display: block;
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: var(--ink);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .btn-presupuestar:hover:not(:disabled) {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(232, 93, 38, 0.35);
+    }
+
+    .btn-presupuestar:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .loading.show { display: block; }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid var(--cream);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+
+    .loading h3 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.3rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .loading-steps {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      opacity: 0.3;
+      transition: opacity 0.5s ease;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .step.active { opacity: 1; }
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    /* ── RESULTS ── */
+    .results { display: none; animation: fadeUp 0.4s ease both; }
+    .results.show { display: block; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .summary-card.highlight {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: white;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.6;
+      margin-bottom: 0.4rem;
+    }
+
+    .summary-value {
+      font-family: 'Fraunces', serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .summary-sub {
+      font-size: 0.78rem;
+      opacity: 0.6;
+      margin-top: 0.2rem;
+    }
+
+    /* ── ITEMS LIST ── */
+    .items-section {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .items-header {
+      padding: 1rem 1.5rem;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ── NUEVO: sección solo en sucursal ── */
+    .items-section.instore-section {
+      border-color: var(--amber-border);
+    }
+    .items-header.instore-header {
+      background: var(--amber-light);
+      border-bottom-color: var(--amber-border);
+      color: var(--amber);
+    }
+    .instore-row {
+      background: var(--amber-light);
+    }
+    .instore-row:hover {
+      background: #fef9ec !important;
+    }
+    .instore-badge {
+      font-size: 0.68rem;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid var(--amber-border);
+      padding: 0.12rem 0.45rem;
+      border-radius: 0.3rem;
+      margin-left: 0.35rem;
+      white-space: nowrap;
+    }
+    .instore-note {
+      font-size: 0.75rem;
+      color: #92400e;
+      margin-top: 0.25rem;
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: start;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--cream);
+      transition: background 0.15s ease;
+    }
+
+    .item-row:last-child { border-bottom: none; }
+    .item-row:hover { background: var(--paper); }
+
+    .item-left { min-width: 0; }
+
+    .item-requested {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .item-matched {
+      font-weight: 500;
+      font-size: 0.95rem;
+      white-space: normal;
+      word-break: break-word;
+      margin-bottom: 0.2rem;
+    }
+
+    /* SKU visible */
+    .item-sku {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      background: var(--cream);
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      display: inline-block;
+      margin-top: 0.15rem;
+    }
+
+    .item-qty {
+      font-size: 0.8rem;
+      background: var(--cream);
+      padding: 0.2rem 0.6rem;
+      border-radius: 2rem;
+      white-space: nowrap;
+      align-self: start;
+      margin-top: 0.15rem;
+    }
+
+    .item-price {
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+      align-self: start;
+      margin-top: 0.1rem;
+    }
+
+    .item-price small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .review-badge {
+      font-size: 0.68rem;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 0.1rem 0.45rem;
+      border-radius: 0.3rem;
+      margin-left: 0.35rem;
+      white-space: nowrap;
+    }
+    .item-variant { font-weight: 400; color: var(--text-muted); font-size: 0.85rem; }
+    .item-note { font-size: 0.75rem; color: var(--green); margin-bottom: 0.2rem; }
+
+    .not-found-row {
+      background: #fff8f6;
+    }
+
+    .not-found-badge {
+      font-size: 0.7rem;
+      background: #fee;
+      color: #c44;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.3rem;
+      margin-left: 0.5rem;
+    }
+
+    /* ── TOTAL BAR ── */
+    .total-bar {
+      background: var(--ink);
+      color: white;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .total-label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    .total-amount {
+      font-family: 'Fraunces', serif;
+      font-size: 2rem;
+    }
+
+    /* ── ACTIONS ── */
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 0.85rem;
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--ink);
+      background: var(--cream);
+    }
+
+    .btn-primary {
+      flex: 2;
+      padding: 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: #c94a1a;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(232, 93, 38, 0.3);
+    }
+
+    /* ── COVERAGE BAR ── */
+    .coverage-bar {
+      height: 6px;
+      background: var(--cream);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0.4rem 0 0.2rem;
+    }
+
+    .coverage-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--yellow));
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+
+    /* ── ERROR ── */
+    .error-box {
+      display: none;
+      background: #fff0ed;
+      border: 1.5px solid #f4a49a;
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      color: #c0392b;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .error-box.show { display: block; }
+
+
+    /* ── PRODUCT MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 26, 46, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease both; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 440px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+      animation: slideUp 0.25s ease both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+      background: var(--cream);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0.45;
+      padding: 0.1rem 0.3rem;
+      border-radius: 0.4rem;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .modal-close:hover { opacity: 1; background: var(--border); }
+    .modal-body { padding: 1.5rem; }
+    .modal-requested {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    .modal-product-name {
+      font-family: 'Fraunces', serif;
+      font-size: 1.3rem;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+    .modal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-tag {
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 2rem;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--paper);
+    }
+    .modal-tag.sku { font-family: monospace; background: var(--cream); }
+    .modal-price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--cream);
+      border-radius: 0.85rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-price-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .modal-price-val {
+      font-family: 'Fraunces', serif;
+      font-size: 1.6rem;
+      color: var(--ink);
+    }
+    .modal-qty-info { text-align: right; }
+    .modal-qty-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+    .modal-subtotal { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
+    .modal-btn-ver {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.7rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .modal-btn-ver:hover {
+      background: #c94a1a;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(232,93,38,0.3);
+    }
+    /* NUEVO: modal notice sucursal */
+    .modal-instore-notice {
+      background: var(--amber-light);
+      border: 1.5px solid var(--amber-border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+      color: #92400e;
+      line-height: 1.5;
+    }
+    .modal-instore-notice strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Clickeable rows */
+    .item-row.clickable { cursor: pointer; }
+    .item-row.clickable:hover { background: var(--accent-light); }
+    .item-row.clickable:hover .item-matched { color: var(--accent); }
+    .item-view-hint {
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-top: 0.15rem;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .item-row.clickable:hover .item-view-hint { opacity: 1; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 500px) {
+      .actions { flex-direction: column; }
+      .item-row { grid-template-columns: 1fr auto; }
+      .loading-steps { gap: 1rem; }
+    }
+  
+    .btn-pdf {
+      flex: 1.5;
+      padding: 0.85rem;
+      background: white;
+      color: #c0392b;
+      border: 1.5px solid #c0392b;
+      border-radius: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-pdf:hover { background: #fff5f5; transform: translateY(-1px); }
+    .btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  </style>
+</head>
+<body>
+
+<div class="widget">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">✨ Nuevo</div>
+    <h1>Presupuestá tu<br><em>lista escolar</em></h1>
+    <p>Subí la lista de útiles y calculamos el precio al instante</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📄</div>
+    <h2>Subí la lista de útiles</h2>
+    <p>PDF, Word, foto de la lista escrita a mano, o texto</p>
+    <div class="upload-types">
+      <span class="type-tag">PDF</span>
+      <span class="type-tag">Word (.docx)</span>
+      <span class="type-tag">Foto (.jpg / .png)</span>
+      <span class="type-tag">Texto (.txt)</span>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp" />
+  </div>
+
+  <!-- FILE SELECTED -->
+  <div class="file-selected" id="fileSelected">
+    <span class="file-icon">📎</span>
+    <div class="file-info">
+      <div class="file-name" id="fileName">—</div>
+      <div class="file-size" id="fileSize">—</div>
+    </div>
+    <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;opacity:0.5">✕</button>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox">
+    <strong>¡Ups!</strong> <span id="errorMsg"></span>
+  </div>
+
+  <!-- BUTTON -->
+  <button class="btn-presupuestar" id="btnPresupuestar" disabled onclick="presupuestar()">
+    Calcular presupuesto →
+  </button>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <h3>Analizando la lista…</h3>
+    <p style="color:var(--text-muted);font-size:0.9rem">La IA está leyendo y comparando con nuestros precios</p>
+    <div class="loading-steps">
+      <div class="step" id="step1"><div class="step-dot"></div>Leyendo</div>
+      <div class="step" id="step2"><div class="step-dot"></div>Interpretando</div>
+      <div class="step" id="step3"><div class="step-dot"></div>Comparando</div>
+      <div class="step" id="step4"><div class="step-dot"></div>Listo</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results"></div>
+
+
+  <!-- PRODUCT MODAL -->
+  <div class="modal-overlay" id="productModal" onclick="closeModal(event)">
+    <div class="modal" id="modalBox">
+      <div class="modal-header">
+        <span class="modal-title">Detalle del producto</span>
+        <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API_URL = "/api/presupuestar"; // mismo servidor que sirve el widget
+
+  let selectedFile = null;
+
+  // Todo texto que viene de la lista subida o de la IA se escapa antes de ir a innerHTML.
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function reportHeight(expanded) {
+    const height = expanded ? document.body.scrollHeight : getCompactHeight();
+    window.parent.postMessage({ height }, "*");
+  }
+
+  function getCompactHeight() {
+    const btn = document.getElementById("btnPresupuestar");
+    if (!btn) return 600;
+    const rect = btn.getBoundingClientRect();
+    const h = window.scrollY + rect.bottom + 180;
+    return h > 100 ? h : document.body.scrollHeight;
+  }
+
+  function reportCompactWithRetry(attempts) {
+    reportHeight(false);
+    if (attempts > 0) setTimeout(() => reportCompactWithRetry(attempts - 1), 300);
+  }
+  window.addEventListener("load", () => reportCompactWithRetry(3));
+
+  const ro = new ResizeObserver(() => {
+    const hasResults = document.getElementById("results")?.classList.contains("show");
+    const isLoading = document.getElementById("loading")?.classList.contains("show");
+    if (hasResults || isLoading) reportHeight(true);
+    else reportHeight(false);
+  });
+  ro.observe(document.body);
+
+  // ─── DRAG & DROP ──────────────────────────────────────────────
+  const dropZone = document.getElementById("dropZone");
+  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  document.getElementById("fileInput").addEventListener("change", (e) => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    document.getElementById("fileName").textContent = file.name;
+    document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " KB";
+    document.getElementById("fileSelected").classList.add("show");
+    document.getElementById("btnPresupuestar").disabled = false;
+    document.getElementById("errorBox").classList.remove("show");
+    document.getElementById("results").classList.remove("show");
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("fileSelected").classList.remove("show");
+    document.getElementById("btnPresupuestar").disabled = true;
+  }
+
+  // ─── LOADING STEPS ────────────────────────────────────────────
+  let stepInterval = null;
+  function startSteps() {
+    let current = 1;
+    stepInterval = setInterval(() => {
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      if (current <= 4) {
+        document.getElementById("step" + current).classList.add("active");
+        current++;
+      }
+    }, 1200);
+  }
+
+  function stopSteps() {
+    clearInterval(stepInterval);
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  }
+
+  // Las fotos de celular suelen pesar más de 5 MB (límite para leerlas): se achican a 2000 px en JPEG.
+  async function shrinkImage(file) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1.5 * 1024 * 1024) return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+      return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }) : file;
+    } catch (e) {
+      return file;
+    }
+  }
+
+  // ─── PRESUPUESTAR ─────────────────────────────────────────────
+  async function presupuestar() {
+    if (!selectedFile) return;
+
+    document.getElementById("btnPresupuestar").disabled = true;
+    document.getElementById("loading").classList.add("show");
+    document.getElementById("results").classList.remove("show");
+    document.getElementById("errorBox").classList.remove("show");
+    startSteps();
+
+    try {
+      const formData = new FormData();
+      formData.append("lista", await shrinkImage(selectedFile), selectedFile.name);
+
+      let res;
+      try {
+        res = await fetch(API_URL, { method: "POST", body: formData });
+      } catch (netErr) {
+        throw new Error("Error de conexión. Verificá tu internet e intentá de nuevo.");
+      }
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* respuesta no JSON */ }
+      // El servidor ya devuelve mensajes pensados para la familia.
+      if (!res.ok || !data || !data.success) throw new Error((data && data.error) || "Ocurrió un error al procesar la lista. Intentá de nuevo en unos segundos.");
+
+      renderResults(data);
+    } catch (err) {
+      document.getElementById("errorMsg").textContent = err.message;
+      document.getElementById("errorBox").classList.add("show");
+      document.getElementById("btnPresupuestar").disabled = false;
+    } finally {
+      stopSteps();
+      document.getElementById("loading").classList.remove("show");
+    }
+  }
+
+  // ─── RENDER RESULTS ───────────────────────────────────────────
+  // CAMBIO: separamos found / inStore / notFound
+  let _allClickableItems = [];
+
+  function renderResults(data) {
+    const { summary, items } = data;
+
+    const found    = items.filter(i => i.matched && !i.inStoreOnly);
+    const inStore  = items.filter(i => i.matched && i.inStoreOnly);
+    const notFound = items.filter(i => !i.matched);
+
+    // índice global para el modal: found primero, luego inStore
+    _allClickableItems = [...found, ...inStore];
+
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+    let html = `
+      <div class="summary-grid">
+        <div class="summary-card highlight">
+          <div class="summary-label">Total estimado</div>
+          <div class="summary-value">${fmt(summary.estimatedTotal)}</div>
+          <div class="summary-sub">productos con precio online</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Ítems en lista</div>
+          <div class="summary-value">${summary.totalItems}</div>
+          <div class="summary-sub">productos solicitados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Cobertura</div>
+          <div class="summary-value">${summary.coveragePercent}%</div>
+          <div class="coverage-bar"><div class="coverage-fill" style="width:${summary.coveragePercent}%"></div></div>
+          <div class="summary-sub">${found.length + inStore.length} de ${summary.totalItems} encontrados</div>
+        </div>
+      </div>
+    `;
+
+    // ── Sección 1: disponibles online ──
+    if (found.length > 0) {
+      html += `
+        <div class="items-section">
+          <div class="items-header">✅ Productos disponibles en nuestra tienda</div>
+          ${found.map((item, idx) => `
+            <div class="item-row clickable" onclick="openModal(${idx})">
+              <div class="item-left">
+                <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
+                <div class="item-matched">${esc(item.catalogName)}${item.product && item.product.variantLabel ? ` <span class="item-variant">· ${esc(item.product.variantLabel)}</span>` : ""}${item.status === "review" ? ` <span class="review-badge" title="Encontramos varias opciones: revisá que sea el que pide la lista">Revisá</span>` : ""}</div>
+                ${item.quantityNote ? `<div class="item-note">${esc(item.quantityNote)}</div>` : ""}
+                ${item.catalogSku ? `<span class="item-sku">SKU: ${esc(item.catalogSku)}</span>` : ""}
+                <div class="item-view-hint">👁 Ver producto →</div>
+              </div>
+              <span class="item-qty">x${esc(item.quantity)}</span>
+              <div class="item-price">
+                ${fmt(item.subtotal)}
+                <small>${fmt(item.unitPrice)} c/u</small>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    // ── Sección 2: solo en sucursal (NUEVO) ──
+    if (inStore.length > 0) {
+      html += `
+        <div class="items-section instore-section">
+          <div class="items-header instore-header">🏪 Disponible solo en sucursal</div>
+          ${inStore.map((item, idx) => `
+            <div class="item-row clickable instore-row" onclick="openModal(${found.length + idx})">
+              <div class="item-left">
+                <div class="item-requested">Solicitado: "${esc(item.requestedItem)}"</div>
+                <div class="item-matched">
+                  ${esc(item.catalogName)}
+                  <span class="instore-badge">🏪 Solo sucursal</span>
+                </div>
+                <div class="instore-note">No se vende online · Consultá en nuestras sucursales o por WhatsApp</div>
+              </div>
+              <span class="item-qty">x${esc(item.quantity)}</span>
+              <div class="item-price" style="color:var(--amber)">
+                Consultar
+                <small style="color:var(--text-muted)">en sucursal</small>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    // ── Sección 3: no encontrados ──
+    if (notFound.length > 0) {
+      html += `
+        <div class="items-section">
+          <div class="items-header" style="background:#fff8f6;color:#c44">⚠️ Productos no encontrados en catálogo</div>
+          ${notFound.map(item => `
+            <div class="item-row not-found-row">
+              <div class="item-left">
+                <div class="item-matched">${esc(item.requestedItem)} <span class="not-found-badge">${item.status === "suggested" ? "Sin confirmar" : "No disponible"}</span></div>
+                <div class="item-requested">${item.status === "suggested" ? "No pudimos confirmar cuál es: consultalo con un asesor." : esc(item.reason || "Consultá disponibilidad con un asesor")}</div>
+              </div>
+              <span class="item-qty">x${esc(item.quantity)}</span>
+              <div class="item-price" style="color:var(--text-muted)">—</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    // Guardar datos para PDF
+    window._presupuestoData = { items, summary, found, inStore, notFound };
+
+    html += `
+      <div class="total-bar">
+        <div>
+          <div class="total-label">Total estimado de tu lista</div>
+          <div style="font-size:0.75rem;opacity:0.5;margin-top:0.2rem">*Precios pueden variar según stock · Resmas disponibles solo en sucursal</div>
+        </div>
+        <div class="total-amount">${fmt(summary.estimatedTotal)}</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-secondary" onclick="location.reload()">↺ Nueva lista</button>
+        <button class="btn-pdf" onclick="descargarPDF()" id="btn-pdf">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+          Descargar presupuesto PDF
+        </button>
+        <button class="btn-primary" onclick="comprar()">Agregar todo al carrito →</button>
+      </div>
+    `;
+
+    const container = document.getElementById("results");
+    container.innerHTML = html;
+    container.classList.add("show");
+    container.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => reportHeight(true), 100);
+  }
+
+
+  // ─── DESCARGAR PDF ───────────────────────────────────────────
+  function descargarPDF() {
+    if (!window._presupuestoData) return;
+    const { items, summary, found, inStore, notFound } = window._presupuestoData;
+    const total = summary.estimatedTotal || 0;
+    const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
+    const date = new Date().toLocaleDateString("es-AR");
+
+    const foundRows = found.map((item, i) => `
+      <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${item.quantity || 1}</td>
+        <td style="color:#888;font-size:0.8em">${esc(item.catalogSku || item.catalogId || '-')}</td>
+        <td>${esc(item.catalogName || item.requestedItem || '')}</td>
+        <td style="text-align:right;color:#555">${fmt(item.unitPrice || 0)}</td>
+        <td style="text-align:right;font-weight:700;color:#2d7a3a">${fmt(item.subtotal || 0)}</td>
+      </tr>`).join('');
+
+    const inStoreRows = inStore.map((item, i) => `
+      <tr style="background:${i%2===0?'#fffbeb':'#fefce8'}">
+        <td>${item.quantity || 1}</td>
+        <td style="color:#888;font-size:0.8em">—</td>
+        <td>${esc(item.catalogName || item.requestedItem || '')}</td>
+        <td style="text-align:right;color:#d97706">Consultar</td>
+        <td style="text-align:right;color:#d97706;font-weight:700">En sucursal</td>
+      </tr>`).join('');
+
+    const notFoundRows = notFound.map((item, i) => `
+      <tr style="background:${i%2===0?'#fff8f8':'#fff'}">
+        <td>${item.quantity || 1}</td>
+        <td colspan="4" style="color:#c0392b">${esc(item.requestedItem || '')}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Presupuesto Librería Lerma</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #222; }
+    .header { background: #2d7a3a; color: white; padding: 20px 30px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { font-size: 22px; }
+    .header p { font-size: 11px; opacity: 0.85; margin-top: 4px; }
+    .header .date { font-size: 11px; opacity: 0.8; }
+    .summary { background: #f5f5f5; border: 1px solid #ddd; margin: 20px 30px; padding: 14px 20px; border-radius: 6px; display:flex; justify-content:space-between; align-items:center; }
+    .summary .total-val { font-size: 22px; font-weight: 700; color: #2d7a3a; }
+    .summary .total-lbl { font-size: 10px; color: #888; }
+    .summary .meta { font-size: 11px; color: #666; }
+    .section { margin: 0 30px 20px; }
+    .section-title { font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; }
+    .title-green  { background: #2d7a3a; color: white; }
+    .title-amber  { background: #d97706; color: white; }
+    .title-red    { background: #c0392b; color: white; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #2d7a3a; color: white; padding: 7px 10px; text-align: left; font-size: 11px; }
+    th.right, td.right { text-align: right; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    .total-row { background: #2d7a3a !important; color: white; }
+    .total-row td { color: white; font-weight: 700; font-size: 14px; border:none; }
+    table.amber-tbl th { background: #d97706; }
+    table.not-found th { background: #c0392b; }
+    .footer { background: #2d7a3a; color: white; text-align: center; padding: 12px; font-size: 10px; margin-top: 30px; }
+    .note { font-size: 10px; color: #999; margin: 8px 30px; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Librería Lerma</h1>
+      <p>Presupuesto Escolar 2026</p>
+    </div>
+    <div class="date">${date}</div>
+  </div>
+
+  <div class="summary">
+    <div class="meta">
+      Artículos con precio online: <strong>${found.length}</strong><br>
+      Solo en sucursal: <strong>${inStore.length}</strong><br>
+      No disponibles: <strong>${notFound.length}</strong>
+    </div>
+    <div style="text-align:right">
+      <div class="total-lbl">TOTAL ESTIMADO (online)</div>
+      <div class="total-val">${fmt(total)}</div>
+    </div>
+  </div>
+
+  ${found.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-green">✓ Artículos disponibles en tienda online</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th style="width:80px">SKU</th>
+          <th>PRODUCTO</th>
+          <th class="right" style="width:100px">P. UNIT.</th>
+          <th class="right" style="width:110px">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>${foundRows}</tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4">TOTAL ESTIMADO</td>
+          <td style="text-align:right">${fmt(total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>` : ''}
+
+  ${inStore.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-amber">🏪 Solo disponible en sucursal — Consultá disponibilidad y precio</div>
+    <table class="amber-tbl">
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th style="width:80px">SKU</th>
+          <th>PRODUCTO</th>
+          <th class="right" style="width:100px">P. UNIT.</th>
+          <th class="right" style="width:110px">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>${inStoreRows}</tbody>
+    </table>
+  </div>
+  <p class="note">* Estos productos no se venden online. Consultá precio y disponibilidad en cualquiera de nuestras sucursales o por WhatsApp.</p>` : ''}
+
+  ${notFound.length > 0 ? `
+  <div class="section">
+    <div class="section-title title-red">⚠ Artículos no disponibles — Consultá con un asesor</div>
+    <table class="not-found">
+      <thead>
+        <tr>
+          <th style="width:50px">CANT.</th>
+          <th>ARTÍCULO SOLICITADO</th>
+        </tr>
+      </thead>
+      <tbody>${notFoundRows}</tbody>
+    </table>
+  </div>
+  <p class="note">* Estos artículos no están disponibles en el catálogo online. Consultá en la tienda o por WhatsApp.</p>` : ''}
+
+  <div class="footer">
+    Librería Lerma &nbsp;|&nbsp; Belgrano 635, Salta &nbsp;|&nbsp; Tel: 0387-4314736 &nbsp;|&nbsp; librerialerma.com.ar
+  </div>
+
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+  }
+
+  // ─── PRODUCT MODAL ────────────────────────────────────────────
+  function openModal(idx) {
+    const item = _allClickableItems[idx];
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+    const productUrl = item.product && item.product.url ? item.product.url
+      : item.catalogSlug ? `https://www.librerialerma.com.ar/productos/${encodeURIComponent(item.catalogSlug)}/`
+      : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
+
+    if (item.inStoreOnly) {
+      // NUEVO: modal especial para productos solo en sucursal
+      document.getElementById("modalBody").innerHTML = `
+        <div class="modal-requested">Solicitado en la lista:</div>
+        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${esc(item.requestedItem)}"</div>
+        <div class="modal-product-name">${esc(item.catalogName)}</div>
+        <div class="modal-meta">
+          <span class="modal-tag">Cant. solicitada: ${esc(item.quantity)}</span>
+        </div>
+        <div class="modal-instore-notice">
+          <strong>🏪 Disponible solo en sucursal</strong>
+          Este producto no se vende por nuestra tienda online. Podés consultarlo en cualquiera de nuestras sucursales o por WhatsApp para conocer disponibilidad y precio.
+        </div>
+        <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener"
+           style="background:var(--amber)">
+          Ver producto →
+        </a>
+      `;
+    } else {
+      document.getElementById("modalBody").innerHTML = `
+        <div class="modal-requested">Solicitado en la lista:</div>
+        <div class="modal-requested" style="font-style:italic;margin-bottom:0.75rem">"${esc(item.requestedItem)}"</div>
+        <div class="modal-product-name">${esc(item.catalogName)}</div>
+        <div class="modal-meta">
+          ${item.catalogSku ? `<span class="modal-tag sku">SKU ${esc(item.catalogSku)}</span>` : ""}
+          <span class="modal-tag">Cant. solicitada: ${esc(item.quantity)}</span>
+        </div>
+        <div class="modal-price-row">
+          <div>
+            <div class="modal-price-label">Precio unitario</div>
+            <div class="modal-price-val">${fmt(item.unitPrice)}</div>
+          </div>
+          <div class="modal-qty-info">
+            <div class="modal-qty-label">Subtotal (x${esc(item.quantity)})</div>
+            <div class="modal-subtotal">${fmt(item.subtotal)}</div>
+          </div>
+        </div>
+        <a class="modal-btn-ver" href="${productUrl}" target="_blank" rel="noopener">
+          🔍 Ver en la tienda →
+        </a>
+      `;
+    }
+
+    document.getElementById("productModal").classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById("productModal")) closeModalDirect();
+  }
+
+  function closeModalDirect() {
+    document.getElementById("productModal").classList.remove("show");
+    document.body.style.overflow = "";
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModalDirect();
+  });
+
+  async function comprar() {
+    const btn = document.querySelector('.btn-primary');
+    if (!btn || _allClickableItems.length === 0) return;
+
+    btn.disabled = true;
+    btn.textContent = "Agregando al carrito…";
+
+    const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+    const total = _allClickableItems.filter(i => !i.inStoreOnly).reduce((s, i) => s + i.subtotal, 0);
+
+    const cartHtml = `
+      <div class="modal-requested" style="margin-bottom:1rem">
+        Abrí cada producto para agregarlo al carrito de la tienda:
+      </div>
+      <div style="max-height:280px;overflow-y:auto;margin-bottom:1.25rem">
+        ${_allClickableItems.map((item) => {
+          const url = item.catalogSlug
+            ? `https://www.librerialerma.com.ar/productos/${item.catalogSlug}/`
+            : `https://www.librerialerma.com.ar/buscar?q=${encodeURIComponent(item.catalogName)}`;
+          return `
+            <a href="${url}" target="_blank" rel="noopener"
+               style="display:flex;align-items:center;justify-content:space-between;
+                      padding:0.6rem 0.75rem;border-radius:0.6rem;margin-bottom:0.4rem;
+                      background:${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'};text-decoration:none;color:var(--ink);
+                      border:1px solid ${item.inStoreOnly ? '#fcd34d' : 'var(--border)'};transition:background 0.15s"
+               onmouseover="this.style.background='${item.inStoreOnly ? '#fef9ec' : 'var(--accent-light)'}'"
+               onmouseout="this.style.background='${item.inStoreOnly ? '#fffbeb' : 'var(--paper)'}'">
+              <span style="font-size:0.85rem;flex:1">${esc(item.catalogName)}${item.inStoreOnly ? ' <span style="font-size:0.7em;color:#d97706">(sucursal)</span>' : ''}</span>
+              <span style="font-size:0.75rem;background:var(--cream);padding:0.15rem 0.5rem;border-radius:2rem;margin:0 0.5rem">x${esc(item.quantity)}</span>
+              <span style="font-size:0.8rem;font-weight:600;color:${item.inStoreOnly ? '#d97706' : 'var(--accent)'}">
+                ${item.inStoreOnly ? 'Consultar' : fmt(item.unitPrice * item.quantity)}
+              </span>
+              <span style="margin-left:0.5rem;font-size:0.8rem">→</span>
+            </a>`;
+        }).join("")}
+      </div>
+      <div style="background:var(--ink);color:white;border-radius:0.75rem;
+                  padding:0.85rem 1.25rem;display:flex;justify-content:space-between;
+                  align-items:center;margin-bottom:1rem">
+        <span style="font-size:0.85rem;opacity:0.7">Total estimado (online)</span>
+        <span style="font-family:'Fraunces',serif;font-size:1.4rem">${fmt(total)}</span>
+      </div>
+      <a href="https://www.librerialerma.com.ar" target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:center;gap:0.4rem;
+                width:100%;padding:0.85rem;background:var(--accent);color:white;
+                border:none;border-radius:0.7rem;font-family:'DM Sans',sans-serif;
+                font-size:0.95rem;font-weight:600;text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='#c94a1a'"
+         onmouseout="this.style.background='var(--accent)'">
+        🛒 Ir a la tienda →
+      </a>
+    `;
+
+    document.getElementById("modalBody").innerHTML = cartHtml;
+    document.getElementById("productModal").classList.add("show");
+    document.body.style.overflow = "hidden";
+    document.getElementById("modalBox").querySelector(".modal-title").textContent =
+      `${_allClickableItems.length} productos encontrados`;
+
+    btn.disabled = false;
+    btn.textContent = "Agregar todo al carrito →";
+  }
+</script>
+</body>
+</html>

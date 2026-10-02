@@ -142,23 +142,30 @@ async function disambiguate(items, results, warnings) {
   }
 }
 
-async function createBudget({ files, text, useAi = true }) {
+// onStage(nombre, datos) informa el avance real (para la barra de progreso del widget).
+async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
   const timer = stageTimer();
   const warnings = [];
+  onStage("reading");
   const source = await readSources({ files, text });
   timer.stage("read");
 
+  onStage("extracting");
   const extraction = useAi ? await extract(source, warnings) : { ...extractLines(source.text || ""), method: "deterministic" };
   timer.stage("extract");
   if (!extraction.items.length) {
     throw new BudgetError("no_items", "No encontramos productos en la lista. Revisá que sea una lista de útiles o pegá el texto.", 422);
   }
 
+  onStage("matching", { items: extraction.items.length });
   const results = extraction.items.map((it) => matchItem(it.text, store, { quantity: it.quantity }));
   timer.stage("match");
 
+  const needsRerank = results.some((r) => r.status === "review");
+  if (needsRerank && useAi && extraction.method === "ai") onStage("checking");
   const reranked = useAi && extraction.method === "ai" ? await disambiguate(extraction.items, results, warnings) : 0;
   timer.stage("rerank");
+  onStage("pricing");
 
   const items = results.map((m, i) => toResponseItem(m, i + 1, extraction.items[i].grade));
   const grades = [...new Set(items.map((i) => i.grade).filter(Boolean))];
@@ -220,7 +227,7 @@ function priceLines(lines) {
     }
     out.push({
       requestedItem, packs, available: true,
-      productId: p.id, storeProductId: p.productId, variantId: v.id, variantLabel: v.options.join(" / ") || null,
+      productId: p.id, storeProductId: p.productId, variantId: v.id, variantLabel: v.options.join(" / ") || null, variantOptions: v.options,
       name: p.name, sku: v.sku || p.sku, url: p.url, imageUrl: v.imageUrl || p.imageUrl,
       unitPrice: v.price, subtotal: v.price * packs,
     });

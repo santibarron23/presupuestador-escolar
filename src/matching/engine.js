@@ -134,6 +134,7 @@ function productView(product, choice) {
     attrs: { formato: product.attrs.formato, rayado: product.attrs.rayado },
     variantId: v.id,
     variantLabel: v.options && v.options.length ? v.options.join(" / ") : null,
+    variantOptions: v.options || [],
     hasVariants: product.variants.length > 1,
     url: product.url,
     slug: product.slug,

@@ -60,15 +60,28 @@ function createApp() {
   });
 
   // ── Presupuesto completo (archivo/s o texto pegado) ──────────────
+  // ?stream=1 → Server-Sent Events con las etapas reales y el resultado final (para la barra de progreso).
   app.post("/api/presupuestar", budgetLimiter, upload.array("lista", config.http.maxFiles), async (req, res, next) => {
+    const stream = req.query.stream === "1";
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     try {
       const text = typeof req.body.texto === "string" ? req.body.texto : "";
       const files = req.files || [];
       if (!files.length && !text.trim()) throw new BudgetError("empty", "Subí una foto o un archivo con la lista, o pegá el texto.");
-      const budget = await createBudget({ files, text });
-      res.json(budget);
+      if (stream) {
+        res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" });
+        res.flushHeaders();
+      }
+      const budget = await createBudget({ files, text, onStage: stream ? (stage, data) => send("stage", { stage, ...data }) : undefined });
+      if (stream) {
+        send("result", budget);
+        res.end();
+      } else res.json(budget);
     } catch (e) {
-      next(e);
+      if (!stream || !res.headersSent) return next(e);
+      const { status, body } = errorResponse(e, req);
+      send("error", { ...body, status });
+      res.end();
     }
   });
 
@@ -137,29 +150,43 @@ function createApp() {
 
   // ── Widget ────────────────────────────────────────────────────────
   app.use("/assets", express.static(path.join(config.root, "public", "assets"), { maxAge: "7d" }));
-  app.get("/widget", (req, res) => {
+  const sendWidget = (file) => (req, res) => {
     // Sólo se puede embeber desde la tienda.
     res.setHeader("Content-Security-Policy", `frame-ancestors 'self' ${config.http.allowedOrigins.join(" ")}`);
-    res.sendFile(path.join(config.root, "public", "widget.html"));
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(path.join(config.root, "public", file));
+  };
+  app.get("/widget", sendWidget("widget.html"));
+  app.get("/widget/v1", sendWidget("widget-v1.html")); // versión anterior, por si hay que volver atrás
+  app.get("/api/widget-config", (req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json({ whatsapp: config.store.whatsapp, storeUrl: config.catalog.storeBaseUrl, validityDays: config.store.budgetValidityDays,
+      maxFiles: config.http.maxFiles, catalogSyncedAt: store.meta.syncedAt || null });
   });
   app.get("/", (req, res) => res.json({ status: "🟢 Presupuestador activo" }));
 
   // ── Errores ───────────────────────────────────────────────────────
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
-    if (err instanceof multer.MulterError) {
-      const msg = err.code === "LIMIT_FILE_SIZE" ? "El archivo es muy pesado (máximo " + Math.round(config.http.maxUploadBytes / 1048576) + " MB)."
-        : err.code === "LIMIT_FILE_COUNT" ? `Podés subir hasta ${config.http.maxFiles} archivos.` : "No pudimos recibir el archivo.";
-      return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ error: msg, code: err.code });
-    }
-    if (err instanceof FileError) return res.status(415).json({ error: err.userMessage, code: err.code });
-    if (err instanceof BudgetError) return res.status(err.httpStatus).json({ error: err.userMessage, code: err.code });
-    if (err && err.type === "entity.parse.failed") return res.status(400).json({ error: "Datos inválidos." });
-    logger.error("unhandled_error", { id: req.id, path: req.path, message: err && err.message, stack: err && err.stack && err.stack.split("\n").slice(0, 4).join(" | ") });
-    res.status(500).json({ error: "No pudimos procesar la lista. Intentá de nuevo o escribinos por WhatsApp.", code: "internal" });
+    const { status, body } = errorResponse(err, req);
+    res.status(status).json(body);
   });
 
   return app;
+}
+
+// Error → respuesta para la familia (nunca detalles internos).
+function errorResponse(err, req) {
+  if (err instanceof multer.MulterError) {
+    const msg = err.code === "LIMIT_FILE_SIZE" ? "El archivo es muy pesado (máximo " + Math.round(config.http.maxUploadBytes / 1048576) + " MB)."
+      : err.code === "LIMIT_FILE_COUNT" ? `Podés subir hasta ${config.http.maxFiles} archivos.` : "No pudimos recibir el archivo.";
+    return { status: err.code === "LIMIT_FILE_SIZE" ? 413 : 400, body: { error: msg, code: err.code } };
+  }
+  if (err instanceof FileError) return { status: 415, body: { error: err.userMessage, code: err.code } };
+  if (err instanceof BudgetError) return { status: err.httpStatus, body: { error: err.userMessage, code: err.code } };
+  if (err && err.type === "entity.parse.failed") return { status: 400, body: { error: "Datos inválidos." } };
+  logger.error("unhandled_error", { id: req.id, path: req.path, message: err && err.message, stack: err && err.stack && err.stack.split("\n").slice(0, 4).join(" | ") });
+  return { status: 500, body: { error: "No pudimos procesar la lista. Intentá de nuevo o escribinos por WhatsApp.", code: "internal" } };
 }
 
 module.exports = { createApp };
