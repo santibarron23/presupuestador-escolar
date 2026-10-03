@@ -11,6 +11,16 @@ const { extractItems } = require("../ai/extractItems");
 const { rerank } = require("../ai/rerank");
 const { matchItem } = require("../matching/engine");
 const { logger, stageTimer } = require("../observability/logger");
+const { createLimiter, createCache, sourceKey, CapacityError } = require("../ai/capacity");
+
+// Una sola fila y una sola caché para todo el proceso (ver src/ai/capacity.js).
+const ai = {};
+function configureAiCapacity(opts = {}) {
+  ai.limiter = createLimiter({ max: config.ai.maxConcurrency, maxQueue: config.ai.maxQueue, queueTimeoutMs: config.ai.queueTimeoutMs, ...opts.limiter });
+  ai.cache = createCache({ ttlMs: config.ai.cacheTtlHours * 3600 * 1000, maxEntries: config.ai.cacheMaxEntries, ...opts.cache });
+}
+configureAiCapacity();
+const aiCapacityStatus = () => ({ limiter: ai.limiter.status(), cache: ai.cache.status() });
 
 const AUTO_SELECTED = new Set(["matched", "review"]);
 
@@ -96,16 +106,25 @@ async function readSources({ files = [], text }) {
   return { kind: "files", files: read };
 }
 
-async function extract(source, warnings) {
+async function extract(source, warnings, onStage) {
   try {
-    const out = await extractItems(source);
+    // Misma lista ya leída (o leyéndose ahora para otra familia): no se vuelve a pagar la lectura.
+    const { value: out, cached } = await ai.cache.wrap(
+      sourceKey(source),
+      () => ai.limiter.run(() => extractItems(source), { onQueued: (position) => onStage("queued", { position }) }),
+      (v) => v.readable && v.items.length > 0,
+    );
+    if (cached) onStage("extracting");
     if (!out.readable || !out.items.length) {
       if (source.kind === "text") return { ...extractLines(source.text), method: "deterministic" };
       throw new BudgetError("unreadable", "No pudimos leer una lista de útiles en la imagen. Probá con una foto más nítida y derecha, o pegá el texto.", 422);
     }
-    return { items: out.items, method: "ai", model: out.model, usage: out.usage };
+    return { items: out.items, method: "ai", model: out.model, usage: cached ? null : out.usage, cached: Boolean(cached) };
   } catch (e) {
     if (e instanceof BudgetError) throw e;
+    if (e instanceof CapacityError && source.kind !== "text") {
+      throw new BudgetError("busy", "Hay muchas familias armando su presupuesto en este momento. Probá de nuevo en un minuto (o pegá el texto de la lista, que es instantáneo).", 503);
+    }
     // IA caída/saturada: con texto seguimos sin IA; con fotos no hay forma de leerlas.
     if (source.kind === "text") {
       warnings.push("Leímos la lista sin asistencia de IA: revisá que estén todos los ítems.");
@@ -126,7 +145,9 @@ async function disambiguate(items, results, warnings) {
   });
   if (!entries.length) return 0;
   try {
-    const { decisions } = await rerank(entries);
+    // El desempate es opcional: si la IA está a full, no se espera (los ítems quedan para revisar).
+    if (ai.limiter.status().waiting > 0) throw new CapacityError("busy", "fila llena");
+    const { decisions } = await ai.limiter.run(() => rerank(entries));
     let changed = 0;
     for (const [i, choice] of decisions) {
       const m = results[i];
@@ -156,7 +177,7 @@ async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
   timer.stage("read");
 
   onStage("extracting");
-  const extraction = useAi ? await extract(source, warnings) : { ...extractLines(source.text || ""), method: "deterministic" };
+  const extraction = useAi ? await extract(source, warnings, onStage) : { ...extractLines(source.text || ""), method: "deterministic" };
   timer.stage("extract");
   if (!extraction.items.length) {
     throw new BudgetError("no_items", "No encontramos productos en la lista. Revisá que sea una lista de útiles o pegá el texto.", 422);
@@ -184,7 +205,7 @@ async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
     avgConfidence: confidences.length ? Number((confidences.reduce((a, b) => a + b, 0) / confidences.length).toFixed(2)) : null,
     candidates: results.reduce((s, r) => s + (r.candidatesConsidered || 0), 0), reranked,
     inputTokens: extraction.usage ? extraction.usage.input_tokens : 0, outputTokens: extraction.usage ? extraction.usage.output_tokens : 0,
-    timings,
+    cached: Boolean(extraction.cached), timings,
   });
 
   return {
@@ -196,7 +217,8 @@ async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
     grades,
     warnings,
     catalog: { syncedAt: store.meta.syncedAt || null, source: store.meta.source || null },
-    meta: { extraction: extraction.method, timings },
+    meta: { extraction: extraction.method, cached: Boolean(extraction.cached), timings,
+      usage: extraction.usage ? { input: extraction.usage.input_tokens || 0, output: extraction.usage.output_tokens || 0 } : null },
     rawText: "",
   };
 }
@@ -241,4 +263,4 @@ function priceLines(lines) {
   return { lines: out, total: Math.round(total * 100) / 100 };
 }
 
-module.exports = { createBudget, matchLines, priceLines, summarize, BudgetError };
+module.exports = { createBudget, matchLines, priceLines, summarize, BudgetError, configureAiCapacity, aiCapacityStatus };

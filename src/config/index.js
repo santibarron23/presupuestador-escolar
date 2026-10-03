@@ -22,6 +22,13 @@ module.exports = {
     // Desempate por IA de ítems con confianza media (0 = desactivado).
     rerankMaxItems: num(process.env.AI_RERANK_MAX_ITEMS, 15),
     enabled: process.env.AI_DISABLED !== "1",
+    // Temporada alta: cuántas listas lee la IA a la vez; el resto espera en fila (y ve su lugar).
+    maxConcurrency: num(process.env.AI_MAX_CONCURRENCY, 8),
+    maxQueue: num(process.env.AI_MAX_QUEUE, 30),
+    queueTimeoutMs: num(process.env.AI_QUEUE_TIMEOUT_MS, 60000),
+    // Caché en memoria por contenido del documento: muchas familias suben la misma lista del colegio.
+    cacheTtlHours: num(process.env.AI_CACHE_TTL_HOURS, 24),
+    cacheMaxEntries: num(process.env.AI_CACHE_MAX, 300),
   },
 
   catalog: {
@@ -35,6 +42,12 @@ module.exports = {
     minValidPrice: num(process.env.CATALOG_MIN_PRICE, 2),
     // Recarga del snapshot en caliente (ms). 0 = no recargar.
     reloadIntervalMs: num(process.env.CATALOG_RELOAD_MS, 10 * 60 * 1000),
+    // Sync automático desde la tienda dentro del servidor (horas). 0 = desactivado.
+    syncHours: num(process.env.CATALOG_SYNC_HOURS, 6),
+    // Al arrancar con un snapshot viejo, esperar un poco antes de sincronizar (que el servidor ya atienda).
+    syncStartDelayMs: num(process.env.CATALOG_SYNC_START_DELAY_MS, 60 * 1000),
+    // Un sync que trae menos de este % del catálogo actual se descarta (página caída, error de la tienda).
+    minSyncRatio: num(process.env.CATALOG_MIN_SYNC_RATIO, 0.7),
   },
 
   http: {

@@ -26,6 +26,10 @@ function budgetIncrements(budget) {
   const inc = { budgets: 1, items: budget.items.length };
   inc[`budgets_${budget.meta && budget.meta.extraction === "ai" ? "ai" : "text"}`] = 1;
   inc.estimated_total_ars = Math.round(budget.summary.estimatedTotal || 0);
+  const meta = budget.meta || {};
+  if (meta.cached) inc.ai_cache_hits = 1;
+  if (meta.usage) Object.assign(inc, { ai_calls: 1, ai_input_tokens: meta.usage.input, ai_output_tokens: meta.usage.output });
+  if (meta.timings && meta.timings.total) inc.duration_ms = meta.timings.total;
   for (const it of budget.items) {
     inc[`status.${it.status}`] = (inc[`status.${it.status}`] || 0) + 1;
     if (it.concept) {
@@ -49,7 +53,21 @@ function demandEntries(budget) {
   return out;
 }
 
+// Latencias recientes en memoria (últimos 500 presupuestos) para p50/p95 en /api/health y el panel.
+const recentDurations = [];
+function latency() {
+  if (!recentDurations.length) return { samples: 0, p50Ms: null, p95Ms: null };
+  const s = [...recentDurations].sort((a, b) => a - b);
+  const at = (q) => s[Math.min(s.length - 1, Math.floor(q * s.length))];
+  return { samples: s.length, p50Ms: at(0.5), p95Ms: at(0.95) };
+}
+
 function recordBudget(budget) {
+  const total = budget.meta && budget.meta.timings && budget.meta.timings.total;
+  if (total) {
+    recentDurations.push(total);
+    if (recentDurations.length > 500) recentDurations.shift();
+  }
   const s = getStorage();
   fireAndForget(s.addMetrics(today(), budgetIncrements(budget)), "budget");
   const demand = demandEntries(budget);
@@ -96,7 +114,7 @@ function recordMetric(name, value = 1) {
 }
 
 // ── Reporte para el panel ─────────────────────────────────────────
-async function buildReport({ days = 30 } = {}) {
+async function buildReport({ days = 30, ops = null } = {}) {
   const since = new Date(Date.now() - days * 86400000);
   const r = await getStorage().report({ since });
   const totals = {};
@@ -155,6 +173,17 @@ async function buildReport({ days = 30 } = {}) {
       textCorrected: t("ev.item_text_corrected"),
       failed: t("ev.budget_failed"),
     },
+    // Operación: costo (tokens) y velocidad. `live` = estado actual del proceso (fila de IA, caché, sync).
+    ops: {
+      aiCalls: t("ai_calls"),
+      aiCacheHits: t("ai_cache_hits"),
+      aiCacheHitPercent: pct(t("ai_cache_hits"), t("ai_calls") + t("ai_cache_hits")),
+      avgInputTokens: t("ai_calls") ? Math.round(t("ai_input_tokens") / t("ai_calls")) : 0,
+      avgOutputTokens: t("ai_calls") ? Math.round(t("ai_output_tokens") / t("ai_calls")) : 0,
+      avgDurationMs: t("budgets") ? Math.round(t("duration_ms") / t("budgets")) : 0,
+      latency: latency(),
+      live: ops || null,
+    },
     statuses: Object.fromEntries(Object.keys(totals).filter((k) => k.startsWith("status.")).map((k) => [k.slice(7), totals[k]])),
     daily: Object.values(daily).sort((a, b) => a.day.localeCompare(b.day)),
     concepts: concepts.slice(0, 40),
@@ -163,4 +192,4 @@ async function buildReport({ days = 30 } = {}) {
   };
 }
 
-module.exports = { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport, demandKey, budgetIncrements, demandEntries, today, CLIENT_EVENTS };
+module.exports = { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport, latency, demandKey, budgetIncrements, demandEntries, today, CLIENT_EVENTS };

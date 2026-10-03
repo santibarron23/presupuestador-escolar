@@ -9,12 +9,13 @@ const rateLimit = require("express-rate-limit");
 const config = require("./config");
 const { store } = require("./catalog/catalogStore");
 const { tokenize } = require("./matching/text");
-const { createBudget, matchLines, priceLines, BudgetError } = require("./budget/budgetService");
+const { createBudget, matchLines, priceLines, BudgetError, aiCapacityStatus } = require("./budget/budgetService");
+const { syncCatalog, syncStatus } = require("./catalog/syncService");
 const { renderBudgetPdf } = require("./budget/pdf");
 const { FileError } = require("./parsing/fileReader");
 const { logger } = require("./observability/logger");
 const { createShare, loadShare, restoreBudget, isShareId, shareUrl } = require("./budget/shares");
-const { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport } = require("./analytics/metrics");
+const { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport, latency } = require("./analytics/metrics");
 const { getStorage } = require("./storage");
 
 function createApp() {
@@ -183,9 +184,26 @@ function createApp() {
     res.json(store.products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, slug: p.slug, price: p.price, available: p.sellable, url: p.url })));
   });
 
+  // Estado para monitoreo (Render health check, UptimeRobot). Sin datos de familias.
+  const opsStatus = () => {
+    const ageHours = store.meta.syncedAt ? Math.round((Date.now() - Date.parse(store.meta.syncedAt)) / 360000) / 10 : null;
+    const sync = syncStatus();
+    return {
+      catalog: { products: store.products.length, syncedAt: store.meta.syncedAt || null, source: store.meta.source, ageHours,
+        // Viejo = más de dos ciclos de sync sin actualizarse.
+        stale: ageHours == null || (config.catalog.syncHours > 0 && ageHours > config.catalog.syncHours * 2 + 1),
+        sync: { running: sync.running, lastSuccessAt: sync.lastSuccessAt, lastError: sync.lastError, failuresInARow: sync.failuresInARow } },
+      ai: { enabled: config.ai.enabled && Boolean(process.env.ANTHROPIC_API_KEY), ...aiCapacityStatus() },
+      latency: latency(),
+      storage: getStorage().kind,
+    };
+  };
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", catalog: { products: store.products.length, syncedAt: store.meta.syncedAt || null, source: store.meta.source }, ai: config.ai.enabled && Boolean(process.env.ANTHROPIC_API_KEY),
-      storage: getStorage().kind });
+    const ops = opsStatus();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ status: ops.catalog.stale ? "degraded" : "ok", ...ops,
+      // compatibilidad: antes `ai` era un booleano
+      aiEnabled: ops.ai.enabled });
   });
 
   // ── Widget ────────────────────────────────────────────────────────
@@ -221,8 +239,14 @@ function createApp() {
     try {
       const days = Math.max(1, Math.min(365, parseInt(req.query.dias, 10) || 30));
       res.setHeader("Cache-Control", "no-store");
-      res.json(await buildReport({ days }));
+      res.json(await buildReport({ days, ops: opsStatus() }));
     } catch (e) { next(e); }
+  });
+  // Sincronizar el catálogo ahora (p. ej. después de cargar productos nuevos en la tienda). Corre en segundo plano.
+  app.post("/api/admin/sincronizar", adminLimiter, requireAdmin, (req, res) => {
+    if (syncStatus().running) return res.status(409).json({ error: "Ya hay una sincronización en curso." });
+    syncCatalog({ store }).catch(() => {});
+    res.status(202).json({ success: true, message: "Sincronizando. Tarda unos minutos." });
   });
   app.get("/api/widget-config", (req, res) => {
     res.setHeader("Cache-Control", "public, max-age=300");

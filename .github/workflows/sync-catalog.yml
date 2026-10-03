@@ -1,0 +1,38 @@
+# Actualiza data/catalog.json una vez por semana (y a mano desde Actions → "Sync catálogo" → Run workflow).
+# El servidor ya se sincroniza solo cada 6 h; esto mantiene al día el snapshot con el que arranca después de
+# cada reinicio de Render. Si falla, GitHub avisa por mail al dueño del repo.
+name: Sync catálogo
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # lunes 06:00 en Argentina
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-catalog
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run sync-catalog
+      - run: npm test
+      - name: Commit si cambió
+        run: |
+          if git diff --quiet -- data/catalog.json; then echo "Sin cambios"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/catalog.json
+          git commit -m "Catálogo: sync semanal automático"
+          git push

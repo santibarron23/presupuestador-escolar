@@ -251,7 +251,7 @@
   <!-- PROGRESO (etapas reales que informa el servidor) -->
   <section id="view-progress" class="progress" hidden aria-live="polite">
     <h2>Armando tu presupuesto…</h2>
-    <p class="sub">Suele tardar unos segundos.</p>
+    <p class="sub" id="progress-sub">Suele tardar unos segundos.</p>
     <ol class="steps" id="steps">
       <li data-stage="reading"><span class="dot"></span>Leyendo tu lista</li>
       <li data-stage="extracting"><span class="dot"></span>Identificando los útiles</li>
@@ -442,7 +442,7 @@
         const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
         const ev = (chunk.match(/^event: (.*)$/m) || [])[1];
         const data = JSON.parse((chunk.match(/^data: (.*)$/m) || [])[1] || "null");
-        if (ev === "stage") setStage(data.stage);
+        if (ev === "stage") setStage(data.stage, data);
         if (ev === "result") return data;
         if (ev === "error") throw new Error(data.error);
       }
@@ -451,7 +451,12 @@
   }
 
   const STAGES = ["reading", "extracting", "matching", "pricing"];
-  function setStage(stage) {
+  // "queued": temporada alta, la lista espera su turno para que la IA la lea (lugar real en la fila).
+  function setStage(stage, data = {}) {
+    $("#progress-sub").textContent = stage === "queued"
+      ? `Hay muchas familias armando su presupuesto. Estás ${data.position > 1 ? "en el lugar " + data.position + " de la fila" : "primero en la fila"}, ya empezamos.`
+      : "Suele tardar unos segundos.";
+    if (stage === "queued") stage = "reading";
     const i = STAGES.indexOf(stage === "checking" ? "matching" : stage);
     document.querySelectorAll("#steps li").forEach((li, j) => {
       li.className = j < i ? "done" : j === i ? "active" : "";

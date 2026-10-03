@@ -106,6 +106,12 @@
         <div class="table-wrap scroll"><table id="subs"></table></div>
       </section>
     </div>
+
+    <h2>Operación <button class="btn ghost" id="sync" type="button" style="margin-left:8px;font-size:12px;padding:3px 10px">Sincronizar catálogo ahora</button></h2>
+    <div class="grid2">
+      <div class="table-wrap"><table id="ops"></table></div>
+      <div class="table-wrap"><table id="live"></table></div>
+    </div>
   </main>
 </div>
 <script>
@@ -144,7 +150,7 @@
   }
 
   function table(el, head, rows) {
-    el.innerHTML = `<thead><tr>${head.map((h) => `<th${h.n ? ' class="n"' : ""}>${esc(h.t || h)}</th>`).join("")}</tr></thead>
+    el.innerHTML = `<thead><tr>${head.map((h) => `<th${h.n ? ' class="n"' : ""}>${esc(typeof h === "string" ? h : h.t)}</th>`).join("")}</tr></thead>
       <tbody>${rows.length ? rows.join("") : `<tr><td colspan="${head.length}" class="muted">Todavía no hay datos.</td></tr>`}</tbody>`;
   }
 
@@ -164,8 +170,15 @@
       kpi(num(k.savedBudgets), "links guardados"),
     ].join("");
 
-    const max = Math.max(1, ...r.daily.map((d) => d.budgets));
-    $("#chart").innerHTML = r.daily.length ? r.daily.map((d) => `<div style="height:${(d.budgets / max) * 100}%" data-tip="${esc(d.day)}: ${d.budgets} presup. · ${d.cart} carrito"></div>`).join("") : `<span class="muted">Todavía no hay datos.</span>`;
+    // Todos los días del período (los días sin actividad también cuentan), hasta 90 barras.
+    const byDay = new Map(r.daily.map((d) => [d.day, d]));
+    const span = Math.min(r.range.days, 90);
+    const days = Array.from({ length: span }, (_, i) => {
+      const day = new Date(Date.now() - 3 * 3600000 - (span - 1 - i) * 86400000).toISOString().slice(0, 10);
+      return byDay.get(day) || { day, budgets: 0, cart: 0 };
+    });
+    const max = Math.max(1, ...days.map((d) => d.budgets));
+    $("#chart").innerHTML = r.daily.length ? days.map((d) => `<div style="height:${(d.budgets / max) * 100}%" data-tip="${esc(d.day)}: ${d.budgets} presup. · ${d.cart} carrito"></div>`).join("") : `<span class="muted">Todavía no hay datos.</span>`;
 
     table($("#funnel"), ["Paso", { t: "Cantidad", n: 1 }, { t: "% de presupuestos", n: 1 }],
       r.funnel.map((f) => `<tr><td>${esc(f.step)}</td><td class="n">${num(f.value)}</td><td class="n">${f.rate != null ? f.rate + "%" : ""}</td></tr>`));
@@ -183,6 +196,40 @@
 
     table($("#subs"), ["Propuesto", "Elegido", { t: "Veces", n: 1 }],
       r.substitutions.map((s) => `<tr><td>${esc(s.from)}</td><td>${esc(s.to)}</td><td class="n">${num(s.hits)}</td></tr>`));
+    renderOps(r);
+  }
+
+  function renderOps(r) {
+    const o = r.ops || {};
+    const l = o.live || {};
+    const secs = (ms) => (ms == null ? "—" : (ms / 1000).toFixed(1) + " s");
+    const row = ([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${esc(v)}</td></tr>`;
+    table($("#ops"), ["En el período", { t: "", n: 1 }], [
+      ["Lecturas con IA", num(o.aiCalls)],
+      ["Resueltas por caché (misma lista)", `${num(o.aiCacheHits)} (${o.aiCacheHitPercent || 0}%)`],
+      ["Tokens promedio por lectura", `${num(o.avgInputTokens)} entrada · ${num(o.avgOutputTokens)} salida`],
+      ["Tiempo promedio por presupuesto", secs(o.avgDurationMs)],
+      ["p50 / p95 (últimos " + num(o.latency && o.latency.samples) + ")", o.latency ? secs(o.latency.p50Ms) + " / " + secs(o.latency.p95Ms) : "—"],
+    ].map(row));
+    const c = l.catalog || {};
+    const sync = c.sync || {};
+    const lim = (l.ai && l.ai.limiter) || {};
+    table($("#live"), ["Ahora", { t: "", n: 1 }], [
+      ["Catálogo", `${num(c.products)} productos · hace ${c.ageHours == null ? "?" : c.ageHours} h${c.stale ? " ⚠ desactualizado" : ""}`],
+      ["Último sync", sync.running ? "en curso…" : sync.lastSuccessAt ? new Date(sync.lastSuccessAt).toLocaleString("es-AR") : "—"],
+      ["Error de sync", sync.lastError ? `${sync.lastError} (${sync.failuresInARow} seguidos)` : "—"],
+      ["IA leyendo / en fila", `${lim.active || 0} de ${lim.max || "?"} / ${lim.waiting || 0}`],
+      ["Rechazos por fila llena (desde el reinicio)", num((lim.rejected || 0) + (lim.timedOut || 0))],
+    ].map(row));
+  }
+
+  async function syncNow() {
+    const b = $("#sync");
+    b.disabled = true;
+    const res = await fetch("/api/admin/sincronizar", { method: "POST", headers: { Authorization: "Bearer " + token } });
+    const data = await res.json().catch(() => ({}));
+    b.textContent = data.message || data.error || "Listo";
+    setTimeout(() => { b.disabled = false; b.textContent = "Sincronizar catálogo ahora"; load(); }, 8000);
   }
 
   function downloadCsv() {
@@ -206,6 +253,7 @@
   $("#logout").onclick = () => { token = ""; try { sessionStorage.removeItem("lerma-admin"); } catch {} showLogin(""); };
   $("#days").onchange = load;
   $("#csv").onclick = downloadCsv;
+  $("#sync").onclick = syncNow;
   if (token) load(); else showLogin("");
 })();
 </script>

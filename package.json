@@ -9,7 +9,8 @@
     "test": "node --test \"test/**/*.test.js\"",
     "eval": "node scripts/eval-matching.js",
     "sync-catalog": "node scripts/sync-catalog.js",
-    "try": "node scripts/try-match.js"
+    "try": "node scripts/try-match.js",
+    "load-test": "node scripts/load-test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

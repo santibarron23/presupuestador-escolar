@@ -3,10 +3,13 @@ const config = require("./src/config");
 const { store } = require("./src/catalog/catalogStore");
 const { createApp } = require("./src/app");
 const { initStorage, getStorage } = require("./src/storage");
+const { startScheduledSync } = require("./src/catalog/syncService");
 const { logger } = require("./src/observability/logger");
 
 store.loadFromDisk();
 store.startAutoReload(config.catalog.reloadIntervalMs);
+// Precios y stock al día sin redeploy (cada CATALOG_SYNC_HOURS; enseguida si el snapshot es viejo).
+startScheduledSync(store);
 
 // La base de datos es opcional: si no responde se arranca igual con memoria.
 initStorage().finally(() => {
