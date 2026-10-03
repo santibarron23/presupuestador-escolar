@@ -1,0 +1,16 @@
+<!-- Copia del código que tenía la página "Presupuestá tu lista escolar" en Tiendanube antes de instalar
+     docs/tiendanube-snippet.html (2026-10-03). Para volver atrás: pegar esto en el editor HTML de la página. -->
+<!--
+  CÓDIGO PARA INCRUSTAR EN TIENDA NUBE
+  Reemplazá el código anterior con este
+-->
+<div class="presupuestador-wrapper" style="width: 100%; max-width: 100%; overflow: hidden;"><iframe class="presupuestador-iframe" style="width: 100%; min-height: 420px; border: none; display: block;" title="Presupuestador de Lista Escolar" src="https://presupuestador-escolar.onrender.com/widget" scrolling="no" loading="lazy"></iframe></div>
+<script>
+  window.addEventListener("message", function(e) {
+    if (e.origin !== "https://presupuestador-escolar.onrender.com") return;
+    if (e.data && e.data.height) {
+      var iframe = document.querySelector(".presupuestador-iframe");
+      if (iframe) iframe.style.height = (e.data.height + 24) + "px";
+    }
+  });
+</script>

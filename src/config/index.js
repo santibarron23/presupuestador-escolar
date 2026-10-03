@@ -71,9 +71,9 @@ module.exports = {
     databaseSslNoVerify: process.env.DATABASE_SSL_NO_VERIFY === "1",
     // Días que dura el link de un presupuesto guardado.
     shareDays: num(process.env.BUDGET_SHARE_DAYS, 90),
-    // Dónde se abre un presupuesto compartido. Con el snippet de Tiendanube instalado conviene la página de la
-    // tienda (https://www.librerialerma.com.ar/presupuesta-tu-lista-escolar/?p=), así se puede comprar ahí mismo.
-    shareBaseUrl: process.env.SHARE_BASE_URL || "https://presupuestador-escolar.onrender.com/presupuesto/",
+    // Dónde se abre un presupuesto compartido: la página de la tienda (el snippet de Tiendanube le pasa el ?p= al
+    // presupuestador), así la familia compra ahí mismo. Si se saca el snippet: SHARE_BASE_URL=https://presupuestador-escolar.onrender.com/presupuesto/
+    shareBaseUrl: process.env.SHARE_BASE_URL || "https://www.librerialerma.com.ar/presupuesta-tu-lista-escolar/?p=",
     // Panel /admin. Sin token el panel está desactivado.
     adminToken: process.env.ADMIN_TOKEN || "",
   },

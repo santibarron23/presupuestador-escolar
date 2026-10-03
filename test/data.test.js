@@ -187,7 +187,7 @@ test("PDF con link: el QR apunta a una URL armada por el servidor", async () => 
   assert.equal(res.headers.get("content-type"), "application/pdf");
   const pdf = Buffer.from(await res.arrayBuffer());
   assert.ok(pdf.subarray(0, 5).toString() === "%PDF-");
-  assert.ok(pdf.includes("presupuestador-escolar.onrender.com/presupuesto/abcdEFGH"), "el link va en el PDF");
+  assert.ok(pdf.includes(require("../src/config").data.shareBaseUrl + "abcdEFGH"), "el link va en el PDF");
   // Un shareId con una URL no se acepta.
   const evil = await post("/api/presupuesto-pdf", { shareId: "https://phishing.example", lines: [{ productId: P1.id, packs: 1 }] });
   const evilPdf = Buffer.from(await evil.arrayBuffer());

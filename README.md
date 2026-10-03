@@ -28,7 +28,7 @@ El servidor sincroniza el catálogo solo cada 6 h (`CATALOG_SYNC_HOURS=0` lo des
 | `DATABASE_SSL_NO_VERIFY=1` | sólo si el proveedor usa un certificado que Node no reconoce (pooler de Supabase) |
 | `ADMIN_TOKEN` | activa el panel `/admin` (token largo y aleatorio) |
 | `AI_MAX_CONCURRENCY` / `AI_MAX_QUEUE` | lecturas de IA simultáneas (8) y tamaño de la fila (30) para temporada alta |
-| `SHARE_BASE_URL` | con el snippet instalado: `https://www.librerialerma.com.ar/presupuesta-tu-lista-escolar/?p=` para que los links abran en la tienda |
+| `SHARE_BASE_URL` | dónde abren los links compartidos. Por defecto, la página de la tienda (requiere el snippet de Tiendanube, instalado el 2026-10-03; copia del código anterior en docs/tiendanube-snippet-anterior.html) |
 
 - [docs/AUDITORIA.md](docs/AUDITORIA.md): diagnóstico del sistema anterior.
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): cómo funciona, cómo editar reglas, endpoints, variables de entorno.
