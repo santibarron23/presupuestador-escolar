@@ -8,7 +8,9 @@
   2. Carrito real: el presupuestador le pasa los productos elegidos y este script los agrega al carrito de la
      tienda con el mismo pedido que usa el botón "Agregar al carrito" de cada producto (POST /comprar/).
      Corre en librerialerma.com.ar, así que usa la sesión normal del cliente. Al terminar abre el carrito.
-  3. Reenvía los eventos del presupuestador a Google Analytics (gtag) y Meta (fbq) si ya están en la tienda.
+  3. Presupuestos compartidos: si la página se abre con ?p=CÓDIGO, el presupuestador muestra ese presupuesto
+     (para que los links abran acá, configurar SHARE_BASE_URL en Render; ver README).
+  4. Reenvía los eventos del presupuestador a Google Analytics (gtag) y Meta (fbq) si ya están en la tienda.
      No agrega trackers nuevos.
 
   Seguridad: sólo acepta mensajes del dominio del presupuestador y sólo agrega productos (nunca compra,
@@ -21,6 +23,9 @@
 (function () {
   var ORIGIN = "https://presupuestador-escolar.onrender.com";
   var iframe = document.querySelector(".presupuestador-iframe");
+  // Link compartido (?p=…): se le pasa al presupuestador. Sólo caracteres seguros.
+  var shared = (location.search.match(/[?&]p=([A-Za-z0-9_-]{8,6001})(?:&|$)/) || [])[1];
+  if (shared) iframe.src = ORIGIN + "/widget?p=" + shared;
 
   function reply(msg) { iframe.contentWindow.postMessage(msg, ORIGIN); }
 

@@ -16,6 +16,16 @@ Sin `ANTHROPIC_API_KEY` funciona con listas de texto (extracción sin IA). Para 
 | `npm run eval` | métricas de matching sobre los datasets |
 | `npm run try -- "2 cuadernos A4 rayados"` | probar el motor con un ítem |
 
+## Producción (Render → Environment)
+
+| Variable | Para qué |
+|---|---|
+| `ANTHROPIC_API_KEY` | leer fotos y PDFs |
+| `DATABASE_URL` | Postgres administrado (Neon / Supabase / Render). Opcional: sin ella, métricas en memoria y links autocontenidos |
+| `DATABASE_SSL_NO_VERIFY=1` | sólo si el proveedor usa un certificado que Node no reconoce (pooler de Supabase) |
+| `ADMIN_TOKEN` | activa el panel `/admin` (token largo y aleatorio) |
+| `SHARE_BASE_URL` | con el snippet instalado: `https://www.librerialerma.com.ar/presupuesta-tu-lista-escolar/?p=` para que los links abran en la tienda |
+
 - [docs/AUDITORIA.md](docs/AUDITORIA.md): diagnóstico del sistema anterior.
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): cómo funciona, cómo editar reglas, endpoints, variables de entorno.
 - [docs/ROADMAP.md](docs/ROADMAP.md): fases.

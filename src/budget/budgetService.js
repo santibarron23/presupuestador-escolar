@@ -48,6 +48,8 @@ function toResponseItem(m, lineId, grade, extra = {}) {
     concept: m.concept,
     // Opcional / reutilizable / se compra en el colegio: se muestra pero no suma al total salvo que la familia lo agregue.
     optional: Boolean(extra.optional),
+    // La familia ya lo había sumado (presupuesto compartido).
+    optIn: Boolean(extra.optional && extra.optIn),
     note: extra.note || null,
     // ── compatibilidad con el widget v1 ──
     quantity: packs,
@@ -210,7 +212,7 @@ function matchLines(lines) {
       decidedBy: l.productId ? "manual" : undefined,
       forcedConfidence: l.productId ? "alta" : undefined,
     });
-    return toResponseItem(m, l.lineId ?? i + 1, l.grade, { optional: l.optional, note: l.note ? String(l.note).slice(0, 120) : null });
+    return toResponseItem(m, l.lineId ?? i + 1, l.grade, { optional: l.optional, optIn: l.optIn, note: l.note ? String(l.note).slice(0, 120) : null });
   });
   return { items, summary: summarize(items) };
 }

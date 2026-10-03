@@ -2,6 +2,7 @@
 const path = require("path");
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
 const config = require("../config");
 
 const LOGO = path.join(config.root, "public", "assets", "logo-lerma.png");
@@ -18,7 +19,10 @@ const W = A4.w - M * 2;
 
 const money = (n) => "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-function renderBudgetPdf({ budgetId, lines, total, pending = [], schoolName }, stream) {
+// link: URL del presupuesto online (la arma el servidor). Se imprime con un QR para abrirlo desde el celular.
+async function renderBudgetPdf({ budgetId, lines, total, pending = [], schoolName, link = null }, stream) {
+  // Un QR con un link largo (presupuesto autocontenido, sin base de datos) no se puede escanear en papel.
+  const qr = link && link.length <= 300 ? await QRCode.toBuffer(link, { margin: 0, width: 220, errorCorrectionLevel: "M" }).catch(() => null) : null;
   const doc = new PDFDocument({ size: "A4", margin: 0, bufferPages: true,
     info: { Title: `Presupuesto escolar ${budgetId} - ${config.store.name}`, Author: config.store.name } });
   doc.pipe(stream);
@@ -62,6 +66,17 @@ function renderBudgetPdf({ budgetId, lines, total, pending = [], schoolName }, s
   doc.fillColor(MUTED).fontSize(8).text("TOTAL ESTIMADO", M, y + 12, { width: W - 14, align: "right" });
   doc.fillColor(INK).font("Helvetica-Bold").fontSize(18).text(money(total), M, y + 24, { width: W - 14, align: "right" });
   y += 70;
+
+  if (link) {
+    const size = 58;
+    if (qr) doc.image(qr, M, y, { width: size, height: size });
+    const tx = M + (qr ? size + 12 : 0);
+    doc.fillColor(INK).font("Helvetica-Bold").fontSize(10).text("Abrilo online y compralo en un paso", tx, y + 6, { width: W - (tx - M) });
+    doc.fillColor(MUTED).font("Helvetica").fontSize(8.5)
+      .text("Escaneá el código o entrá al link: vas a ver este presupuesto con precios y stock actualizados.", tx, y + 21, { width: W - (tx - M) });
+    doc.fillColor("#0d6e45").fontSize(8.5).text(link.length > 90 ? link.slice(0, 87) + "…" : link, tx, y + 34, { width: W - (tx - M), link, underline: true });
+    y += size + 16;
+  }
 
   // Tabla
   const C = { qty: 34, name: 296, unit: 80, sub: W - 34 - 296 - 80 };

@@ -27,11 +27,14 @@ Producción caída (modelo retirado + `server.js` con comandos de git pegados). 
 
 **Queda para Fase 3:** QR y link al presupuesto (necesitan persistencia); modos Económico / Recomendado / Premium (sólo si ≥60 % de los ítems tienen alternativas reales).
 
-## Fase 3 — Datos y negocio
-- Presupuestos persistentes `/presupuesto/:id` (sólo ítems, cantidades y productos; nunca el documento). Render no tiene disco persistente en el plan gratuito: usar Postgres administrado (Render Postgres o Supabase).
-- Eventos (GA4 del sitio padre vía `postMessage`, sin trackers nuevos): `budget_started`, `file_uploaded`, `budget_completed`, `match_changed`, `product_removed`, `alternative_selected`, `pdf_downloaded`, `whatsapp_clicked`, `add_to_cart_clicked`, `budget_shared`.
-- Panel admin protegido: presupuestos, completados, cobertura media, más pedidos, **no encontrados** ("120 familias pidieron X"), sustituciones manuales, valor medio.
-- Feedback loop: cada reemplazo manual se guarda anónimo (pedido normalizado → producto del motor → producto elegido) para proponer reglas; nunca se aplican solas.
+## Fase 3 — Datos y negocio ✅
+- Presupuestos compartibles: botón **Guardar o compartir el link**, link en el mensaje de WhatsApp y **QR en el PDF**. Se guarda sólo el texto de cada ítem, producto, variante y cantidad (nunca el archivo). Al abrirlo se recalculan precios y stock; si un producto ya no está, se sugiere otro.
+  - Con `DATABASE_URL` (Postgres): id corto de 8 caracteres, vence a los `BUDGET_SHARE_DAYS` (90).
+  - Sin base: el presupuesto viaja comprimido en el link (funciona igual aunque Render reinicie; el link es más largo y el PDF no lleva QR).
+- Métricas propias anónimas y agregadas por día (sin cookies, IDs ni IP): presupuestos, cobertura, estados, categorías, carrito, WhatsApp, PDF, links. GA4 sigue recibiendo todos los eventos vía el snippet de la tienda.
+- Panel **/admin** (token `ADMIN_TOKEN`): KPIs, embudo de conversión, presupuestos por día, **demanda no satisfecha** con CSV (lista de compras para el catálogo), categorías más pedidas y tasa de acierto, sustituciones propuesto → elegido.
+- Feedback de sustituciones: sólo IDs de catálogo y categoría; sirven para ajustar `src/config/matchingRules.js` a mano (nunca se aplican solas).
+- Arreglado: una elección manual sobre un ítem "Para consultar" se ignoraba; la lista "Para consultar" de WhatsApp/PDF repetía la cantidad.
 
 ## Fase 4 — Temporada alta
 - Sync del catálogo programado (cron diario) y alerta si falla.

@@ -50,6 +50,21 @@ module.exports = {
     maxPastedChars: num(process.env.MAX_PASTED_CHARS, 20000),
   },
 
+  data: {
+    // Postgres administrado (Neon, Supabase, Render…). Sin DATABASE_URL se usa memoria: todo funciona, pero los
+    // presupuestos guardados y las métricas se pierden al reiniciar (los links se arman igual, autocontenidos).
+    databaseUrl: process.env.DATABASE_URL || "",
+    // Algunos proveedores (pooler de Supabase) usan certificados que Node no reconoce.
+    databaseSslNoVerify: process.env.DATABASE_SSL_NO_VERIFY === "1",
+    // Días que dura el link de un presupuesto guardado.
+    shareDays: num(process.env.BUDGET_SHARE_DAYS, 90),
+    // Dónde se abre un presupuesto compartido. Con el snippet de Tiendanube instalado conviene la página de la
+    // tienda (https://www.librerialerma.com.ar/presupuesta-tu-lista-escolar/?p=), así se puede comprar ahí mismo.
+    shareBaseUrl: process.env.SHARE_BASE_URL || "https://presupuestador-escolar.onrender.com/presupuesto/",
+    // Panel /admin. Sin token el panel está desactivado.
+    adminToken: process.env.ADMIN_TOKEN || "",
+  },
+
   store: {
     name: "Librería Lerma",
     address: process.env.STORE_ADDRESS || "Belgrano 635, Salta",

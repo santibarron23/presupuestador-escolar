@@ -164,8 +164,12 @@ function matchItem(text, store, opts = {}) {
   const req = parseRequest(text, { quantityHint: opts.quantity, vocabulary: opts.vocabulary || store.wordSet });
   const base = { requestedItem: req.raw, quantity: req.quantity, concept: req.concept, attributes: compactAttrs(req.attrs) };
 
-  if (req.outOfScope) return { ...base, status: "not_sold", reason: req.outOfScope, confidence: null, alternatives: [] };
-  if (!req.concept && req.tokens.length === 0) return { ...base, status: "not_found", reason: "No entendimos este ítem.", confidence: null, alternatives: [] };
+  // Elección manual de la familia (buscó y eligió un producto): manda aunque el motor no haya encontrado nada.
+  const manualPick = opts.decidedBy === "manual" && opts.forceProductId ? store.get(opts.forceProductId) : null;
+  const manual = Boolean(manualPick && manualPick.sellable);
+
+  if (req.outOfScope && !manual) return { ...base, status: "not_sold", reason: req.outOfScope, confidence: null, alternatives: [] };
+  if (!req.concept && req.tokens.length === 0 && !manual) return { ...base, status: "not_found", reason: "No entendimos este ítem.", confidence: null, alternatives: [] };
 
   const concepts = [req.concept, ...req.alternatives].filter((c) => c && !(getConcept(c) || {}).outOfScope);
   const rules = applicableRules(req, concepts);
@@ -173,7 +177,7 @@ function matchItem(text, store, opts = {}) {
 
   // Regla de "solo en sucursal" (p.ej. resmas blancas): sólo si ninguna regla de mayor prioridad prefiere un producto.
   const top = rules[0];
-  if (top && top.inStore) {
+  if (top && top.inStore && !manual) {
     return { ...base, status: "in_store", confidence: "muy_alta", score: CONFIDENCE.muy_alta,
       inStore: { label: top.inStore.label, note: top.inStore.note }, rule: top.id, alternatives: [] };
   }
@@ -194,7 +198,7 @@ function matchItem(text, store, opts = {}) {
     else compatible.push(p);
   }
 
-  if (!compatible.length) {
+  if (!compatible.length && !manual) {
     if (unavailable.length) {
       const p = unavailable.sort((a, b) => store.bm25(b, req.tokens) - store.bm25(a, req.tokens))[0];
       return { ...base, status: "out_of_stock", reason: "Sin stock online en este momento.", confidence: null,

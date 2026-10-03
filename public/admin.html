@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Panel del presupuestador · Librería Lerma</title>
+<style>
+  :root {
+    --brand: #0d6e45; --brand-soft: #e8f3ee; --lime: #afcb21; --ink: #17231d; --muted: #5f6b65;
+    --line: #e3e8e5; --bg: #ffffff; --surface: #f6f8f7; --warn: #8a5300; --warn-soft: #fff6e5; --danger: #a3261f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --brand: #4fbf8b; --brand-soft: #16302a; --ink: #e8efeb; --muted: #9aa8a1; --line: #2a3530; --bg: #111715; --surface: #18201d; --warn: #f0b45c; --warn-soft: #2d2410; --danger: #f08a83; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; line-height: 1.45; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  .muted { color: var(--muted); }
+  button, input, select { font: inherit; color: inherit; }
+  .btn { border: 1.5px solid var(--brand); background: var(--brand); color: #fff; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
+  .btn.ghost { background: transparent; color: var(--brand); }
+  input, select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 10px; }
+  .login { max-width: 380px; margin: 12vh auto; display: grid; gap: 10px; }
+  .alert { padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); margin: 10px 0; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .kpi b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--muted); font-size: 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; background: var(--surface); position: sticky; top: 0; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .scroll { max-height: 460px; overflow: auto; }
+  .bar { height: 8px; background: var(--brand-soft); border-radius: 4px; overflow: hidden; min-width: 60px; }
+  .bar i { display: block; height: 100%; background: var(--brand); }
+  .chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
+  .chart div { flex: 1; background: var(--brand); border-radius: 3px 3px 0 0; min-height: 2px; position: relative; }
+  .chart div:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 3px 6px; border-radius: 4px; font-size: 11px; white-space: nowrap; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <form class="login" id="login" hidden>
+    <h1>Panel del presupuestador</h1>
+    <p class="muted">Ingresá el token de administración (variable ADMIN_TOKEN en Render).</p>
+    <input type="password" id="token" autocomplete="current-password" placeholder="Token" required />
+    <button class="btn" type="submit">Entrar</button>
+    <div class="alert" id="login-error" hidden></div>
+  </form>
+
+  <main id="panel" hidden>
+    <header>
+      <div>
+        <h1>Presupuestador escolar</h1>
+        <div class="muted" id="meta"></div>
+      </div>
+      <div>
+        <select id="days" aria-label="Período">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+          <option value="365">Último año</option>
+        </select>
+        <button class="btn ghost" id="logout" type="button">Salir</button>
+      </div>
+    </header>
+    <div id="warn"></div>
+    <div class="kpis" id="kpis"></div>
+
+    <h2>Presupuestos por día</h2>
+    <div class="chart" id="chart"></div>
+
+    <div class="grid2">
+      <section>
+        <h2>Conversión</h2>
+        <div class="table-wrap"><table id="funnel"></table></div>
+      </section>
+      <section>
+        <h2>Ediciones de las familias</h2>
+        <div class="table-wrap"><table id="edits"></table></div>
+      </section>
+    </div>
+
+    <h2>Lo que piden y no está en la tienda online <button class="btn ghost" id="csv" type="button" style="margin-left:8px;font-size:12px;padding:3px 10px">Descargar CSV</button></h2>
+    <p class="muted">Ítems no encontrados, sin stock, que la tienda no vende o sin una opción clara. Ordenados por cantidad de pedidos: es la lista de compras para el catálogo online.</p>
+    <div class="table-wrap scroll"><table id="demand"></table></div>
+
+    <div class="grid2">
+      <section>
+        <h2>Categorías más pedidas</h2>
+        <div class="table-wrap scroll"><table id="concepts"></table></div>
+      </section>
+      <section>
+        <h2>Sustituciones (propuesto → elegido)</h2>
+        <p class="muted">Si un mismo cambio se repite, conviene ajustar la regla del producto preferido.</p>
+        <div class="table-wrap scroll"><table id="subs"></table></div>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+(function () {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  // Todo lo que viene de las listas de las familias se escapa antes de mostrarse.
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const num = (n) => Number(n || 0).toLocaleString("es-AR");
+  const money = (n) => "$" + num(Math.round(n || 0));
+  const STATUS = { not_found: "No encontrado", not_sold: "No se vende", out_of_stock: "Sin stock", suggested: "Sin opción clara" };
+  let token = "";
+  try { token = sessionStorage.getItem("lerma-admin") || ""; } catch {}
+  let report = null;
+
+  async function load() {
+    const res = await fetch("/api/admin/reporte?dias=" + $("#days").value, { headers: { Authorization: "Bearer " + token } });
+    if (res.status === 401 || res.status === 404) {
+      const data = await res.json().catch(() => ({}));
+      try { sessionStorage.removeItem("lerma-admin"); } catch {}
+      return showLogin(data.error || "No autorizado.");
+    }
+    if (!res.ok) return showLogin("No pudimos cargar el reporte.");
+    report = await res.json();
+    $("#login").hidden = true;
+    $("#panel").hidden = false;
+    render(report);
+  }
+
+  function showLogin(msg) {
+    $("#panel").hidden = true;
+    $("#login").hidden = false;
+    const e = $("#login-error");
+    e.hidden = !msg;
+    e.textContent = msg || "";
+  }
+
+  function table(el, head, rows) {
+    el.innerHTML = `<thead><tr>${head.map((h) => `<th${h.n ? ' class="n"' : ""}>${esc(h.t || h)}</th>`).join("")}</tr></thead>
+      <tbody>${rows.length ? rows.join("") : `<tr><td colspan="${head.length}" class="muted">Todavía no hay datos.</td></tr>`}</tbody>`;
+  }
+
+  function render(r) {
+    const k = r.kpis;
+    $("#meta").textContent = `Catálogo: ${num(r.catalog.products)} productos` + (r.catalog.syncedAt ? ` · sincronizado ${new Date(r.catalog.syncedAt).toLocaleString("es-AR")}` : "");
+    $("#warn").innerHTML = r.storage.persistent ? "" : `<div class="alert">Sin base de datos (DATABASE_URL): estos números son sólo desde el último reinicio del servidor.</div>`;
+    const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${esc(l)}</span></div>`;
+    $("#kpis").innerHTML = [
+      kpi(num(k.budgets), "presupuestos armados"),
+      kpi(num(k.budgetsFromPhotos), "desde foto o archivo (IA)"),
+      kpi(k.coveragePercent + "%", "cobertura de lo que se vende"),
+      kpi(k.autoSelectedPercent + "%", "ítems resueltos sin revisar"),
+      kpi(money(k.avgBudgetArs), "valor promedio del presupuesto"),
+      kpi(money(k.avgCartArs), "valor promedio al carrito"),
+      kpi(num(k.unmetItems), "ítems sin resolver"),
+      kpi(num(k.savedBudgets), "links guardados"),
+    ].join("");
+
+    const max = Math.max(1, ...r.daily.map((d) => d.budgets));
+    $("#chart").innerHTML = r.daily.length ? r.daily.map((d) => `<div style="height:${(d.budgets / max) * 100}%" data-tip="${esc(d.day)}: ${d.budgets} presup. · ${d.cart} carrito"></div>`).join("") : `<span class="muted">Todavía no hay datos.</span>`;
+
+    table($("#funnel"), ["Paso", { t: "Cantidad", n: 1 }, { t: "% de presupuestos", n: 1 }],
+      r.funnel.map((f) => `<tr><td>${esc(f.step)}</td><td class="n">${num(f.value)}</td><td class="n">${f.rate != null ? f.rate + "%" : ""}</td></tr>`));
+    const e = r.edits;
+    table($("#edits"), ["Acción", { t: "Veces", n: 1 }], [
+      ["Eligieron otra opción", e.alternativeSelected], ["Agregaron un producto a mano", e.addedManually],
+      ["Quitaron un ítem", e.removed], ["Corrigieron el texto de un ítem", e.textCorrected], ["Presupuestos con error", e.failed],
+    ].map(([l, v]) => `<tr><td>${esc(l)}</td><td class="n">${num(v)}</td></tr>`));
+
+    table($("#demand"), ["Pedido (ejemplo)", "Categoría", "Motivo", { t: "Pedidos", n: 1 }, "Último"],
+      r.demand.map((d) => `<tr><td>${esc(d.text)}</td><td>${d.concept ? `<span class="tag">${esc(d.concept)}</span>` : ""}</td><td>${esc(STATUS[d.status] || d.status)}</td><td class="n">${num(d.hits)}</td><td class="muted">${esc(new Date(d.lastSeen).toLocaleDateString("es-AR"))}</td></tr>`));
+
+    table($("#concepts"), ["Categoría", { t: "Pedidos", n: 1 }, { t: "Encontrados", n: 1 }, ""],
+      r.concepts.map((c) => `<tr><td>${esc(c.concept)}</td><td class="n">${num(c.requested)}</td><td class="n">${c.foundRate}%</td><td><div class="bar"><i style="width:${c.foundRate}%"></i></div></td></tr>`));
+
+    table($("#subs"), ["Propuesto", "Elegido", { t: "Veces", n: 1 }],
+      r.substitutions.map((s) => `<tr><td>${esc(s.from)}</td><td>${esc(s.to)}</td><td class="n">${num(s.hits)}</td></tr>`));
+  }
+
+  function downloadCsv() {
+    if (!report) return;
+    const q = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const rows = [["pedido", "categoria", "motivo", "pedidos", "ultimo"]].concat(report.demand.map((d) => [d.text, d.concept, STATUS[d.status] || d.status, d.hits, d.lastSeen]));
+    const blob = new Blob(["﻿" + rows.map((r) => r.map(q).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "demanda-no-satisfecha.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  $("#login").onsubmit = (ev) => {
+    ev.preventDefault();
+    token = $("#token").value.trim();
+    try { sessionStorage.setItem("lerma-admin", token); } catch {}
+    load();
+  };
+  $("#logout").onclick = () => { token = ""; try { sessionStorage.removeItem("lerma-admin"); } catch {} showLogin(""); };
+  $("#days").onchange = load;
+  $("#csv").onclick = downloadCsv;
+  if (token) load(); else showLogin("");
+})();
+</script>
+</body>
+</html>

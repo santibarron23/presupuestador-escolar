@@ -13,6 +13,9 @@ const { createBudget, matchLines, priceLines, BudgetError } = require("./budget/
 const { renderBudgetPdf } = require("./budget/pdf");
 const { FileError } = require("./parsing/fileReader");
 const { logger } = require("./observability/logger");
+const { createShare, loadShare, restoreBudget, isShareId, shareUrl } = require("./budget/shares");
+const { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport } = require("./analytics/metrics");
+const { getStorage } = require("./storage");
 
 function createApp() {
   const app = express();
@@ -73,6 +76,7 @@ function createApp() {
         res.flushHeaders();
       }
       const budget = await createBudget({ files, text, onStage: stream ? (stage, data) => send("stage", { stage, ...data }) : undefined });
+      recordBudget(budget);
       if (stream) {
         send("result", budget);
         res.end();
@@ -113,8 +117,40 @@ function createApp() {
     res.json({ success: true, ...priceLines(lines) });
   });
 
+  // ── Presupuestos compartibles ──────────────────────────────────────
+  const shareLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false,
+    message: { error: "Demasiados links seguidos. Esperá unos minutos." } });
+  app.post("/api/presupuestos", shareLimiter, express.json({ limit: "100kb" }), async (req, res, next) => {
+    try {
+      const share = await createShare(req.body && req.body.lines);
+      if (!share) return res.status(400).json({ error: "Faltan los ítems." });
+      recordMetric("share_created");
+      res.status(201).json({ success: true, ...share });
+    } catch (e) { next(e); }
+  });
+  app.get("/api/presupuestos/:id", lightLimiter, async (req, res, next) => {
+    try {
+      const id = String(req.params.id);
+      const lines = isShareId(id) ? await loadShare(id) : null;
+      if (!lines || !lines.length) return res.status(404).json({ error: "Este presupuesto venció o el link está incompleto. Podés armarlo de nuevo en un minuto." });
+      recordMetric("share_opened");
+      res.setHeader("Cache-Control", "no-store");
+      res.json(restoreBudget(id, lines));
+    } catch (e) { next(e); }
+  });
+
+  // ── Métricas anónimas del widget (sin cookies ni identificadores) ─────
+  app.post("/api/eventos", lightLimiter, express.json({ limit: "4kb", type: ["application/json", "text/plain"] }), (req, res) => {
+    const body = typeof req.body === "string" ? safeJson(req.body) : req.body;
+    if (body && typeof body.event === "string") {
+      if (body.event === "alternative_selected" && body.params) recordSubstitution(body.params);
+      recordClientEvent(body.event, body.params);
+    }
+    res.status(204).end();
+  });
+
   // ── PDF (precios recalculados desde catálogo) ─────────────────────
-  app.post("/api/presupuesto-pdf", lightLimiter, express.json({ limit: "200kb" }), (req, res) => {
+  app.post("/api/presupuesto-pdf", lightLimiter, express.json({ limit: "200kb" }), async (req, res) => {
     const body = req.body || {};
     let lines = Array.isArray(body.lines) ? body.lines : null;
     let pending = Array.isArray(body.pending) ? body.pending : [];
@@ -132,9 +168,12 @@ function createApp() {
       note: p && p.note ? String(p.note).slice(0, 60) : null,
     })).filter((p) => p.requestedItem);
     const budgetId = String(body.budgetId || "").replace(/[^A-Z0-9]/gi, "").slice(0, 12) || crypto.randomBytes(4).toString("hex").toUpperCase();
+    // Link/QR al presupuesto: sólo si el id es válido; la URL la arma el servidor (nunca una URL del cliente).
+    const shareId = typeof body.shareId === "string" && isShareId(body.shareId) ? body.shareId : null;
+    const link = shareId ? shareUrl(shareId) : null;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="presupuesto-lerma-${budgetId}.pdf"`);
-    renderBudgetPdf({ budgetId, lines: priced.lines, total: priced.total, pending: [...cleanPending, ...unavailable],
+    await renderBudgetPdf({ budgetId, lines: priced.lines, total: priced.total, pending: [...cleanPending, ...unavailable], link,
       schoolName: typeof body.schoolName === "string" ? body.schoolName.slice(0, 120) : "" }, res);
   });
 
@@ -145,7 +184,8 @@ function createApp() {
   });
 
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", catalog: { products: store.products.length, syncedAt: store.meta.syncedAt || null, source: store.meta.source }, ai: config.ai.enabled && Boolean(process.env.ANTHROPIC_API_KEY) });
+    res.json({ status: "ok", catalog: { products: store.products.length, syncedAt: store.meta.syncedAt || null, source: store.meta.source }, ai: config.ai.enabled && Boolean(process.env.ANTHROPIC_API_KEY),
+      storage: getStorage().kind });
   });
 
   // ── Widget ────────────────────────────────────────────────────────
@@ -158,6 +198,32 @@ function createApp() {
   };
   app.get("/widget", sendWidget("widget.html"));
   app.get("/widget/v1", sendWidget("widget-v1.html")); // versión anterior, por si hay que volver atrás
+  // Presupuesto compartido abierto directamente (el widget lee el id de la URL).
+  app.get("/presupuesto/:id", (req, res, next) => (isShareId(String(req.params.id)) ? sendWidget("widget.html")(req, res) : next()));
+
+  // ── Panel de administración ───────────────────────────────────────
+  // Desactivado si no hay ADMIN_TOKEN. Token por header (nunca en la URL), comparación en tiempo constante.
+  const adminLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Demasiados intentos." } });
+  const requireAdmin = (req, res, next) => {
+    if (!config.data.adminToken) return res.status(404).json({ error: "Panel desactivado (falta ADMIN_TOKEN)." });
+    const given = String(req.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    const hash = (s) => crypto.createHash("sha256").update(s).digest();
+    if (!given || !crypto.timingSafeEqual(hash(given), hash(config.data.adminToken))) return res.status(401).json({ error: "Token inválido." });
+    next();
+  };
+  app.get("/admin", (req, res) => {
+    res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+    res.setHeader("X-Robots-Tag", "noindex");
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(path.join(config.root, "public", "admin.html"));
+  });
+  app.get("/api/admin/reporte", adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+      const days = Math.max(1, Math.min(365, parseInt(req.query.dias, 10) || 30));
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await buildReport({ days }));
+    } catch (e) { next(e); }
+  });
   app.get("/api/widget-config", (req, res) => {
     res.setHeader("Cache-Control", "public, max-age=300");
     res.json({ whatsapp: config.store.whatsapp, storeUrl: config.catalog.storeBaseUrl, validityDays: config.store.budgetValidityDays,
@@ -173,6 +239,10 @@ function createApp() {
   });
 
   return app;
+}
+
+function safeJson(s) {
+  try { return JSON.parse(s); } catch { return null; }
 }
 
 // Error → respuesta para la familia (nunca detalles internos).

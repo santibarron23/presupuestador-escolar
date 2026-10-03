@@ -286,8 +286,18 @@
   fetch("/api/widget-config").then((r) => r.json()).then((c) => (config = { ...config, ...c })).catch(() => {});
 
   // Eventos de analítica: los reenvía a GA4/Meta la página de la tienda (ver docs/tiendanube-snippet.html).
+  // Además, los eventos de conversión van como contadores anónimos al panel propio (sin cookies ni IDs).
+  const SERVER_EVENTS = new Set(["add_to_cart_clicked", "cart_result", "whatsapp_clicked", "pdf_downloaded", "share_clicked",
+    "alternative_selected", "product_added_manually", "product_removed", "item_text_corrected", "budget_failed"]);
   function track(event, params = {}) {
     if (embedded) window.parent.postMessage({ type: "lerma-presupuestador:event", event, params }, "*");
+    if (!SERVER_EVENTS.has(event)) return;
+    const body = JSON.stringify({ event, params });
+    try {
+      if (!(navigator.sendBeacon && navigator.sendBeacon("/api/eventos", new Blob([body], { type: "text/plain" })))) {
+        fetch("/api/eventos", { method: "POST", headers: { "Content-Type": "text/plain" }, body, keepalive: true }).catch(() => {});
+      }
+    } catch {}
   }
 
   // Alto del iframe (la tienda ya escucha { height }).
@@ -315,7 +325,7 @@
   }
 
   // ─── Estado ──────────────────────────────────────────────────
-  const state = { tab: "file", files: [], budget: null, items: [], grade: null, startedAt: 0 };
+  const state = { tab: "file", files: [], budget: null, items: [], grade: null, startedAt: 0, share: null };
 
   // ─── Entrada ─────────────────────────────────────────────────
   const fileInput = $("#file-input");
@@ -464,7 +474,9 @@
 
   function loadBudget(budget) {
     state.budget = budget;
-    state.items = budget.items.map((it) => ({ ...it, removed: false, editing: false }));
+    // engineProductId: lo que propuso el motor, para saber si la familia lo cambió (feedback de sustituciones).
+    state.items = budget.items.map((it) => ({ ...it, removed: false, editing: false, engineProductId: it.product ? it.product.id : null }));
+    state.share = null;
     state.grade = budget.grades && budget.grades.length > 1 ? budget.grades[0] : null;
     show("results");
     render();
@@ -542,6 +554,9 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/></svg>
             Descargar PDF</button>
         </div>
+        <button class="btn btn-outline btn-block" data-action="share">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
+          Guardar o compartir el link</button>
         <button class="btn btn-ghost" data-action="restart">Presupuestar otra lista</button>
         <p class="fineprint">Precios estimados de la tienda online, sujetos a stock. El total final lo ves en el carrito.</p>
       </div>
@@ -744,7 +759,7 @@
     function bindOptions() {
       root.querySelectorAll("[data-pick]").forEach((b) => (b.onclick = async () => {
         const productId = b.dataset.pick;
-        track(item.product && productId === item.product.id ? "match_confirmed" : "alternative_selected", { concept: item.concept, from: item.product && item.product.sku, to: b.dataset.sku });
+        track(item.product && productId === item.product.id ? "match_confirmed" : "alternative_selected", { concept: item.concept, from: item.product && item.product.sku, to: b.dataset.sku, fromId: item.engineProductId, toId: productId });
         close();
         await rematch(item, { text: item.requestedItem, quantity: item.requestedQuantity, productId });
       }));
@@ -768,7 +783,7 @@
   }
   function pendingLines() {
     // El texto pedido puede traer la cantidad adelante ("1 papel higiénico"): se muestra una sola vez.
-    return visible().filter((i) => !included(i) && !isOptionalPending(i)).map((i) => ({ requestedItem: i.status === "in_store" && i.inStore ? i.inStore.label : String(i.requestedItem).replace(/^s*d+s+/, ""), packs: i.requestedQuantity || i.quantity, note: i.status === "in_store" ? "sólo en sucursal" : null }));
+    return visible().filter((i) => !included(i) && !isOptionalPending(i)).map((i) => ({ requestedItem: i.status === "in_store" && i.inStore ? i.inStore.label : String(i.requestedItem).replace(/^\s*\d+\s+/, ""), packs: i.requestedQuantity || i.quantity, note: i.status === "in_store" ? "sólo en sucursal" : null }));
   }
 
   async function onAction(action) {
@@ -780,13 +795,47 @@
     if (action === "pdf") return downloadPdf();
     if (action === "whatsapp") return shareWhatsapp();
     if (action === "cart") return addToCart();
+    if (action === "share") return shareLink();
+  }
+
+  // ─── Link para guardar / compartir ────────────────────────────
+  // Se guarda lo elegido (texto de cada ítem, producto, variante, cantidad), nunca el archivo original.
+  function shareLines() {
+    return visible().map((i) => {
+      const l = { text: i.requestedItem, quantity: i.requestedQuantity || i.quantity, grade: i.grade || undefined, optional: i.optional || undefined, optIn: i.optIn || undefined, note: i.note || undefined };
+      if (INCLUDED.has(i.status) && i.product) Object.assign(l, { productId: i.product.id, variantId: i.product.variantId, packs: i.quantity });
+      return l;
+    });
+  }
+  // Reutiliza el link si no cambió nada desde la última vez.
+  async function ensureShare() {
+    const lines = shareLines();
+    const key = JSON.stringify(lines);
+    if (state.share && state.share.key === key) return state.share;
+    const data = await api("/api/presupuestos", { lines });
+    state.share = { id: data.id, url: data.url, key };
+    return state.share;
+  }
+  async function shareLink() {
+    let share;
+    try { share = await ensureShare(); } catch (e) { return toast(e.message); }
+    track("share_clicked", { items: shareLines().length });
+    const text = `Mi presupuesto de útiles en Librería Lerma: ${money(totals().total)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: "Presupuesto escolar — Librería Lerma", text, url: share.url }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(share.url); toast("Link copiado. Guardalo para volver a ver tu presupuesto."); }
+    catch { window.prompt("Copiá este link:", share.url); }
   }
 
   async function downloadPdf() {
     track("pdf_downloaded", { items: selectionLines().length });
     try {
+      // El PDF lleva un QR al presupuesto online (si no se puede generar el link, sale sin QR).
+      const share = await ensureShare().catch(() => null);
       const res = await fetch("/api/presupuesto-pdf", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budgetId: state.budget.id, lines: selectionLines(), pending: pendingLines() }) });
+        body: JSON.stringify({ budgetId: state.budget.id, shareId: share && share.id, lines: selectionLines(), pending: pendingLines() }) });
       if (!res.ok) throw new Error();
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
@@ -796,17 +845,21 @@
     } catch { toast("No pudimos generar el PDF. Probá de nuevo."); }
   }
 
-  function shareWhatsapp() {
+  async function shareWhatsapp() {
+    // La ventana se abre antes del await: si no, Safari la bloquea como popup.
+    const win = window.open("", "_blank");
     const t = totals();
     const pend = pendingLines();
+    const share = await ensureShare().catch(() => null);
     const lines = [
       `*Presupuesto de lista escolar — Librería Lerma*`,
       `${t.count} productos · Total estimado: *${money(t.total)}*`,
       pend.length ? `\nPara consultar (${pend.length}):\n${pend.slice(0, 12).map((p) => `• ${p.packs} × ${p.requestedItem}`).join("\n")}${pend.length > 12 ? "\n…" : ""}` : "",
-      `\nArmalo en ${config.storeUrl.replace(/^https?:\/\/(www\.)?/, "")}/presupuesta-tu-lista-escolar/`,
+      share ? `\nVer el presupuesto y comprarlo: ${share.url}` : `\nArmalo en ${config.storeUrl.replace(/^https?:\/\/(www\.)?/, "")}/presupuesta-tu-lista-escolar/`,
     ].filter(Boolean).join("\n");
     track("whatsapp_clicked", { items: t.count, pending: pend.length });
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, "_blank", "noopener");
+    const url = `https://wa.me/?text=${encodeURIComponent(lines)}`;
+    if (win) { win.opener = null; win.location.href = url; } else window.open(url, "_blank", "noopener");
   }
 
   // Carrito real: el carrito de Tiendanube vive en la sesión de librerialerma.com.ar, así que lo agrega la
@@ -871,6 +924,25 @@
   });
 
   setTab("file");
+
+  // Presupuesto compartido: /presupuesto/:id o /widget?p=:id (la página de la tienda le pasa el ?p= al iframe).
+  const sharedId = (location.pathname.match(/^\/presupuesto\/([A-Za-z0-9_-]+)$/) || [])[1] || new URLSearchParams(location.search).get("p");
+  if (sharedId && /^[A-Za-z0-9_-]{8,6001}$/.test(sharedId)) openShared(sharedId);
+
+  async function openShared(id) {
+    show("progress");
+    setStage("pricing");
+    try {
+      const res = await fetch("/api/presupuestos/" + encodeURIComponent(id));
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.success) throw new Error((data && data.error) || "No pudimos abrir el presupuesto.");
+      track("shared_budget_opened", { items: data.items.length });
+      loadBudget(data);
+    } catch (e) {
+      show("input");
+      showInputError(e.message);
+    }
+  }
 })();
 </script>
 </body>
