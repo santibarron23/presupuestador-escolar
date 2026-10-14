@@ -54,6 +54,8 @@ module.exports = {
     allowedOrigins: list(process.env.ALLOWED_ORIGINS, [
       "https://librerialerma.com.ar",
       "https://www.librerialerma.com.ar",
+      "https://librerialerma.com",
+      "https://www.librerialerma.com",
       "https://presupuestador-escolar.onrender.com",
     ]),
     rateLimitPer10Min: num(process.env.RATE_LIMIT_PER_10MIN, 15),
