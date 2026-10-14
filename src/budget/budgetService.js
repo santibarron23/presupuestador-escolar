@@ -168,6 +168,51 @@ async function disambiguate(items, results, warnings) {
   }
 }
 
+// Varias líneas pueden caer en el mismo producto (ej. "3 carpetas N°3" en renglones distintos) y la tienda no deja
+// agregar al carrito más unidades que el stock. Se reparte el stock en orden: si no alcanza se prueba otra variante
+// del mismo producto, después una alternativa, y si no hay nada se ofrece lo que queda o se marca sin stock.
+function allocateStock(extracted, results) {
+  const used = new Map();
+  const key = (v) => String(v.id);
+  const left = (v) => (typeof v.stock === "number" ? v.stock : Infinity) - (used.get(key(v)) || 0);
+  const take = (v, n) => used.set(key(v), (used.get(key(v)) || 0) + n);
+  let adjusted = 0;
+  results.forEach((m, i) => {
+    if (!AUTO_SELECTED.has(m.status) || !m.product) return;
+    const p = store.get(m.product.id);
+    const cur = p && p.variants.find((v) => key(v) === String(m.product.variantId));
+    if (!cur) return;
+    if (left(cur) >= m.packs) return take(cur, m.packs);
+
+    const it = extracted[i];
+    const attempt = (productId, sameProduct) => {
+      const prod = store.get(productId);
+      if (!prod) return null;
+      for (const v of prod.variants.filter((x) => x.sellable && left(x) > 0)) {
+        const r = matchItem(it.text, store, { quantity: it.quantity, forceProductId: productId, forceVariantId: v.id,
+          decidedBy: sameProduct ? m.decidedBy : "stock", forcedConfidence: sameProduct ? m.confidence : "media" });
+        if (!r.product || String(r.product.id) !== String(productId) || String(r.product.variantId) !== key(v)) continue;
+        if (AUTO_SELECTED.has(r.status) && left(v) >= r.packs) return { r, v };
+      }
+      return null;
+    };
+    const found = attempt(m.product.id, true) ||
+      m.alternatives.reduce((acc, a) => acc || attempt(a.id, false), null);
+    adjusted++;
+    if (found) {
+      results[i] = found.r;
+      return take(found.v, found.r.packs);
+    }
+    const rest = left(cur);
+    if (rest > 0) {
+      results[i] = { ...m, status: "review", confidence: "media", packs: rest, quantityNote: `Sólo quedan ${rest} en stock online` };
+      return take(cur, rest);
+    }
+    results[i] = { ...m, status: "out_of_stock", confidence: null, reason: "Sin stock online suficiente: ya se usó en otro ítem de la lista." };
+  });
+  return adjusted;
+}
+
 // onStage(nombre, datos) informa el avance real (para la barra de progreso del widget).
 async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
   const timer = stageTimer();
@@ -191,6 +236,7 @@ async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
   if (needsRerank && useAi && extraction.method === "ai") onStage("checking");
   const reranked = useAi && extraction.method === "ai" ? await disambiguate(extraction.items, results, warnings) : 0;
   timer.stage("rerank");
+  const stockAdjusted = allocateStock(extraction.items, results);
   onStage("pricing");
 
   const items = results.map((m, i) => toResponseItem(m, i + 1, extraction.items[i].grade, extraction.items[i]));
@@ -203,7 +249,7 @@ async function createBudget({ files, text, useAi = true, onStage = () => {} }) {
     method: extraction.method, sourceKind: source.kind, items: items.length, found: summary.foundItems,
     review: summary.reviewItems, notFound: summary.notFoundItems, coverage: summary.coveragePercent,
     avgConfidence: confidences.length ? Number((confidences.reduce((a, b) => a + b, 0) / confidences.length).toFixed(2)) : null,
-    candidates: results.reduce((s, r) => s + (r.candidatesConsidered || 0), 0), reranked,
+    candidates: results.reduce((s, r) => s + (r.candidatesConsidered || 0), 0), reranked, stockAdjusted,
     inputTokens: extraction.usage ? extraction.usage.input_tokens : 0, outputTokens: extraction.usage ? extraction.usage.output_tokens : 0,
     cached: Boolean(extraction.cached), timings,
   });
