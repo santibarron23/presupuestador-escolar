@@ -121,6 +121,16 @@ const EXCLUDE_UNLESS_REQUESTED = [
 
 // Unidades por paquete cuando ni el nombre ni la variante lo dicen, por SKU: { "150019": 10 }.
 // Las variantes "A4 Comun x10" / "x100" y los nombres "x12", "x 50 u." se detectan solos.
-const UNITS_PER_PACK = {};
+// Hojas por paquete de productos que no lo dicen en el nombre (sale de la descripción en la tienda).
+// Sin esto, "30 hojas canson" se cobraba como 30 paquetes.
+const UNITS_PER_PACK = {
+  "020105": 8, // Repuesto de dibujo N°5 blanco Luma
+  "020066": 6, // Repuesto de dibujo N°5 color Luma
+  "020036": 5, // Repuesto de dibujo N°5 negro Luma
+  "020094": 8, // Repuesto de dibujo N°3 blanco Luma
+  "020089": 6, // Repuesto de dibujo N°3 color Luma
+  "20051": 5, // Repuesto de dibujo N°3 negro Luma
+  "20104": 8, // Repuesto de calcar N°5 Luma
+};
 
 module.exports = { RULES, EXCLUDE_UNLESS_REQUESTED, UNITS_PER_PACK };
