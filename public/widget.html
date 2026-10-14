@@ -883,7 +883,7 @@
       const ok = await new Promise((resolve) => {
         const timer = setTimeout(() => { window.removeEventListener("message", onMsg); resolve(null); }, 2500);
         function onMsg(e) {
-          if (!/librerialerma\.com\.ar$/.test(new URL(e.origin).hostname)) return;
+          if (!/librerialerma\.com(\.ar)?$/.test(new URL(e.origin).hostname)) return;
           if (e.data && e.data.type === "lerma-presupuestador:cart-ack") { clearTimeout(timer); window.removeEventListener("message", onMsg); resolve(true); }
         }
         window.addEventListener("message", onMsg);
@@ -920,7 +920,7 @@
   window.addEventListener("message", (e) => {
     let host = "";
     try { host = new URL(e.origin).hostname; } catch { return; }
-    if (!/librerialerma\.com\.ar$/.test(host) || !e.data) return;
+    if (!/librerialerma\.com(\.ar)?$/.test(host) || !e.data) return;
     if (e.data.type === "lerma-presupuestador:cart-result") {
       const { added = 0, failed = [] } = e.data;
       track("cart_result", { added, failed: failed.length });
