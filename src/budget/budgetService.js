@@ -12,6 +12,19 @@ const { rerank } = require("../ai/rerank");
 const { matchItem } = require("../matching/engine");
 const { logger, stageTimer } = require("../observability/logger");
 const { createLimiter, createCache, sourceKey, CapacityError } = require("../ai/capacity");
+const { consumeGlobalAi } = require("../security/quota");
+const { recordMetric } = require("../analytics/metrics");
+
+// Tope global de lecturas con IA (costo). Se cuenta sólo cuando de verdad se llama a la IA.
+async function readWithAi(source, onStage) {
+  const over = await consumeGlobalAi();
+  if (over) {
+    recordMetric("blocked." + over.rule.id);
+    logger.warn("ai_global_cap", { rule: over.rule.id, hits: over.hits });
+    throw new CapacityError("global_cap", "Tope global de lecturas con IA");
+  }
+  return ai.limiter.run(() => extractItems(source), { onQueued: (position) => onStage("queued", { position }) });
+}
 
 // Una sola fila y una sola caché para todo el proceso (ver src/ai/capacity.js).
 const ai = {};
@@ -111,7 +124,7 @@ async function extract(source, warnings, onStage) {
     // Misma lista ya leída (o leyéndose ahora para otra familia): no se vuelve a pagar la lectura.
     const { value: out, cached } = await ai.cache.wrap(
       sourceKey(source),
-      () => ai.limiter.run(() => extractItems(source), { onQueued: (position) => onStage("queued", { position }) }),
+      () => readWithAi(source, onStage),
       (v) => v.readable && v.items.length > 0,
     );
     if (cached) onStage("extracting");
@@ -122,6 +135,9 @@ async function extract(source, warnings, onStage) {
     return { items: out.items, method: "ai", model: out.model, usage: cached ? null : out.usage, cached: Boolean(cached) };
   } catch (e) {
     if (e instanceof BudgetError) throw e;
+    if (e instanceof CapacityError && e.code === "global_cap" && source.kind !== "text") {
+      throw new BudgetError("busy", `Hoy recibimos muchísimas listas y por un rato no podemos leer fotos. Pegá el texto de la lista (funciona igual) o escribinos por WhatsApp al ${config.store.whatsapp.replace(/^549/, "")}.`, 503);
+    }
     if (e instanceof CapacityError && source.kind !== "text") {
       throw new BudgetError("busy", "Hay muchas familias armando su presupuesto en este momento. Probá de nuevo en un minuto (o pegá el texto de la lista, que es instantáneo).", 503);
     }

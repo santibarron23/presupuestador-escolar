@@ -29,6 +29,7 @@ El servidor sincroniza el catálogo solo cada 6 h (`CATALOG_SYNC_HOURS=0` lo des
 | `ADMIN_TOKEN` | activa el panel `/admin` (token largo y aleatorio) |
 | `AI_MAX_CONCURRENCY` / `AI_MAX_QUEUE` | lecturas de IA simultáneas (8) y tamaño de la fila (30) para temporada alta |
 | `SHARE_BASE_URL` | dónde abren los links compartidos. Por defecto, la página de la tienda (requiere el snippet de Tiendanube, instalado el 2026-10-03; copia del código anterior en docs/tiendanube-snippet-anterior.html) |
+| `RATE_LIMIT_PER_HOUR` / `_PER_DAY` / `AI_GLOBAL_PER_DAY`… | límites contra abusos por IP, de noche y globales de IA (defaults y detalle en docs/ARQUITECTURA.md → "Protección contra abusos") |
 
 - [docs/AUDITORIA.md](docs/AUDITORIA.md): diagnóstico del sistema anterior.
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md): cómo funciona, cómo editar reglas, endpoints, variables de entorno.

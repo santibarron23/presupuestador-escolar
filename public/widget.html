@@ -841,13 +841,14 @@
       const share = await ensureShare().catch(() => null);
       const res = await fetch("/api/presupuesto-pdf", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ budgetId: state.budget.id, shareId: share && share.id, lines: selectionLines(), pending: pendingLines() }) });
-      if (!res.ok) throw new Error();
+      // Si se superó un límite de uso, el servidor explica cuánto esperar.
+      if (!res.ok) throw new Error(((await res.json().catch(() => null)) || {}).error || "");
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url; a.download = `presupuesto-lerma-${state.budget.id}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-    } catch { toast("No pudimos generar el PDF. Probá de nuevo."); }
+    } catch (e) { toast((e && e.message) || "No pudimos generar el PDF. Probá de nuevo."); }
   }
 
   async function shareWhatsapp() {

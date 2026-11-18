@@ -5,6 +5,9 @@ const num = (v, d) => (v === undefined || v === "" || Number.isNaN(Number(v)) ? 
 const list = (v, d) => (v ? v.split(",").map((s) => s.trim()).filter(Boolean) : d);
 
 const ROOT = path.resolve(__dirname, "..", "..");
+const env = process.env;
+// Secreto para hashear IPs en los contadores: estable entre reinicios (si no, cada reinicio "perdona" a todos).
+const quotaSecret = env.QUOTA_SECRET || (env.ADMIN_TOKEN ? require("crypto").createHash("sha256").update("quota:" + env.ADMIN_TOKEN).digest("hex") : "");
 
 module.exports = {
   root: ROOT,
@@ -58,11 +61,42 @@ module.exports = {
       "https://www.librerialerma.com",
       "https://presupuestador-escolar.onrender.com",
     ]),
-    rateLimitPer10Min: num(process.env.RATE_LIMIT_PER_10MIN, 15),
     matchRateLimitPerMin: num(process.env.MATCH_RATE_LIMIT_PER_MIN, 120),
     maxUploadBytes: num(process.env.MAX_UPLOAD_MB, 10) * 1024 * 1024,
     maxFiles: num(process.env.MAX_FILES, 5),
     maxPastedChars: num(process.env.MAX_PASTED_CHARS, 20000),
+    // Tamaño total de un pedido con archivos: se rechaza antes de leerlo (protege la memoria del servidor).
+    maxRequestBytes: num(process.env.MAX_REQUEST_MB, 25) * 1024 * 1024,
+    // Pedidos con archivos procesándose a la vez (cada uno ocupa memoria hasta terminar).
+    maxInflightUploads: num(process.env.MAX_INFLIGHT_UPLOADS, 20),
+  },
+
+  // Límites contra abusos (ver src/security/quota.js). Pensados para que una familia nunca los toque:
+  // una conexión compartida (wifi de un colegio, datos móviles con IP compartida) puede tener varias familias.
+  abuse: {
+    // Saltos de proxy delante de la app (Cloudflare + Render = 2). Sólo se usa si no llega CF-Connecting-IP.
+    trustProxyHops: num(env.TRUST_PROXY_HOPS, 2),
+    // Presupuestos por IP
+    budgetsPer10Min: num(env.RATE_LIMIT_PER_10MIN, 10),
+    budgetsPerHour: num(env.RATE_LIMIT_PER_HOUR, 30),
+    budgetsPerDay: num(env.RATE_LIMIT_PER_DAY, 80),
+    // Horario nocturno (hora de Argentina): límite por hora más estricto.
+    nightStartHour: num(env.NIGHT_START_HOUR, 0),
+    nightEndHour: num(env.NIGHT_END_HOUR, 7),
+    budgetsPerNightHour: num(env.RATE_LIMIT_NIGHT_PER_HOUR, 8),
+    // Tope global de lecturas con IA (costo), sumando todas las IPs.
+    aiGlobalPerHour: num(env.AI_GLOBAL_PER_HOUR, 300),
+    aiGlobalPerDay: num(env.AI_GLOBAL_PER_DAY, 2000),
+    // Otros endpoints
+    sharesPer10Min: num(env.SHARES_PER_10MIN, 30),
+    sharesPerDay: num(env.SHARES_PER_DAY, 150),
+    pdfPer10Min: num(env.PDF_PER_10MIN, 20),
+    pdfPerDay: num(env.PDF_PER_DAY, 150),
+    eventsPerMin: num(env.EVENTS_PER_MIN, 60),
+    adminPer10Min: num(env.ADMIN_PER_10MIN, 20),
+    secret: quotaSecret,
+    // Sólo para pruebas de carga locales. Nunca en producción (se avisa en el log al arrancar).
+    disabled: env.RATE_LIMITS_DISABLED === "1",
   },
 
   data: {

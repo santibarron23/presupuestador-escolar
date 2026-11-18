@@ -185,6 +185,8 @@ async function buildReport({ days = 30, ops = null } = {}) {
       live: ops || null,
     },
     statuses: Object.fromEntries(Object.keys(totals).filter((k) => k.startsWith("status.")).map((k) => [k.slice(7), totals[k]])),
+    // Pedidos frenados por los límites contra abusos, por regla (ver src/security/quota.js).
+    blocked: Object.fromEntries(Object.keys(totals).filter((k) => k.startsWith("blocked.")).map((k) => [k.slice(8), totals[k]])),
     daily: Object.values(daily).sort((a, b) => a.day.localeCompare(b.day)),
     concepts: concepts.slice(0, 40),
     demand: r.demand.map((d) => ({ text: d.sample, concept: d.concept, status: d.status, hits: d.hits, lastSeen: d.lastSeen })),

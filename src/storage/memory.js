@@ -8,6 +8,7 @@ function createMemoryStorage() {
   const metrics = new Map(); // "YYYY-MM-DD|metric" → value
   const demand = new Map(); // key → { key, sample, concept, status, hits, firstSeen, lastSeen }
   const substitutions = new Map(); // "concept|from|to" → { concept, fromId, toId, hits, lastSeen }
+  const counters = new Map(); // "key|windowStartMs" → { hits, expires }
 
   const trim = (map, max) => {
     while (map.size > max) map.delete(map.keys().next().value);
@@ -18,6 +19,19 @@ function createMemoryStorage() {
     persistent: false,
     async init() {},
     async close() {},
+
+    // Límites de uso: suma 1 a cada contador y devuelve los totales, en el mismo orden.
+    async incrementCounters(entries) {
+      const now = Date.now();
+      if (counters.size > 50000) for (const [k, c] of counters) if (c.expires < now) counters.delete(k);
+      return entries.map(({ key, windowStart, windowMs }) => {
+        const k = key + "|" + windowStart.getTime();
+        const c = counters.get(k) || { hits: 0, expires: windowStart.getTime() + windowMs };
+        c.hits++;
+        counters.set(k, c);
+        return c.hits;
+      });
+    },
 
     async saveBudget({ id, lines, expiresAt }) {
       budgets.set(id, { lines, createdAt: new Date(), expiresAt, views: 0 });

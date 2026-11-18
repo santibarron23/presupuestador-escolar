@@ -8,6 +8,7 @@
 process.env.NODE_ENV = "test";
 process.env.RATE_LIMIT_PER_10MIN = "1000000";
 process.env.MATCH_RATE_LIMIT_PER_MIN = "1000000";
+process.env.RATE_LIMITS_DISABLED = "1"; // sólo acá: en producción nunca
 process.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "load-test";
 process.env.CATALOG_SYNC_HOURS = "0";
 

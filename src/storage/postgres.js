@@ -30,6 +30,13 @@ const SCHEMA = [
      hits INTEGER NOT NULL DEFAULT 0,
      last_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
      PRIMARY KEY (concept, from_id, to_id))`,
+  // Límites de uso por IP y globales. La clave lleva la IP hasheada (nunca la IP en claro).
+  `CREATE TABLE IF NOT EXISTS rate_counters (
+     key TEXT NOT NULL,
+     window_start TIMESTAMPTZ NOT NULL,
+     hits INTEGER NOT NULL DEFAULT 0,
+     expires_at TIMESTAMPTZ NOT NULL,
+     PRIMARY KEY (key, window_start))`,
 ];
 
 // Pool: clase compatible con pg.Pool (en tests, la de pg-mem).
@@ -43,6 +50,7 @@ function createPostgresStorage({ connectionString, sslNoVerify = false, Pool = r
   });
   const q = (text, params) => pool.query(text, params);
   let saves = 0;
+  let counterWrites = 0;
 
   return {
     kind: "postgres",
@@ -52,6 +60,26 @@ function createPostgresStorage({ connectionString, sslNoVerify = false, Pool = r
     },
     async close() {
       await pool.end();
+    },
+
+    // Suma 1 a cada contador (una sola consulta) y devuelve los totales en el mismo orden.
+    async incrementCounters(entries) {
+      if (!entries.length) return [];
+      const params = [];
+      const values = entries.map(({ key, windowStart, windowMs }) => {
+        params.push(key, windowStart, new Date(windowStart.getTime() + windowMs));
+        const n = params.length;
+        return `($${n - 2}, $${n - 1}, 1, $${n})`;
+      });
+      const { rows } = await q(
+        `INSERT INTO rate_counters (key, window_start, hits, expires_at) VALUES ${values.join(", ")}
+         ON CONFLICT (key, window_start) DO UPDATE SET hits = rate_counters.hits + 1
+         RETURNING key, window_start, hits`,
+        params,
+      );
+      if (++counterWrites % 200 === 1) q("DELETE FROM rate_counters WHERE expires_at < now()").catch(() => {});
+      const byKey = new Map(rows.map((r) => [r.key + "|" + new Date(r.window_start).getTime(), r.hits]));
+      return entries.map(({ key, windowStart }) => byKey.get(key + "|" + windowStart.getTime()) || 1);
     },
 
     async saveBudget({ id, lines, expiresAt }) {

@@ -17,11 +17,15 @@ const { logger } = require("./observability/logger");
 const { createShare, loadShare, restoreBudget, isShareId, shareUrl } = require("./budget/shares");
 const { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport, latency } = require("./analytics/metrics");
 const { getStorage } = require("./storage");
+const { clientIp } = require("./security/clientIp");
+const { quotaMiddleware } = require("./security/quota");
 
 function createApp() {
   const app = express();
   app.disable("x-powered-by");
-  app.set("trust proxy", 1); // Render: IP real en X-Forwarded-For (necesario para el rate limit)
+  // Cloudflare + Render delante de la app. La IP de la familia sale de src/security/clientIp.js.
+  app.set("trust proxy", config.abuse.trustProxyHops);
+  if (config.abuse.disabled) logger.error("rate_limits_disabled", { reason: "RATE_LIMITS_DISABLED=1: sólo para pruebas de carga locales" });
 
   // Logs de acceso sin contenido de las listas.
   app.use((req, res, next) => {
@@ -48,24 +52,44 @@ function createApp() {
     limits: { fileSize: config.http.maxUploadBytes, files: config.http.maxFiles, fields: 5, fieldSize: config.http.maxPastedChars * 2 },
   });
 
-  const budgetLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
-    limit: config.http.rateLimitPer10Min,
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-    message: { error: "Hiciste muchas consultas seguidas. Esperá unos minutos e intentá de nuevo." },
+  // Límites cortos en memoria (ráfagas) por IP real del cliente.
+  const limiter = (windowMs, limit, error) => rateLimit({
+    windowMs, limit, standardHeaders: "draft-7", legacyHeaders: false,
+    keyGenerator: clientIp, skip: () => config.abuse.disabled, message: { error },
   });
-  const lightLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: config.http.matchRateLimitPerMin,
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-    message: { error: "Demasiadas consultas. Esperá un momento." },
-  });
+  const lightLimiter = limiter(60 * 1000, config.http.matchRateLimitPerMin, "Demasiadas consultas. Esperá un momento.");
+  const eventsLimiter = limiter(60 * 1000, config.abuse.eventsPerMin, "Demasiados eventos.");
+
+  // Límites por hora, día y horario nocturno, guardados en la base (ver src/security/quota.js).
+  const blocked = (rule) => recordMetric("blocked." + rule);
+  const budgetQuota = quotaMiddleware("budget", { onBlocked: blocked });
+  const shareQuota = quotaMiddleware("share", { onBlocked: blocked });
+  const pdfQuota = quotaMiddleware("pdf", { onBlocked: blocked });
+
+  // Protección de memoria: un pedido enorme o muchos a la vez se rechazan antes de leer los archivos.
+  let inflightUploads = 0;
+  const uploadGuard = (req, res, next) => {
+    const size = Number(req.get("content-length") || 0);
+    if (size > config.http.maxRequestBytes) {
+      blocked("upload_too_big");
+      return res.status(413).json({ error: `Los archivos pesan demasiado (máximo ${Math.round(config.http.maxRequestBytes / 1048576)} MB en total). Probá con fotos más livianas o menos páginas.`, code: "too_big" });
+    }
+    if (inflightUploads >= config.http.maxInflightUploads) {
+      blocked("upload_busy");
+      res.setHeader("Retry-After", "30");
+      return res.status(503).json({ error: "Hay muchas listas procesándose en este momento. Probá de nuevo en un minuto.", code: "busy" });
+    }
+    inflightUploads++;
+    let released = false;
+    const release = () => { if (!released) { released = true; inflightUploads--; } };
+    res.on("finish", release);
+    res.on("close", release);
+    next();
+  };
 
   // ── Presupuesto completo (archivo/s o texto pegado) ──────────────
   // ?stream=1 → Server-Sent Events con las etapas reales y el resultado final (para la barra de progreso).
-  app.post("/api/presupuestar", budgetLimiter, upload.array("lista", config.http.maxFiles), async (req, res, next) => {
+  app.post("/api/presupuestar", uploadGuard, budgetQuota, upload.array("lista", config.http.maxFiles), async (req, res, next) => {
     const stream = req.query.stream === "1";
     const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     try {
@@ -119,9 +143,7 @@ function createApp() {
   });
 
   // ── Presupuestos compartibles ──────────────────────────────────────
-  const shareLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false,
-    message: { error: "Demasiados links seguidos. Esperá unos minutos." } });
-  app.post("/api/presupuestos", shareLimiter, express.json({ limit: "100kb" }), async (req, res, next) => {
+  app.post("/api/presupuestos", shareQuota, express.json({ limit: "100kb" }), async (req, res, next) => {
     try {
       const share = await createShare(req.body && req.body.lines);
       if (!share) return res.status(400).json({ error: "Faltan los ítems." });
@@ -141,7 +163,7 @@ function createApp() {
   });
 
   // ── Métricas anónimas del widget (sin cookies ni identificadores) ─────
-  app.post("/api/eventos", lightLimiter, express.json({ limit: "4kb", type: ["application/json", "text/plain"] }), (req, res) => {
+  app.post("/api/eventos", eventsLimiter, express.json({ limit: "4kb", type: ["application/json", "text/plain"] }), (req, res) => {
     const body = typeof req.body === "string" ? safeJson(req.body) : req.body;
     if (body && typeof body.event === "string") {
       if (body.event === "alternative_selected" && body.params) recordSubstitution(body.params);
@@ -151,7 +173,7 @@ function createApp() {
   });
 
   // ── PDF (precios recalculados desde catálogo) ─────────────────────
-  app.post("/api/presupuesto-pdf", lightLimiter, express.json({ limit: "200kb" }), async (req, res) => {
+  app.post("/api/presupuesto-pdf", lightLimiter, pdfQuota, express.json({ limit: "200kb" }), async (req, res) => {
     const body = req.body || {};
     let lines = Array.isArray(body.lines) ? body.lines : null;
     let pending = Array.isArray(body.pending) ? body.pending : [];
@@ -221,7 +243,9 @@ function createApp() {
 
   // ── Panel de administración ───────────────────────────────────────
   // Desactivado si no hay ADMIN_TOKEN. Token por header (nunca en la URL), comparación en tiempo constante.
-  const adminLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Demasiados intentos." } });
+  // Sin `skip`: el panel nunca se desprotege, ni en pruebas de carga.
+  const adminLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: config.abuse.adminPer10Min, standardHeaders: "draft-7", legacyHeaders: false,
+    keyGenerator: clientIp, message: { error: "Demasiados intentos." } });
   const requireAdmin = (req, res, next) => {
     if (!config.data.adminToken) return res.status(404).json({ error: "Panel desactivado (falta ADMIN_TOKEN)." });
     const given = String(req.get("authorization") || "").replace(/^Bearer\s+/i, "");

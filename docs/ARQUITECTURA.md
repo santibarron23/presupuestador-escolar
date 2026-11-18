@@ -96,7 +96,7 @@ El servidor lo recarga solo (cada `CATALOG_RELOAD_MS`).
 
 | Método | Ruta | Uso |
 |---|---|---|
-| POST | `/api/presupuestar` | multipart: `lista` (hasta 5 archivos) o `texto` (pegado). Rate limit por IP. |
+| POST | `/api/presupuestar` | multipart: `lista` (hasta 5 archivos) o `texto` (pegado). Límites por IP, horario y globales (ver abajo). |
 | POST | `/api/match` | `{ lines: [{ text, quantity, productId?, variantId?, packs? }] }` re-matchea sin IA (edición, reemplazo manual). |
 | GET | `/api/productos/buscar?q=` | búsqueda para reemplazar/agregar a mano. |
 | POST | `/api/presupuesto/validar` | `{ lines: [{ productId, variantId, packs }] }` → precios del catálogo. |
@@ -104,6 +104,26 @@ El servidor lo recarga solo (cada `CATALOG_RELOAD_MS`).
 | GET | `/api/catalogo` | campos públicos (compatibilidad). |
 | GET | `/api/health` | estado, catálogo, IA. |
 | GET | `/widget` | widget (sólo embebible desde la tienda). |
+
+## Protección contra abusos
+
+Código en `src/security/`. Pensada para que una familia nunca la note: una conexión puede ser compartida
+(wifi de un colegio, datos móviles con IP compartida), por eso los límites por IP son holgados y el freno
+fuerte al costo es el tope global.
+
+- **IP real**: el pedido pasa por Cloudflare y Render. Se usa `CF-Connecting-IP` (Cloudflare la pisa si viene
+  falsa); si falta, `trust proxy = 2`. Antes (`trust proxy = 1`) el límite se aplicaba a la IP de un nodo de
+  Cloudflare: compartido entre miles de personas y fácil de esquivar. IPv6 se agrupa por /64.
+- **Presupuestos por IP**: 10 cada 10 min, 30 por hora, 80 por día (el día arranca a medianoche de Argentina).
+- **Horario nocturno** (0 a 7 h): 8 por hora por IP.
+- **Tope global de IA**: 300 lecturas por hora y 2000 por día sumando todas las IPs. Superado: el texto pegado
+  sigue funcionando sin IA; las fotos reciben un mensaje claro (pegá el texto o WhatsApp). La caché no cuenta.
+- **PDF, links, eventos y panel** con sus propios límites. **Memoria**: pedidos de más de 25 MB se rechazan
+  antes de leerlos y como mucho 20 pedidos con archivos a la vez.
+- Los contadores de hora/día viven en Postgres (`rate_counters`), así un reinicio no "perdona" a nadie; la IP
+  nunca se guarda en claro (HMAC con secreto del servidor). Si la base falla se cuenta en memoria.
+- Cada pedido frenado se cuenta en `/admin` → "Protección contra abusos", con el motivo.
+- Respuesta al superar un límite: `429` + `Retry-After` + mensaje que dice cuánto esperar.
 
 ## Variables de entorno
 
@@ -117,7 +137,15 @@ El servidor lo recarga solo (cada `CATALOG_RELOAD_MS`).
 | `AI_RERANK_MAX_ITEMS` | `15` | 0 desactiva el desempate por IA |
 | `AI_DISABLED` | — | `1` = sin IA (sólo texto) |
 | `ALLOWED_ORIGINS` | tienda + render | CORS y `frame-ancestors` |
-| `RATE_LIMIT_PER_10MIN` | `15` | presupuestos por IP |
+| `RATE_LIMIT_PER_10MIN` / `_PER_HOUR` / `_PER_DAY` | `10` / `30` / `80` | presupuestos por IP (ver "Protección contra abusos") |
+| `RATE_LIMIT_NIGHT_PER_HOUR` | `8` | presupuestos por IP por hora entre `NIGHT_START_HOUR` (0) y `NIGHT_END_HOUR` (7), hora argentina |
+| `AI_GLOBAL_PER_HOUR` / `AI_GLOBAL_PER_DAY` | `300` / `2000` | tope de lecturas con IA de todo el sitio (costo) |
+| `SHARES_PER_10MIN` / `SHARES_PER_DAY` | `30` / `150` | links compartidos por IP |
+| `PDF_PER_10MIN` / `PDF_PER_DAY` | `20` / `150` | PDF por IP |
+| `EVENTS_PER_MIN` · `ADMIN_PER_10MIN` | `60` · `20` | eventos del widget · intentos en el panel |
+| `MAX_REQUEST_MB` · `MAX_INFLIGHT_UPLOADS` | `25` · `20` | tamaño total de un pedido · pedidos con archivos a la vez |
+| `TRUST_PROXY_HOPS` | `2` | Cloudflare + Render (sólo si falta `CF-Connecting-IP`) |
+| `QUOTA_SECRET` | derivado de `ADMIN_TOKEN` | secreto para hashear IPs en los contadores |
 | `CATALOG_PATH` | `data/catalog.json` | |
 | `CATALOG_MIN_PRICE` | `2` | productos a $1 no se presupuestan |
 | `TIENDANUBE_ACCESS_TOKEN` | — | habilita la API oficial en el sync |

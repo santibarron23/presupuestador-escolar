@@ -112,6 +112,10 @@
       <div class="table-wrap"><table id="ops"></table></div>
       <div class="table-wrap"><table id="live"></table></div>
     </div>
+
+    <h2>Protección contra abusos</h2>
+    <p class="muted">Pedidos frenados por los límites por conexión, por horario nocturno o por el tope diario de lecturas con IA. Si ves muchos de "por día" o "tope global", puede ser un ataque o un pico real: avisá para ajustar los límites.</p>
+    <div class="table-wrap"><table id="blocked"></table></div>
   </main>
 </div>
 <script>
@@ -197,6 +201,7 @@
     table($("#subs"), ["Propuesto", "Elegido", { t: "Veces", n: 1 }],
       r.substitutions.map((s) => `<tr><td>${esc(s.from)}</td><td>${esc(s.to)}</td><td class="n">${num(s.hits)}</td></tr>`));
     renderOps(r);
+    renderBlocked(r);
   }
 
   function renderOps(r) {
@@ -221,6 +226,23 @@
       ["IA leyendo / en fila", `${lim.active || 0} de ${lim.max || "?"} / ${lim.waiting || 0}`],
       ["Rechazos por fila llena (desde el reinicio)", num((lim.rejected || 0) + (lim.timedOut || 0))],
     ].map(row));
+  }
+
+  const BLOCKED_LABELS = {
+    budget_10m: "Presupuestos: más de lo permitido en 10 min (misma conexión)",
+    budget_1h: "Presupuestos: más de lo permitido por hora",
+    budget_1d: "Presupuestos: más de lo permitido por día",
+    budget_night: "Presupuestos: límite de horario nocturno (0 a 7 h)",
+    ai_global_1h: "Tope global de lecturas con IA por hora",
+    ai_global_1d: "Tope global de lecturas con IA por día",
+    share_10m: "Links compartidos: ráfaga", share_1d: "Links compartidos: por día",
+    pdf_10m: "PDF: ráfaga", pdf_1d: "PDF: por día",
+    upload_too_big: "Archivos demasiado pesados", upload_busy: "Demasiadas subidas a la vez",
+  };
+  function renderBlocked(r) {
+    const b = r.blocked || {};
+    table($("#blocked"), ["Motivo", { t: "Pedidos frenados", n: 1 }],
+      Object.entries(b).sort((x, y) => y[1] - x[1]).map(([k, v]) => `<tr><td>${esc(BLOCKED_LABELS[k] || k)}</td><td class="n">${num(v)}</td></tr>`));
   }
 
   async function syncNow() {
