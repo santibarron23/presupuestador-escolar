@@ -84,8 +84,9 @@ module.exports = {
   abuse: {
     // Saltos de proxy delante de la app (ver src/security/clientIp.js).
     trustProxyHops: num(env.TRUST_PROXY_HOPS, 2),
-    // Sólo si TODO el tráfico pasa por Cloudflare (no en Railway: ahí el header se puede falsificar).
-    trustCfConnectingIp: env.TRUST_CF_CONNECTING_IP === "1",
+    // Sólo si TODO el tráfico pasa por Cloudflare. Render (define RENDER=true) siempre está detrás de Cloudflare y en
+    // Render es la única forma de obtener la IP real (verificado). En Railway NO: ahí el header se puede falsificar.
+    trustCfConnectingIp: env.TRUST_CF_CONNECTING_IP ? env.TRUST_CF_CONNECTING_IP === "1" : env.RENDER === "true",
     // Presupuestos por IP
     budgetsPer10Min: num(env.RATE_LIMIT_PER_10MIN, 10),
     budgetsPerHour: num(env.RATE_LIMIT_PER_HOUR, 30),

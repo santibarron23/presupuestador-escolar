@@ -1,11 +1,11 @@
 // IP real del cliente, para los límites de uso.
 //
-// Por defecto: req.ip con `trust proxy` = TRUST_PROXY_HOPS (2), es decir, la IP que agregó el proxy de la
-// plataforma a X-Forwarded-For, ignorando lo que haya escrito el cliente adelante. Verificado en producción:
-//   Render:  familia → Cloudflare → balanceador de Render → app   (con 1 salto se tomaba el nodo de Cloudflare)
-//   Railway: familia → edge de Railway → app
-// CF-Connecting-IP sólo se usa con TRUST_CF_CONNECTING_IP=1: detrás de Cloudflare es confiable (Cloudflare lo pisa),
-// pero en una plataforma sin Cloudflare (Railway) cualquiera puede mandarlo y esquivar todos los límites.
+// Depende de la plataforma (verificado en producción mandando headers falsos):
+//   Railway: familia → edge de Railway → app. req.ip con `trust proxy` = TRUST_PROXY_HOPS (2) da la IP real y no se
+//            puede falsificar. CF-Connecting-IP NO se usa: no hay Cloudflare y cualquiera podría mandarlo.
+//   Render:  familia → Cloudflare → proxies de Render → app. La cadena X-Forwarded-For termina en nodos de Cloudflare que
+//            cambian en cada pedido; la IP real es CF-Connecting-IP, que Cloudflare pisa (uno falso → 403).
+//            Se activa solo en Render (RENDER=true) o con TRUST_CF_CONNECTING_IP=1.
 const net = require("net");
 const config = require("../config");
 

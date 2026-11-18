@@ -114,7 +114,8 @@ fuerte al costo es el tope global.
 - **IP real**: la IP que agrega el proxy de la plataforma a `X-Forwarded-For` (`TRUST_PROXY_HOPS=2`), ignorando lo
   que el cliente escriba adelante. Verificado en Render (Cloudflare + balanceador) y en Railway (edge de Railway).
   Antes (`trust proxy = 1`) en Render se tomaba la IP de un nodo de Cloudflare: compartida y fácil de esquivar.
-  `CF-Connecting-IP` sólo con `TRUST_CF_CONNECTING_IP=1` y si TODO el tráfico pasa por Cloudflare: en Railway
+  `CF-Connecting-IP` sólo en Render (detecta `RENDER=true`; ahí es la única fuente correcta) o con
+  `TRUST_CF_CONNECTING_IP=1`, y nunca en Railway:
   cualquiera puede mandarlo. IPv6 se agrupa por /64.
 - **Presupuestos por IP**: 10 cada 10 min, 30 por hora, 80 por día (el día arranca a medianoche de Argentina).
 - **Horario nocturno** (0 a 7 h): 8 por hora por IP.

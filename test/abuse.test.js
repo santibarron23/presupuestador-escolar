@@ -180,3 +180,17 @@ test("los pedidos frenados aparecen en el reporte del panel", async () => {
   const rep = await buildReport({ days: 1 });
   assert.equal(rep.blocked.budget_10m, 1);
 });
+
+test("CF-Connecting-IP: activo sólo en Render (detrás de Cloudflare) o si se pide explícitamente", () => {
+  const { execFileSync } = require("child_process");
+  const read = (extra) => {
+    const env = { ...process.env, ...extra };
+    delete env.TRUST_CF_CONNECTING_IP;
+    if (extra.TRUST_CF_CONNECTING_IP) env.TRUST_CF_CONNECTING_IP = extra.TRUST_CF_CONNECTING_IP;
+    return execFileSync(process.execPath, ["-e", "process.stdout.write(String(require('./src/config').abuse.trustCfConnectingIp))"], { env, cwd: require("path").join(__dirname, "..") }).toString();
+  };
+  assert.equal(read({}), "false", "Railway / local: nunca por defecto");
+  assert.equal(read({ RENDER: "true" }), "true", "Render");
+  assert.equal(read({ RENDER: "true", TRUST_CF_CONNECTING_IP: "0" }), "false", "se puede apagar");
+  assert.equal(read({ TRUST_CF_CONNECTING_IP: "1" }), "true");
+});
