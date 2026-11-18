@@ -59,7 +59,8 @@ module.exports = {
       "https://www.librerialerma.com.ar",
       "https://librerialerma.com",
       "https://www.librerialerma.com",
-      "https://presupuestador-escolar.onrender.com",
+      "https://presupuestador-escolar-production.up.railway.app", // producción
+      "https://presupuestador-escolar.onrender.com", // despliegue anterior
     ]),
     matchRateLimitPerMin: num(process.env.MATCH_RATE_LIMIT_PER_MIN, 120),
     maxUploadBytes: num(process.env.MAX_UPLOAD_MB, 10) * 1024 * 1024,
@@ -123,7 +124,7 @@ module.exports = {
     // Días que dura el link de un presupuesto guardado.
     shareDays: num(process.env.BUDGET_SHARE_DAYS, 90),
     // Dónde se abre un presupuesto compartido: la página de la tienda (el snippet de Tiendanube le pasa el ?p= al
-    // presupuestador), así la familia compra ahí mismo. Si se saca el snippet: SHARE_BASE_URL=https://presupuestador-escolar.onrender.com/presupuesto/
+    // presupuestador), así la familia compra ahí mismo. Si se saca el snippet: SHARE_BASE_URL=https://presupuestador-escolar-production.up.railway.app/presupuesto/ (o el dominio que corresponda); antes era https://presupuestador-escolar.onrender.com/presupuesto/
     shareBaseUrl: process.env.SHARE_BASE_URL || "https://www.librerialerma.com.ar/presupuesta-tu-lista-escolar/?p=",
     // Panel /admin. Sin token el panel está desactivado.
     adminToken: process.env.ADMIN_TOKEN || "",
