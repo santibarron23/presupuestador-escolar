@@ -111,9 +111,11 @@ Código en `src/security/`. Pensada para que una familia nunca la note: una cone
 (wifi de un colegio, datos móviles con IP compartida), por eso los límites por IP son holgados y el freno
 fuerte al costo es el tope global.
 
-- **IP real**: el pedido pasa por Cloudflare y Render. Se usa `CF-Connecting-IP` (Cloudflare la pisa si viene
-  falsa); si falta, `trust proxy = 2`. Antes (`trust proxy = 1`) el límite se aplicaba a la IP de un nodo de
-  Cloudflare: compartido entre miles de personas y fácil de esquivar. IPv6 se agrupa por /64.
+- **IP real**: la IP que agrega el proxy de la plataforma a `X-Forwarded-For` (`TRUST_PROXY_HOPS=2`), ignorando lo
+  que el cliente escriba adelante. Verificado en Render (Cloudflare + balanceador) y en Railway (edge de Railway).
+  Antes (`trust proxy = 1`) en Render se tomaba la IP de un nodo de Cloudflare: compartida y fácil de esquivar.
+  `CF-Connecting-IP` sólo con `TRUST_CF_CONNECTING_IP=1` y si TODO el tráfico pasa por Cloudflare: en Railway
+  cualquiera puede mandarlo. IPv6 se agrupa por /64.
 - **Presupuestos por IP**: 10 cada 10 min, 30 por hora, 80 por día (el día arranca a medianoche de Argentina).
 - **Horario nocturno** (0 a 7 h): 8 por hora por IP.
 - **Tope global de IA**: 300 lecturas por hora y 2000 por día sumando todas las IPs. Superado: el texto pegado

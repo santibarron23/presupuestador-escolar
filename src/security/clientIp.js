@@ -1,12 +1,13 @@
 // IP real del cliente, para los límites de uso.
 //
-// En producción el pedido pasa por Cloudflare y por el balanceador de Render antes de llegar acá:
-//   familia → Cloudflare → Render → app
-// Cloudflare pone la IP de quien se conectó en CF-Connecting-IP (y la pisa si alguien la manda falsa), así que
-// es la fuente confiable. Si no está (local, tests), se usa req.ip con `trust proxy` = cantidad de saltos.
-// Ojo: con `trust proxy = 1` Express tomaba la IP de un nodo de Cloudflare (cambia entre pedidos y la comparten
-// miles de personas), no la de la familia.
+// Por defecto: req.ip con `trust proxy` = TRUST_PROXY_HOPS (2), es decir, la IP que agregó el proxy de la
+// plataforma a X-Forwarded-For, ignorando lo que haya escrito el cliente adelante. Verificado en producción:
+//   Render:  familia → Cloudflare → balanceador de Render → app   (con 1 salto se tomaba el nodo de Cloudflare)
+//   Railway: familia → edge de Railway → app
+// CF-Connecting-IP sólo se usa con TRUST_CF_CONNECTING_IP=1: detrás de Cloudflare es confiable (Cloudflare lo pisa),
+// pero en una plataforma sin Cloudflare (Railway) cualquiera puede mandarlo y esquivar todos los límites.
 const net = require("net");
+const config = require("../config");
 
 // IPv6: un mismo cliente suele tener un /64 entero; si no se agrupa, rotar direcciones esquiva el límite.
 function normalizeIp(ip) {
@@ -31,8 +32,10 @@ function expandIPv6(ip) {
 }
 
 function clientIp(req) {
-  const cf = req.get && req.get("cf-connecting-ip");
-  if (cf && net.isIP(cf.trim())) return normalizeIp(cf);
+  if (config.abuse.trustCfConnectingIp) {
+    const cf = req.get && req.get("cf-connecting-ip");
+    if (cf && net.isIP(cf.trim())) return normalizeIp(cf);
+  }
   return normalizeIp(req.ip);
 }
 

@@ -1,6 +1,7 @@
 // Límites contra abusos: IP real detrás de Cloudflare/Render, ventanas por 10 min / hora / día, horario nocturno,
 // tope global de IA, protección de memoria. Límites bajos para poder probarlos.
 process.env.NODE_ENV = "test";
+process.env.TRUST_CF_CONNECTING_IP = "1"; // simula un despliegue detrás de Cloudflare
 process.env.RATE_LIMIT_PER_10MIN = "3";
 process.env.RATE_LIMIT_PER_HOUR = "100";
 process.env.RATE_LIMIT_PER_DAY = "100";
@@ -37,6 +38,15 @@ test("IP: IPv6 se agrupa por /64, IPv4 mapeada se limpia", () => {
   assert.equal(normalizeIp("2800:810:4a3:1f00::99"), "2800:810:4a3:1f00::/64");
   assert.equal(normalizeIp("::ffff:181.1.2.3"), "181.1.2.3");
   assert.equal(normalizeIp("181.1.2.3"), "181.1.2.3");
+});
+
+test("IP: CF-Connecting-IP sólo se usa si se configuró (si no, cualquiera lo falsifica)", () => {
+  const config = require("../src/config");
+  const req = { ip: "10.0.0.1", get: (k) => (k.toLowerCase() === "cf-connecting-ip" ? "181.9.9.9" : undefined) };
+  config.abuse.trustCfConnectingIp = false;
+  assert.equal(clientIp(req), "10.0.0.1");
+  config.abuse.trustCfConnectingIp = true;
+  assert.equal(clientIp(req), "181.9.9.9");
 });
 
 test("IP: se usa CF-Connecting-IP (Cloudflare) y se ignora si no es una IP", () => {

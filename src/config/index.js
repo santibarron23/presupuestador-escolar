@@ -82,8 +82,10 @@ module.exports = {
   // Límites contra abusos (ver src/security/quota.js). Pensados para que una familia nunca los toque:
   // una conexión compartida (wifi de un colegio, datos móviles con IP compartida) puede tener varias familias.
   abuse: {
-    // Saltos de proxy delante de la app (Cloudflare + Render = 2). Sólo se usa si no llega CF-Connecting-IP.
+    // Saltos de proxy delante de la app (ver src/security/clientIp.js).
     trustProxyHops: num(env.TRUST_PROXY_HOPS, 2),
+    // Sólo si TODO el tráfico pasa por Cloudflare (no en Railway: ahí el header se puede falsificar).
+    trustCfConnectingIp: env.TRUST_CF_CONNECTING_IP === "1",
     // Presupuestos por IP
     budgetsPer10Min: num(env.RATE_LIMIT_PER_10MIN, 10),
     budgetsPerHour: num(env.RATE_LIMIT_PER_HOUR, 30),

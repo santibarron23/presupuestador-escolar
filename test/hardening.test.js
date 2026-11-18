@@ -1,6 +1,7 @@
 // Seguridad extra y topes de consumo: PDFs largos o dañados, bombas zip, tope diario de tokens de IA,
 // tope global de links, líneas por pedido y encabezados de seguridad.
 process.env.NODE_ENV = "test";
+process.env.TRUST_CF_CONNECTING_IP = "1"; // simula un despliegue detrás de Cloudflare
 process.env.AI_GLOBAL_TOKENS_PER_DAY = "1000";
 process.env.SHARES_GLOBAL_PER_DAY = "2";
 process.env.MAX_PDF_PAGES = "3";
