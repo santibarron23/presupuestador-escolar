@@ -177,7 +177,10 @@ test("panel admin: exige token, y el reporte trae la demanda no satisfecha", asy
   assert.ok(rep.demand.some((d) => /satinado/.test(d.text)));
   assert.equal(rep.storage.persistent, false);
   const page = await fetch(base + "/admin");
-  assert.equal(page.headers.get("content-security-policy"), "frame-ancestors 'none'");
+  const pageCsp = page.headers.get("content-security-policy");
+  assert.match(pageCsp, /frame-ancestors 'none'/);
+  assert.match(pageCsp, /connect-src 'self'/, "el panel no puede mandar datos a otro servidor");
+  assert.equal(page.headers.get("cross-origin-opener-policy"), "same-origin");
 });
 
 test("PDF con link: el QR apunta a una URL armada por el servidor", async () => {

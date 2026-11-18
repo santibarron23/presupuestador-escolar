@@ -13,7 +13,12 @@ startScheduledSync(store);
 
 // La base de datos es opcional: si no responde se arranca igual con memoria.
 initStorage().finally(() => {
-  createApp().listen(config.port, () => {
+  const server = createApp().listen(config.port, () => {
     logger.info("server_started", { port: config.port, model: config.ai.model, fallbackModel: config.ai.fallbackModel, ai: Boolean(process.env.ANTHROPIC_API_KEY), storage: getStorage().kind });
   });
+  // Conexiones lentas a propósito (slowloris) no pueden ocupar el servidor indefinidamente.
+  // Un presupuesto con fila de IA tarda como mucho ~2 min (60 s de fila + lectura + reintento).
+  server.headersTimeout = 20 * 1000;
+  server.requestTimeout = 3 * 60 * 1000;
+  server.keepAliveTimeout = 65 * 1000; // > timeout del balanceador de Render, evita cortes intermitentes
 });

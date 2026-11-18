@@ -1,7 +1,9 @@
 // Lectura segura de archivos subidos. Todo en memoria (nunca a disco): las listas pueden tener datos de chicos.
 // El tipo se decide por el contenido (magic bytes), no por la extensión ni por el mimetype que manda el navegador.
-const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
+const config = require("../config");
+const { inspectPdf } = require("./pdfText");
+const { zipStats } = require("./zipGuard");
 
 class FileError extends Error {
   constructor(code, userMessage) {
@@ -52,16 +54,26 @@ async function readUpload(file) {
       if (buf.length > MAX_IMAGE_BYTES) throw new FileError("too_large", "La foto es muy pesada. Probá sacarla de nuevo o subir una captura de pantalla.");
       return { kind: "image", mime: type.mime, buffer: buf };
     case "pdf": {
-      let text = "";
+      // Cada página de un PDF escaneado se cobra en la IA: un PDF de 300 páginas no puede llegar ahí.
+      let info;
       try {
-        text = cleanText((await pdfParse(buf)).text);
+        info = await inspectPdf(buf, { maxPages: config.http.maxPdfPages, maxChars: config.http.maxDocumentChars });
       } catch {
-        text = "";
+        // No se pudo abrir (dañado, protegido o armado para colgar el lector): no se manda a ciegas a la IA.
+        throw new FileError("pdf_unreadable", "No pudimos abrir ese PDF. Sacale una foto o una captura a la lista, o pegá el texto.");
       }
+      if (info.pages > config.http.maxPdfPages) {
+        throw new FileError("too_many_pages", `El PDF tiene ${info.pages} páginas. Subí sólo las páginas de la lista de útiles (hasta ${config.http.maxPdfPages}), o una foto de cada página.`);
+      }
+      const text = cleanText(info.text);
       if (text && pdfTextIsUsable(text)) return { kind: "text", text, from: "pdf" };
-      return { kind: "pdf", buffer: buf };
+      return { kind: "pdf", buffer: buf, pages: info.pages };
     }
     case "docx": {
+      const z = zipStats(buf);
+      if (!z || z.entries > 1000 || z.uncompressed > config.http.maxDocxUncompressedBytes) {
+        throw new FileError("docx_invalid", "No pudimos abrir ese Word. Guardalo como PDF, sacale una foto o pegá el texto.");
+      }
       const { value } = await mammoth.extractRawText({ buffer: buf });
       const text = cleanText(value);
       if (!text) throw new FileError("empty", "El Word está vacío o no pudimos leerlo.");

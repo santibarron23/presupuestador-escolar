@@ -113,10 +113,33 @@ function quotaMiddleware(scope, { onBlocked } = {}) {
 // Se consume sólo cuando de verdad se llama a la IA (una lista ya leída, desde la caché, no cuenta).
 async function consumeGlobalAi(now = Date.now()) {
   if (a().disabled) return null;
-  return consume("global", [
+  const over = await consume("global", [
     { id: "ai_global_1h", windowMs: HOUR, limit: a().aiGlobalPerHour },
     { id: "ai_global_1d", windowMs: DAY, limit: a().aiGlobalPerDay },
   ], now);
+  if (over) return over;
+  // Tope de tokens del día (el costo real): se lee el acumulado sin sumar.
+  if (a().aiTokensPerDay > 0) {
+    const ws = windowStart(DAY, now);
+    const [tokens] = await increment([{ key: "ai_tokens_1d:global", windowStart: ws, windowMs: DAY, amount: 0 }]);
+    if (tokens >= a().aiTokensPerDay) {
+      return { rule: { id: "ai_tokens_1d" }, hits: tokens, retryAfterSec: Math.ceil((ws.getTime() + DAY - now) / 1000) };
+    }
+  }
+  return null;
 }
 
-module.exports = { quotaMiddleware, consume, consumeGlobalAi, isNight, windowStart, hashIp, messageFor, RULES };
+// Después de cada llamada a la IA: suma los tokens que de verdad se usaron.
+async function addAiTokens(usage, now = Date.now()) {
+  const total = usage ? (usage.input_tokens || 0) + (usage.output_tokens || 0) + (usage.cache_creation_input_tokens || 0) : 0;
+  if (!total) return;
+  await increment([{ key: "ai_tokens_1d:global", windowStart: windowStart(DAY, now), windowMs: DAY, amount: total }]);
+}
+
+// Tope global de links guardados por día (la base gratuita tiene espacio limitado).
+async function consumeGlobalShares(now = Date.now()) {
+  if (a().disabled) return null;
+  return consume("global", [{ id: "share_global_1d", windowMs: DAY, limit: a().sharesGlobalPerDay }], now);
+}
+
+module.exports = { quotaMiddleware, consume, consumeGlobalAi, addAiTokens, consumeGlobalShares, isNight, windowStart, hashIp, messageFor, RULES };

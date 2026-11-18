@@ -47,6 +47,7 @@ function demandEntries(budget) {
     if (!UNMET.has(it.status)) continue;
     const key = demandKey(it.requestedItem);
     if (key.length < 3 || seen.has(key)) continue;
+    if (out.length >= 40) break;
     seen.add(key);
     out.push({ key, sample: String(it.requestedItem).slice(0, 100), concept: it.concept || null, status: it.status });
   }

@@ -18,7 +18,7 @@ const { createShare, loadShare, restoreBudget, isShareId, shareUrl } = require("
 const { recordBudget, recordClientEvent, recordSubstitution, recordMetric, buildReport, latency } = require("./analytics/metrics");
 const { getStorage } = require("./storage");
 const { clientIp } = require("./security/clientIp");
-const { quotaMiddleware } = require("./security/quota");
+const { quotaMiddleware, consumeGlobalShares } = require("./security/quota");
 
 function createApp() {
   const app = express();
@@ -42,6 +42,10 @@ function createApp() {
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    // Sólo HTTPS (Render/Cloudflare ya redirigen; esto evita que un navegador vuelva a intentar por HTTP).
+    res.setHeader("Strict-Transport-Security", "max-age=31536000");
+    // Nada de micrófono, ubicación, pagos, etc. (la cámara se usa con <input capture>, que no necesita permiso).
+    res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), payment=(), usb=(), serial=(), bluetooth=()");
     next();
   });
 
@@ -118,6 +122,8 @@ function createApp() {
   app.post("/api/match", lightLimiter, express.json({ limit: "100kb" }), (req, res) => {
     const lines = Array.isArray(req.body && req.body.lines) ? req.body.lines : null;
     if (!lines || !lines.length) return res.status(400).json({ error: "Faltan los ítems." });
+    // El widget manda de a una línea; cientos por pedido sólo sirven para cargar el servidor.
+    if (lines.length > config.http.maxMatchLines) return res.status(413).json({ error: "Demasiados ítems de una vez." });
     res.json({ success: true, ...matchLines(lines) });
   });
 
@@ -143,15 +149,23 @@ function createApp() {
   });
 
   // ── Presupuestos compartibles ──────────────────────────────────────
+  // Abrir un link rearma el presupuesto completo (hasta 150 ítems): límite propio, más bajo que el de búsquedas.
+  const openShareLimiter = limiter(60 * 1000, config.abuse.shareOpensPerMin, "Demasiadas consultas. Esperá un momento.");
   app.post("/api/presupuestos", shareQuota, express.json({ limit: "100kb" }), async (req, res, next) => {
     try {
+      // Tope diario de links guardados de todo el sitio (protege el espacio de la base).
+      const full = await consumeGlobalShares();
+      if (full) {
+        blocked(full.rule.id);
+        return res.status(503).json({ error: "Por hoy no podemos guardar más links. Podés descargar el PDF o mandarlo por WhatsApp.", code: "share_cap" });
+      }
       const share = await createShare(req.body && req.body.lines);
       if (!share) return res.status(400).json({ error: "Faltan los ítems." });
       recordMetric("share_created");
       res.status(201).json({ success: true, ...share });
     } catch (e) { next(e); }
   });
-  app.get("/api/presupuestos/:id", lightLimiter, async (req, res, next) => {
+  app.get("/api/presupuestos/:id", openShareLimiter, async (req, res, next) => {
     try {
       const id = String(req.params.id);
       const lines = isShareId(id) ? await loadShare(id) : null;
@@ -230,14 +244,28 @@ function createApp() {
 
   // ── Widget ────────────────────────────────────────────────────────
   app.use("/assets", express.static(path.join(config.root, "public", "assets"), { maxAge: "7d" }));
-  const sendWidget = (file) => (req, res) => {
-    // Sólo se puede embeber desde la tienda.
-    res.setHeader("Content-Security-Policy", `frame-ancestors 'self' ${config.http.allowedOrigins.join(" ")}`);
+  // Content-Security-Policy: aunque se colara texto malicioso en la página, no podría cargar scripts de afuera
+  // ni mandar datos a otro servidor (connect-src 'self'). Sólo se puede embeber desde la tienda.
+  const csp = (frameAncestors) => [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://*.mitiendanube.com https://*.tiendanube.com",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    `frame-ancestors ${frameAncestors}`,
+  ].join("; ");
+  const sendWidget = (file, { strict = true } = {}) => (req, res) => {
+    const ancestors = `'self' ${config.http.allowedOrigins.join(" ")}`;
+    res.setHeader("Content-Security-Policy", strict ? csp(ancestors) : `frame-ancestors ${ancestors}`);
     res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.join(config.root, "public", file));
   };
   app.get("/widget", sendWidget("widget.html"));
-  app.get("/widget/v1", sendWidget("widget-v1.html")); // versión anterior, por si hay que volver atrás
+  app.get("/widget/v1", sendWidget("widget-v1.html", { strict: false })); // versión anterior, por si hay que volver atrás
   // Presupuesto compartido abierto directamente (el widget lee el id de la URL).
   app.get("/presupuesto/:id", (req, res, next) => (isShareId(String(req.params.id)) ? sendWidget("widget.html")(req, res) : next()));
 
@@ -254,7 +282,8 @@ function createApp() {
     next();
   };
   app.get("/admin", (req, res) => {
-    res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+    res.setHeader("Content-Security-Policy", csp("'none'"));
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
     res.setHeader("X-Robots-Tag", "noindex");
     res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.join(config.root, "public", "admin.html"));

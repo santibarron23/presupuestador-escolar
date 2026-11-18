@@ -20,14 +20,14 @@ function createMemoryStorage() {
     async init() {},
     async close() {},
 
-    // Límites de uso: suma 1 a cada contador y devuelve los totales, en el mismo orden.
+    // Límites de uso: suma `amount` (1 por defecto; 0 = sólo leer) a cada contador y devuelve los totales, en orden.
     async incrementCounters(entries) {
       const now = Date.now();
       if (counters.size > 50000) for (const [k, c] of counters) if (c.expires < now) counters.delete(k);
-      return entries.map(({ key, windowStart, windowMs }) => {
+      return entries.map(({ key, windowStart, windowMs, amount = 1 }) => {
         const k = key + "|" + windowStart.getTime();
         const c = counters.get(k) || { hits: 0, expires: windowStart.getTime() + windowMs };
-        c.hits++;
+        c.hits += amount;
         counters.set(k, c);
         return c.hits;
       });

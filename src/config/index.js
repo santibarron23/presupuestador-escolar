@@ -65,6 +65,14 @@ module.exports = {
     maxUploadBytes: num(process.env.MAX_UPLOAD_MB, 10) * 1024 * 1024,
     maxFiles: num(process.env.MAX_FILES, 5),
     maxPastedChars: num(process.env.MAX_PASTED_CHARS, 20000),
+    // Topes de costo de documentos: páginas de PDF (cada página escaneada se cobra en la IA) y texto extraído.
+    maxPdfPages: num(env.MAX_PDF_PAGES, 10),
+    maxTotalPdfPages: num(env.MAX_TOTAL_PDF_PAGES, 12),
+    maxDocumentChars: num(env.MAX_DOCUMENT_CHARS, 40000),
+    // Word: tamaño máximo descomprimido (bombas zip).
+    maxDocxUncompressedBytes: num(env.MAX_DOCX_UNCOMPRESSED_MB, 40) * 1024 * 1024,
+    // Líneas por pedido de re-match (el widget manda de a una; un script podría mandar cientos).
+    maxMatchLines: num(env.MAX_MATCH_LINES, 40),
     // Tamaño total de un pedido con archivos: se rechaza antes de leerlo (protege la memoria del servidor).
     maxRequestBytes: num(process.env.MAX_REQUEST_MB, 25) * 1024 * 1024,
     // Pedidos con archivos procesándose a la vez (cada uno ocupa memoria hasta terminar).
@@ -87,12 +95,16 @@ module.exports = {
     // Tope global de lecturas con IA (costo), sumando todas las IPs.
     aiGlobalPerHour: num(env.AI_GLOBAL_PER_HOUR, 300),
     aiGlobalPerDay: num(env.AI_GLOBAL_PER_DAY, 2000),
+    // Tope de tokens de IA por día (entrada + salida), el costo real. Ver el promedio por lectura en /admin.
+    aiTokensPerDay: num(env.AI_GLOBAL_TOKENS_PER_DAY, 8000000),
     // Otros endpoints
     sharesPer10Min: num(env.SHARES_PER_10MIN, 30),
     sharesPerDay: num(env.SHARES_PER_DAY, 150),
+    sharesGlobalPerDay: num(env.SHARES_GLOBAL_PER_DAY, 3000),
     pdfPer10Min: num(env.PDF_PER_10MIN, 20),
     pdfPerDay: num(env.PDF_PER_DAY, 150),
     eventsPerMin: num(env.EVENTS_PER_MIN, 60),
+    shareOpensPerMin: num(env.SHARE_OPENS_PER_MIN, 20),
     adminPer10Min: num(env.ADMIN_PER_10MIN, 20),
     secret: quotaSecret,
     // Sólo para pruebas de carga locales. Nunca en producción (se avisa en el log al arrancar).

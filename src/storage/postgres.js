@@ -51,6 +51,7 @@ function createPostgresStorage({ connectionString, sslNoVerify = false, Pool = r
   const q = (text, params) => pool.query(text, params);
   let saves = 0;
   let counterWrites = 0;
+  let demandWrites = 0;
 
   return {
     kind: "postgres",
@@ -62,18 +63,18 @@ function createPostgresStorage({ connectionString, sslNoVerify = false, Pool = r
       await pool.end();
     },
 
-    // Suma 1 a cada contador (una sola consulta) y devuelve los totales en el mismo orden.
+    // Suma `amount` (1 por defecto; 0 = sólo leer) a cada contador, en una sola consulta; devuelve los totales en orden.
     async incrementCounters(entries) {
       if (!entries.length) return [];
       const params = [];
-      const values = entries.map(({ key, windowStart, windowMs }) => {
-        params.push(key, windowStart, new Date(windowStart.getTime() + windowMs));
+      const values = entries.map(({ key, windowStart, windowMs, amount = 1 }) => {
+        params.push(key, windowStart, Math.round(amount), new Date(windowStart.getTime() + windowMs));
         const n = params.length;
-        return `($${n - 2}, $${n - 1}, 1, $${n})`;
+        return `($${n - 3}, $${n - 2}, $${n - 1}, $${n})`;
       });
       const { rows } = await q(
         `INSERT INTO rate_counters (key, window_start, hits, expires_at) VALUES ${values.join(", ")}
-         ON CONFLICT (key, window_start) DO UPDATE SET hits = rate_counters.hits + 1
+         ON CONFLICT (key, window_start) DO UPDATE SET hits = rate_counters.hits + EXCLUDED.hits
          RETURNING key, window_start, hits`,
         params,
       );
@@ -112,6 +113,11 @@ function createPostgresStorage({ connectionString, sslNoVerify = false, Pool = r
       );
     },
     async addDemand(entries) {
+      // Poda ocasional: se conserva lo que más se pide; lo pedido una sola vez hace más de 60 días se va.
+      if (++demandWrites % 100 === 1) {
+        q(`DELETE FROM unmet_demand WHERE (hits = 1 AND last_seen < now() - interval '60 days')
+           OR key IN (SELECT key FROM unmet_demand ORDER BY hits DESC, last_seen DESC OFFSET 20000)`).catch(() => {});
+      }
       for (const e of entries) {
         await q(
           `INSERT INTO unmet_demand (key, sample, concept, status, hits) VALUES ($1, $2, $3, $4, 1)

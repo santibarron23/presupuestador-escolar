@@ -12,7 +12,7 @@ const { rerank } = require("../ai/rerank");
 const { matchItem } = require("../matching/engine");
 const { logger, stageTimer } = require("../observability/logger");
 const { createLimiter, createCache, sourceKey, CapacityError } = require("../ai/capacity");
-const { consumeGlobalAi } = require("../security/quota");
+const { consumeGlobalAi, addAiTokens } = require("../security/quota");
 const { recordMetric } = require("../analytics/metrics");
 
 // Tope global de lecturas con IA (costo). Se cuenta sólo cuando de verdad se llama a la IA.
@@ -23,7 +23,9 @@ async function readWithAi(source, onStage) {
     logger.warn("ai_global_cap", { rule: over.rule.id, hits: over.hits });
     throw new CapacityError("global_cap", "Tope global de lecturas con IA");
   }
-  return ai.limiter.run(() => extractItems(source), { onQueued: (position) => onStage("queued", { position }) });
+  const out = await ai.limiter.run(() => extractItems(source), { onQueued: (position) => onStage("queued", { position }) });
+  addAiTokens(out.usage).catch((e) => logger.warn("ai_tokens_count_failed", { message: e.message }));
+  return out;
 }
 
 // Una sola fila y una sola caché para todo el proceso (ver src/ai/capacity.js).
@@ -114,6 +116,15 @@ async function readSources({ files = [], text }) {
   const read = [];
   for (const f of files) read.push(await readUpload(f));
   if (!read.length) throw new BudgetError("empty", "Subí una foto o un archivo con la lista, o pegá el texto.");
+  // Topes de costo: páginas de PDF escaneado (van a la IA) y largo del texto extraído de PDF/Word.
+  const pdfPages = read.reduce((s, r) => s + (r.kind === "pdf" ? r.pages || 1 : 0), 0);
+  if (pdfPages > config.http.maxTotalPdfPages) {
+    throw new BudgetError("too_many_pages", `Entre todos los PDF hay ${pdfPages} páginas. Subí sólo las páginas de la lista (hasta ${config.http.maxTotalPdfPages} en total).`, 413);
+  }
+  const chars = read.reduce((s, r) => s + (r.text ? r.text.length : 0), 0);
+  if (chars > config.http.maxDocumentChars) {
+    throw new BudgetError("too_long", "El documento es demasiado largo para ser una lista de útiles. Subí sólo la parte de la lista o pegá el texto.", 413);
+  }
   // Todo texto: se une y se procesa como texto (más barato). Si hay fotos/PDF escaneado, va todo junto a la IA.
   if (read.every((r) => r.kind === "text")) return { kind: "text", text: read.map((r) => r.text).join("\n\n") };
   return { kind: "files", files: read };

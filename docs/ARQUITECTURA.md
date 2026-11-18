@@ -125,6 +125,28 @@ fuerte al costo es el tope global.
 - Cada pedido frenado se cuenta en `/admin` → "Protección contra abusos", con el motivo.
 - Respuesta al superar un límite: `429` + `Retry-After` + mensaje que dice cuánto esperar.
 
+### Topes de consumo (costo de IA, CPU, base de datos)
+
+- **Tokens de IA por día**: 8 millones (entrada + salida, sumando todo el sitio). Es el tope de costo real: se
+  revisa antes de cada lectura y se suma lo que la API informa que se usó. Ajustarlo mirando "Tokens promedio por
+  lectura" en `/admin`. Superado: igual que el tope de lecturas (texto sin IA, fotos con mensaje).
+- **PDF**: como mucho 10 páginas por archivo y 12 entre todos (cada página escaneada se cobra en la IA). Un PDF que
+  no se puede abrir no se manda "a ciegas" a la IA. El texto extraído de PDF/Word se limita a 40.000 caracteres.
+- **Lector de PDF**: pdf.js 4 (Mozilla) con `isEvalSupported: false` (nunca ejecuta código del PDF), sin fuentes y
+  con tiempo máximo. Reemplaza a pdf-parse 1.x, que traía un pdf.js de 2017.
+- **Word**: antes de abrirlo se lee el índice del zip; si declara más de 40 MB descomprimido (bomba zip), se rechaza.
+- **CPU**: `/api/match` acepta hasta 40 líneas (el widget manda de a una); abrir un link compartido tiene su propio
+  límite (20 por minuto por IP). Timeouts del servidor contra conexiones lentas (slowloris).
+- **Base de datos**: como mucho 3000 links nuevos por día en todo el sitio; la tabla de demanda se poda sola (máx.
+  20.000 filas, 40 por presupuesto) y los contadores vencidos se borran.
+
+### Encabezados de seguridad
+
+`Content-Security-Policy` estricta en el widget y el panel (sin scripts de otros dominios, `connect-src 'self'`:
+aunque se colara texto malicioso no podría mandar datos afuera; sólo embebible desde la tienda),
+`Strict-Transport-Security`, `Permissions-Policy`, `X-Content-Type-Options`, `Referrer-Policy` y
+`Cross-Origin-Opener-Policy` en el panel. Dependencias sin vulnerabilidades conocidas (`npm audit`), multer 2.
+
 ## Variables de entorno
 
 | Variable | Default | |
@@ -140,6 +162,11 @@ fuerte al costo es el tope global.
 | `RATE_LIMIT_PER_10MIN` / `_PER_HOUR` / `_PER_DAY` | `10` / `30` / `80` | presupuestos por IP (ver "Protección contra abusos") |
 | `RATE_LIMIT_NIGHT_PER_HOUR` | `8` | presupuestos por IP por hora entre `NIGHT_START_HOUR` (0) y `NIGHT_END_HOUR` (7), hora argentina |
 | `AI_GLOBAL_PER_HOUR` / `AI_GLOBAL_PER_DAY` | `300` / `2000` | tope de lecturas con IA de todo el sitio (costo) |
+| `AI_GLOBAL_TOKENS_PER_DAY` | `8000000` | tope de tokens de IA por día (entrada + salida) |
+| `MAX_PDF_PAGES` / `MAX_TOTAL_PDF_PAGES` | `10` / `12` | páginas de PDF por archivo / por pedido |
+| `MAX_DOCUMENT_CHARS` · `MAX_DOCX_UNCOMPRESSED_MB` | `40000` · `40` | texto extraído de PDF/Word · tamaño descomprimido de un Word |
+| `MAX_MATCH_LINES` · `SHARE_OPENS_PER_MIN` | `40` · `20` | líneas por re-match · aperturas de links por IP |
+| `SHARES_GLOBAL_PER_DAY` | `3000` | links nuevos por día en todo el sitio |
 | `SHARES_PER_10MIN` / `SHARES_PER_DAY` | `30` / `150` | links compartidos por IP |
 | `PDF_PER_10MIN` / `PDF_PER_DAY` | `20` / `150` | PDF por IP |
 | `EVENTS_PER_MIN` · `ADMIN_PER_10MIN` | `60` · `20` | eventos del widget · intentos en el panel |
